@@ -1,0 +1,802 @@
+/* ==========================================================================
+   Laundry Inventory — modern, attractive page for laundry-store admins.
+   Design vocabulary borrows from LaundryServicePage (teal gradient hero,
+   24px-radius cards, soft shadows) and InventoryDashboard (.inv-card,
+   .status-badge) so the visual language stays consistent across the app.
+   ========================================================================== */
+
+.laundry-inventory-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 4px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- HERO ---------- */
+
+.laundry-inventory-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: 26px 30px;
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  color: #f0fdfa;
+  box-shadow: 0 24px 56px rgba(20, 184, 166, 0.25);
+}
+
+.laundry-inventory-hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.18), transparent 38%),
+    radial-gradient(circle at 88% 80%, rgba(56, 189, 248, 0.32), transparent 48%),
+    radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.25), transparent 38%);
+}
+
+.laundry-inventory-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.laundry-inventory-eyebrow {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #ccfbf1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.laundry-inventory-hero h3 {
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.laundry-inventory-hero p {
+  margin: 0;
+  max-width: 620px;
+  color: rgba(236, 254, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.laundry-inventory-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.laundry-inventory-hero-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.laundry-inventory-hero-stat strong {
+  font-size: 1.4rem;
+}
+
+.laundry-inventory-hero-stat span {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ---------- STAT TILES ----------
+ * Reuses InventoryDashboard.css .inv-card* classes for color consistency.
+ * Adds a small spacing override so they sit nicely within this page.
+ */
+
+.laundry-inventory-stats {
+  margin: 0;
+}
+
+/* ---------- FORM CARD ---------- */
+
+.laundry-inventory-form {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 24px;
+  border: 1px solid #e4edf5;
+  box-shadow: 0 14px 36px rgba(24, 44, 70, 0.08);
+  padding: 24px 26px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.laundry-inventory-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.laundry-inventory-form-head h4 {
+  margin: 0;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.laundry-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.laundry-inventory-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.laundry-inventory-grid input,
+.laundry-inventory-grid select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #dce8f1;
+  background: #f8fbfd;
+  padding: 11px 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  font-family: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.laundry-inventory-grid input:focus,
+.laundry-inventory-grid select:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+/* Primary + ghost buttons */
+.laundry-inventory-primary {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: #ffffff;
+  border: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(15, 118, 110, 0.22);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.laundry-inventory-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(15, 118, 110, 0.28);
+}
+
+.laundry-inventory-primary:disabled {
+  opacity: 0.65;
+  cursor: progress;
+  transform: none;
+  box-shadow: none;
+}
+
+.laundry-inventory-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f766e;
+  border: 1px solid rgba(20, 184, 166, 0.32);
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.laundry-inventory-light:hover {
+  background: #f0fdfa;
+  border-color: rgba(20, 184, 166, 0.55);
+}
+
+/* ---------- LIST + TOOLBAR ---------- */
+
+.laundry-inventory-list {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 24px;
+  border: 1px solid #e4edf5;
+  box-shadow: 0 14px 36px rgba(24, 44, 70, 0.08);
+  padding: 18px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.laundry-inventory-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.laundry-inventory-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #dce8f1;
+  background: #f8fbfd;
+  flex: 1 1 260px;
+  min-width: 240px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.laundry-inventory-search:focus-within {
+  border-color: #14b8a6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+.laundry-inventory-search svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.laundry-inventory-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.92rem;
+  color: #0f172a;
+  min-width: 0;
+}
+
+.laundry-inventory-search input::placeholder {
+  color: #94a3b8;
+}
+
+.laundry-inventory-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.laundry-inventory-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #dce8f1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.laundry-inventory-chip:hover {
+  border-color: rgba(20, 184, 166, 0.55);
+  color: #0f766e;
+}
+
+.laundry-inventory-chip.active {
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
+}
+
+/* ---------- TABLE ---------- */
+
+.laundry-inventory-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.laundry-inventory-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #ffffff;
+  font-size: 0.92rem;
+  min-width: 760px;
+}
+
+.laundry-inventory-table thead th {
+  background: linear-gradient(135deg, #f8fbfd, #ecfeff);
+  text-align: left;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.laundry-inventory-table tbody td {
+  padding: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+.laundry-inventory-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.laundry-inventory-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.05), transparent);
+}
+
+.laundry-inventory-table strong {
+  display: block;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.laundry-inventory-table small {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.laundry-inventory-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 32px 14px;
+  font-weight: 600;
+}
+
+.laundry-inventory-supplier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+}
+
+.laundry-inventory-supplier svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.laundry-inventory-supplier strong {
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.laundry-inventory-supplier small {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.laundry-inventory-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.laundry-inventory-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+  background: rgba(20, 184, 166, 0.12);
+  color: #0f766e;
+  border-color: rgba(20, 184, 166, 0.24);
+}
+
+.laundry-inventory-icon-btn:hover {
+  background: rgba(20, 184, 166, 0.22);
+  transform: translateY(-1px);
+}
+
+.laundry-inventory-icon-btn.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.laundry-inventory-icon-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+/* ---------- MOVEMENTS ---------- */
+
+.laundry-inventory-movements {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 24px;
+  border: 1px solid #e4edf5;
+  box-shadow: 0 14px 36px rgba(24, 44, 70, 0.08);
+  padding: 22px 24px;
+}
+
+.laundry-inventory-movements-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #0f172a;
+}
+
+.laundry-inventory-movements-head svg {
+  width: 26px;
+  height: 26px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(20, 184, 166, 0.14);
+  color: #0f766e;
+}
+
+.laundry-inventory-movements-head h4 {
+  margin: 0;
+  font-weight: 800;
+}
+
+.laundry-inventory-movements-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.laundry-inventory-movements-empty {
+  margin: 0;
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8fafc, #ecfeff);
+  border: 1px dashed rgba(20, 184, 166, 0.3);
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.laundry-inventory-movements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.laundry-inventory-movements-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fbfd);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.movement-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  flex-shrink: 0;
+}
+
+.movement-delta.pos {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.movement-delta.neg {
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+.movement-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.movement-meta strong {
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.movement-meta small {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ---------- ADJUST MODAL ---------- */
+
+.laundry-inventory-adjust-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+.laundry-inventory-adjust-modal {
+  width: 100%;
+  max-width: 460px;
+  background: linear-gradient(180deg, #ffffff, #f8fbfd);
+  border-radius: 22px;
+  border: 1px solid rgba(20, 184, 166, 0.24);
+  box-shadow: 0 32px 70px rgba(15, 23, 42, 0.28);
+  padding: 24px 26px;
+  animation: li-adjust-fade 220ms ease-out;
+}
+
+@keyframes li-adjust-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.laundry-inventory-adjust-modal h4 {
+  margin: 0 0 8px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.laundry-inventory-adjust-modal p {
+  margin: 0 0 10px;
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.laundry-inventory-adjust-hint {
+  color: #64748b;
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.laundry-inventory-adjust-input {
+  width: 100%;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #dce8f1;
+  background: #f8fbfd;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.laundry-inventory-adjust-input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+.laundry-inventory-adjust-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 720px) {
+  .laundry-inventory-hero-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .laundry-inventory-hero-actions {
+    justify-content: flex-end;
+  }
+  .laundry-inventory-form,
+  .laundry-inventory-list,
+  .laundry-inventory-movements {
+    padding: 18px;
+  }
+  .laundry-inventory-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  /* Inventory table: stop forcing 760px min-width. The wrap still scrolls
+     horizontally on very narrow phones, but the table can now breathe within
+     the card instead of demanding its own giant scroll. */
+  .laundry-inventory-table {
+    min-width: 0;
+  }
+  .laundry-inventory-table th:nth-child(4),
+  .laundry-inventory-table td:nth-child(4),
+  .laundry-inventory-table th:nth-child(5),
+  .laundry-inventory-table td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Make the hero-stat pill full-width so it doesn't crowd the title. */
+  .laundry-inventory-hero-stat {
+    align-self: stretch;
+    justify-content: center;
+  }
+  .laundry-inventory-hero-actions {
+    flex-direction: column;
+  }
+}
+
+/* ---------- DARK MODE ---------- */
+
+body.theme-dark .laundry-inventory-form,
+body.theme-dark .laundry-inventory-list,
+body.theme-dark .laundry-inventory-movements {
+  background: #0f172a;
+  border-color: #334155;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-dark .laundry-inventory-hero {
+  background: linear-gradient(135deg, #134e4a 0%, #042f2e 100%);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-dark .laundry-inventory-form-head h4,
+body.theme-dark .laundry-inventory-movements-head h4 {
+  color: #f8fafc;
+}
+
+body.theme-dark .laundry-inventory-movements-head p,
+body.theme-dark .laundry-inventory-grid label {
+  color: #cbd5e1;
+}
+
+body.theme-dark .laundry-inventory-grid input,
+body.theme-dark .laundry-inventory-grid select,
+body.theme-dark .laundry-inventory-search,
+body.theme-dark .laundry-inventory-adjust-input {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-inventory-grid input::placeholder,
+body.theme-dark .laundry-inventory-search input::placeholder {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-inventory-search input {
+  color: #f1f5f9;
+}
+
+body.theme-dark .laundry-inventory-table,
+body.theme-dark .laundry-inventory-table thead th,
+body.theme-dark .laundry-inventory-table tbody td {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-inventory-table thead th {
+  background: linear-gradient(135deg, #1e293b, #134e4a);
+  color: #cbd5e1;
+}
+
+body.theme-dark .laundry-inventory-table tbody tr:hover {
+  background: rgba(20, 184, 166, 0.1);
+}
+
+body.theme-dark .laundry-inventory-table strong {
+  color: #f8fafc;
+}
+
+body.theme-dark .laundry-inventory-table small,
+body.theme-dark .laundry-inventory-supplier small {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-inventory-supplier strong {
+  color: #f8fafc;
+}
+
+body.theme-dark .laundry-inventory-chip {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.theme-dark .laundry-inventory-chip:hover {
+  border-color: #14b8a6;
+  color: #5eead4;
+}
+
+body.theme-dark .laundry-inventory-empty {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-inventory-light {
+  background: #0f172a;
+  color: #5eead4;
+  border-color: rgba(20, 184, 166, 0.4);
+}
+
+body.theme-dark .laundry-inventory-light:hover {
+  background: #134e4a;
+}
+
+body.theme-dark .laundry-inventory-movements-list li {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border-color: #334155;
+}
+
+body.theme-dark .movement-meta strong {
+  color: #f8fafc;
+}
+
+body.theme-dark .movement-meta small {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-inventory-movements-empty {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-color: rgba(20, 184, 166, 0.4);
+  color: #5eead4;
+}
+
+body.theme-dark .laundry-inventory-adjust-modal {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border-color: rgba(20, 184, 166, 0.32);
+}

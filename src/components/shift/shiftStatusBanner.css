@@ -1,0 +1,86 @@
+/* ShiftStatusBanner — universal POS banner for "Start my shift" / "Shift
+ * open". Sits inline at the top of the POS, above the cart.
+ */
+
+.shb-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: 0.6rem;
+  border: 1px solid;
+  margin-bottom: 0.85rem;
+  font-size: 0.875rem;
+}
+.shb-banner-action {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.06));
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #92400e;
+}
+.shb-banner-info {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.14), rgba(16, 185, 129, 0.05));
+  border-color: rgba(16, 185, 129, 0.36);
+  color: #065f46;
+}
+.shb-banner-icon {
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+.shb-banner-action .shb-banner-icon {
+  color: #d97706;
+}
+.shb-banner-info .shb-banner-icon {
+  color: #059669;
+}
+.shb-banner-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  line-height: 1.25;
+  min-width: 0;
+}
+.shb-banner-text strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.shb-banner-text span {
+  font-size: 0.78rem;
+  opacity: 0.86;
+}
+.shb-banner-cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: #d97706;
+  color: #ffffff;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.shb-banner-cta:hover {
+  background: #b45309;
+}
+.shb-banner-cta-secondary {
+  background: rgba(255, 255, 255, 0.6);
+  color: #065f46;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.shb-banner-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 640px) {
+  .shb-banner {
+    flex-wrap: wrap;
+  }
+  .shb-banner-cta {
+    width: 100%;
+    justify-content: center;
+  }
+}

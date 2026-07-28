@@ -1,0 +1,159 @@
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #thermal-receipt-print,
+  #thermal-receipt-print * {
+    visibility: visible !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  #thermal-receipt-print {
+    width: 80mm !important;
+    margin: 0 auto;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Themes */
+.thermal-classic {
+  background: white;
+  color: black;
+}
+.thermal-dark {
+  background: #000;
+  color: #fff;
+}
+.thermal-minimal {
+  background: white;
+  color: #333;
+}
+
+/* Divider */
+.divider {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.item-line {
+  display: flex;
+  justify-content: space-between;
+}
+.item-sub {
+  font-size: 11px;
+  opacity: 0.7;
+}
+/* Popup container */
+.preview-wrapper {
+  background: rgba(0, 0, 0, 0.75);
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Popup window */
+.preview-window {
+  background: #fff;
+  width: 90mm;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Header */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* Content area */
+.preview-content {
+  background: #fafafa;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+/* Footer */
+.preview-footer {
+  margin-top: 15px;
+  text-align: center;
+}
+
+/* Print mode */
+@media print {
+  .preview-header,
+  .preview-footer {
+    display: none;
+  }
+
+  .preview-window {
+    box-shadow: none;
+    width: 80mm !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+  /* FLEX ROW FOR ITEMS */
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+    width: 100%;
+  }
+
+  /* NAME → LEFT WIDE */
+  .item-name {
+    flex: 2;
+    text-align: left;
+  }
+
+  /* QTY */
+  .item-qty {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* PRICE */
+  .item-price {
+    flex: 1;
+    text-align: right;
+  }
+
+  /* LINE TOTAL → RIGHT */
+  .item-total {
+    flex: 1;
+    text-align: right;
+    font-weight: bold;
+  }
+  /* Remove unwanted vertical gaps */
+  #thermal-receipt-print center {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #thermal-receipt-print img,
+  #thermal-receipt-print canvas {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block;
+  }
+}

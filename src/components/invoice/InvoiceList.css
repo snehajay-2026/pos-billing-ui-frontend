@@ -1,0 +1,857 @@
+/* =====================================================================
+   InvoiceList.css — modernized invoices list
+   Class prefix: il- (invoice list)
+   ===================================================================== */
+
+.il-page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 22px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: #0f172a;
+}
+
+/* ---------------- Hero ---------------- */
+.il-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 30px 34px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(13, 148, 136, 0.32), transparent 55%),
+    linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #0ea5e9 100%);
+  color: #fff;
+  box-shadow:
+    0 30px 60px -22px rgba(30, 58, 138, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+.il-hero::after {
+  content: "";
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.16), transparent 70%);
+  bottom: -160px;
+  right: 80px;
+  pointer-events: none;
+}
+
+.il-hero-text {
+  max-width: 640px;
+  position: relative;
+  z-index: 1;
+}
+
+.il-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.il-hero-title {
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.il-hero-sub {
+  margin: 0;
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.55;
+}
+
+.il-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: #1e3a8a;
+  border: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow:
+    0 14px 30px -8px rgba(15, 23, 42, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.il-refresh-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 36px -8px rgba(15, 23, 42, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* ---------------- KPI tiles ---------------- */
+.il-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.il-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 12px 26px -22px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.il-tile::before {
+  content: "";
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  right: -50px;
+  top: -50px;
+  border-radius: 50%;
+  opacity: 0.16;
+  background: var(--tile, #6366f1);
+  pointer-events: none;
+}
+
+.il-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 40px -22px rgba(15, 23, 42, 0.28);
+}
+
+.il-tile-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  background: var(--tile-soft, rgba(99, 102, 241, 0.16));
+  color: var(--tile, #6366f1);
+  position: relative;
+  z-index: 1;
+}
+
+.il-tile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.il-tile-meta span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.il-tile-meta strong {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.il-tile-meta small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.il-tile-blue {
+  --tile: #2563eb;
+  --tile-soft: rgba(37, 99, 235, 0.14);
+}
+.il-tile-emerald {
+  --tile: #059669;
+  --tile-soft: rgba(16, 185, 129, 0.14);
+}
+.il-tile-violet {
+  --tile: #7c3aed;
+  --tile-soft: rgba(124, 58, 237, 0.14);
+}
+.il-tile-amber {
+  --tile: #d97706;
+  --tile-soft: rgba(217, 119, 6, 0.14);
+}
+
+/* ---------------- Toolbar ---------------- */
+.il-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 20px -16px rgba(15, 23, 42, 0.18);
+}
+
+.il-search {
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid rgba(15, 23, 42, 0.08);
+  color: #94a3b8;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.il-search:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.il-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.il-search input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.il-search-clear {
+  border: none;
+  background: rgba(15, 23, 42, 0.06);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: #475569;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+}
+
+.il-search-clear:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.il-date-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid rgba(15, 23, 42, 0.08);
+  color: #94a3b8;
+}
+
+.il-date-field:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.il-date-field input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  width: 130px;
+}
+
+.il-date-sep {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.il-pay-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid rgba(15, 23, 42, 0.08);
+}
+
+.il-chip-ico {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.il-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.il-chip:hover {
+  transform: translateY(-1px);
+  color: #2563eb;
+}
+
+.il-chip.is-active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.6);
+}
+
+.il-btn-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.il-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+/* ---------------- List card ---------------- */
+.il-list-card {
+  padding: 22px 24px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 36px -24px rgba(15, 23, 42, 0.18);
+}
+
+.il-list-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.il-list-head h5 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.il-list-head p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.il-card-ico {
+  color: #2563eb;
+}
+
+/* ---------------- Table ---------------- */
+.il-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.il-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+}
+
+.il-table thead th {
+  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  padding: 14px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.il-table tbody td {
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  color: #334155;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  vertical-align: middle;
+}
+
+.il-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.il-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.il-ta-center {
+  text-align: center;
+}
+
+.il-ta-right {
+  text-align: right;
+}
+
+.il-mono {
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.88rem;
+  letter-spacing: -0.02em;
+}
+
+.il-invoice-no {
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e40af;
+  background: rgba(37, 99, 235, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.il-invalid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.il-invalid.small {
+  font-size: 0.78rem;
+}
+
+.il-cell-date strong {
+  color: #0f172a;
+  font-weight: 700;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.88rem;
+}
+
+.il-cell-customer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.il-cell-customer strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.il-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.il-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.il-count-pill svg {
+  font-size: 0.7rem;
+}
+
+.il-pay-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.il-pay-cash {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.il-pay-upi {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.il-pay-card {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4f46e5;
+}
+
+.il-total {
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.il-btn-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  box-shadow: 0 8px 16px -10px rgba(37, 99, 235, 0.5);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.il-btn-view:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -10px rgba(37, 99, 235, 0.7);
+  color: #fff;
+}
+
+.il-print-ico {
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+/* ---------------- Pagination ---------------- */
+.il-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.il-page-info {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.il-page-info strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.il-page-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.il-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.il-page-btn:not(:disabled):hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.il-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.il-page-numbers {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.il-page-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.il-page-num:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.il-page-num.is-active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.6);
+}
+
+.il-page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+/* ---------------- Empty state ---------------- */
+.il-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 56px 24px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 2px dashed rgba(37, 99, 235, 0.2);
+  color: #475569;
+}
+
+.il-empty-illu {
+  width: 80px;
+  height: 80px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(14, 165, 233, 0.14));
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+
+.il-empty h6 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.il-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+  max-width: 360px;
+}
+
+.il-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 10px 22px -10px rgba(37, 99, 235, 0.5);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.il-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -10px rgba(37, 99, 235, 0.65);
+}
+
+/* ---------------- Skeleton ---------------- */
+.il-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.il-skeleton-row {
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(
+    100deg,
+    rgba(241, 245, 249, 0.6) 30%,
+    rgba(226, 232, 240, 0.9) 50%,
+    rgba(241, 245, 249, 0.6) 70%
+  );
+  background-size: 200% 100%;
+  animation: il-shimmer 1.4s infinite linear;
+}
+
+@keyframes il-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 1024px) {
+  .il-hero-title {
+    font-size: clamp(1.4rem, 4vw, 1.9rem);
+  }
+  .il-toolbar {
+    padding: 14px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .il-page {
+    padding: 18px 14px 48px;
+    gap: 18px;
+  }
+
+  .il-hero {
+    border-radius: 22px;
+    padding: 22px;
+  }
+
+  .il-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .il-search {
+    flex-basis: 100%;
+  }
+
+  .il-date-field input {
+    width: 100%;
+  }
+
+  .il-tile {
+    padding: 16px 18px;
+  }
+
+  .il-tile-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .il-tile-meta strong {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .il-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .il-page-controls {
+    justify-content: space-between;
+  }
+  .il-page-num {
+    width: 32px;
+    height: 32px;
+  }
+}

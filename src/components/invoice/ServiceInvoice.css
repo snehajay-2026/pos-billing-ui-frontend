@@ -1,0 +1,468 @@
+.service-invoice {
+  display: block;
+}
+
+/* A4 canvas */
+.si-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  color: #111827;
+  font-family: Arial, sans-serif;
+  padding: 18mm 16mm;
+  box-sizing: border-box;
+}
+
+.si-top {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.si-title {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.si-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.si-inv-meta {
+  background: #0b2a4a;
+  color: #fff;
+  padding: 10px 12px;
+  min-width: 260px;
+  border-radius: 2px;
+}
+
+.si-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.si-meta-label {
+  font-weight: 700;
+}
+
+.si-meta-value {
+  opacity: 0.95;
+}
+
+.si-brand {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.si-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.si-company-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0b2a4a;
+}
+
+.si-duplicate {
+  display: inline-block;
+  margin: 6px 0 10px 0;
+  padding: 6px 10px;
+  border: 2px solid #dc2626;
+  color: #dc2626;
+  font-weight: 800;
+  border-radius: 6px;
+}
+
+.si-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 10px 0 14px;
+}
+
+.si-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.si-box {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
+.si-box-title {
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.si-kv {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.si-section-title {
+  font-weight: 800;
+  margin: 10px 0 6px;
+}
+
+.si-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.si-table thead th {
+  background: #2ab0ac;
+  color: #fff;
+  text-align: left;
+  padding: 8px;
+  font-weight: 800;
+}
+
+.si-table tbody td {
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.si-table tbody tr.is-alt td {
+  background: #f3f4f6;
+}
+
+.si-col-no {
+  width: 42px;
+}
+
+.si-col-small {
+  width: 120px;
+}
+
+.si-center {
+  text-align: center;
+}
+
+.si-right {
+  text-align: right;
+}
+
+.si-empty {
+  padding: 14px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.si-totals {
+  margin-top: 10px;
+  background: #0b2a4a;
+  color: #fff;
+  padding: 10px 12px;
+}
+
+.si-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.si-totals-row.strong {
+  font-weight: 900;
+  margin-top: 4px;
+}
+
+.si-terms {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.si-sign {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.si-sign-date {
+  font-size: 12px;
+}
+
+.si-sign-line {
+  width: 160px;
+  height: 1px;
+  background: #9ca3af;
+}
+
+.si-sign-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.si-footer {
+  margin-top: 18px;
+  background: #0b2a4a;
+  color: #fff;
+  display: flex;
+  gap: 18px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.si-footer-item {
+  flex: 1;
+}
+
+@media print {
+  #service-invoice {
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  .si-page {
+    padding: 18mm 16mm;
+  }
+}
+
+/* ---------- Enhancements: title block + status pill ---------- */
+.si-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.si-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.si-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.si-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.si-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.si-status-pill.paid {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.si-status-pill.partial {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.si-status-pill.pending {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.si-status-pill.overdue {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.si-status-pill.cancelled {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+  text-decoration: line-through;
+}
+
+.si-company-gst {
+  font-size: 11px;
+  color: #4b5563;
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+/* ---------- Service period strip ---------- */
+.si-period-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 12px 0 18px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.si-period-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.si-period-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.si-period-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ---------- Table tweaks (HSN/SAC col) ---------- */
+.si-col-small {
+  width: 80px;
+  text-align: center;
+}
+
+/* ---------- Totals rows: paid, balance, words ---------- */
+.si-totals-row.paid {
+  color: #047857;
+}
+
+.si-totals-row.balance {
+  color: #b91c1c;
+}
+
+.si-totals-words {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+  font-size: 11px;
+  color: #4b5563;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.si-totals-words b {
+  color: #111827;
+  font-style: normal;
+}
+
+/* ---------- UPI block ---------- */
+.si-upi {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border: 1px solid #bbf7d0;
+  font-size: 12px;
+  color: #064e3b;
+}
+
+.si-upi-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #047857;
+  margin-bottom: 6px;
+}
+
+.si-upi-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.si-upi-row b {
+  color: #064e3b;
+  font-weight: 700;
+}
+
+.si-upi-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: #047857;
+  color: #ffffff;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.si-upi-link:hover {
+  background: #065f46;
+  color: #ffffff;
+}
+
+/* ---------- Remarks ---------- */
+.si-remarks {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.si-remarks p {
+  margin: 0;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ---------- Footer: three columns now ---------- */
+.si-footer {
+  display: flex;
+  gap: 18px;
+  background: #0b2a4a;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.si-footer-item {
+  flex: 1;
+}
+
+.si-footer-item:last-child {
+  text-align: right;
+  font-style: italic;
+  opacity: 0.85;
+}

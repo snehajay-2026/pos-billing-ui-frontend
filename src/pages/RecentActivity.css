@@ -1,0 +1,374 @@
+/* RecentActivity — admin audit-log viewer. Theme-neutral; uses the
+ * existing --surface / --ink / --muted / --accent CSS variables that
+ * Layout.css declares so the page blends with whichever theme is active.
+ */
+
+.ra-page {
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: var(--ink, #1f2937);
+}
+
+.ra-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.ra-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+.ra-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--muted, #6b7280);
+  font-size: 0.85rem;
+}
+.ra-header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ra-header > div + div {
+  flex: 0 0 auto;
+}
+
+.ra-back-btn,
+.ra-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.ra-back-btn:hover,
+.ra-refresh:hover:not(:disabled) {
+  background: var(--surface-2, #f9fafb);
+  border-color: var(--border-strong, #d1d5db);
+}
+.ra-refresh:disabled,
+.ra-btn-primary:disabled,
+.ra-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ra-spin {
+  animation: ra-spin 1.2s linear infinite;
+}
+@keyframes ra-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ra-filters {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+  margin-bottom: 1rem;
+}
+.ra-filter-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+.ra-filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.ra-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.ra-filter-field.grow,
+.ra-grow {
+  flex: 1 1 200px;
+}
+.ra-filter-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ra-filter-field input,
+.ra-filter-field select {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+}
+.ra-filter-field input:focus,
+.ra-filter-field select:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.ra-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ra-input-wrap > svg {
+  position: absolute;
+  left: 0.6rem;
+  color: var(--muted, #6b7280);
+  pointer-events: none;
+}
+.ra-input-wrap input {
+  padding-left: 2rem;
+  width: 100%;
+}
+
+.ra-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+.ra-btn-primary,
+.ra-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+.ra-btn-primary {
+  background: var(--accent, #2563eb);
+  color: white;
+}
+.ra-btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong, #1d4ed8);
+}
+.ra-btn-secondary {
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  border-color: var(--border, #e5e7eb);
+}
+.ra-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-2, #f9fafb);
+}
+
+.ra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ra-empty {
+  background: var(--surface, #fff);
+  border: 1px dashed var(--border, #e5e7eb);
+  border-radius: 0.6rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted, #6b7280);
+}
+
+.ra-row {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.ra-row:hover {
+  border-color: var(--border-strong, #d1d5db);
+}
+.ra-row-open {
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+.ra-row-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  gap: 1rem;
+}
+.ra-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.ra-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 0 0 auto;
+}
+.ra-row-title {
+  font-size: 0.92rem;
+  color: var(--ink, #1f2937);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.ra-row-subject {
+  font-weight: 600;
+}
+.ra-row-action-tag {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.5rem;
+  background: var(--surface-2, #f3f4f6);
+  border-radius: 0.3rem;
+  color: var(--muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ra-row-icon {
+  color: var(--muted, #9ca3af);
+}
+.ra-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  margin-top: 0.15rem;
+  flex-wrap: wrap;
+}
+.ra-role-chip,
+.ra-ip-chip {
+  padding: 0.05rem 0.45rem;
+  background: var(--surface-2, #f3f4f6);
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.ra-row-time {
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+
+.ra-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.ra-row-detail {
+  border-top: 1px dashed var(--border, #e5e7eb);
+  padding: 1rem;
+  background: var(--surface-2, #fafafa);
+}
+.ra-detail-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+}
+.ra-detail-list > div {
+  display: contents;
+}
+.ra-detail-list dt {
+  color: var(--muted, #6b7280);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-top: 0.1rem;
+}
+.ra-detail-list dd {
+  margin: 0;
+  word-break: break-word;
+  color: var(--ink, #1f2937);
+}
+.ra-mono {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.83rem;
+}
+.ra-truncate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ra-body-block h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ra-pre {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.4rem;
+  padding: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ra-footer {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted, #6b7280);
+}
+
+@media (max-width: 640px) {
+  .ra-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ra-filter-actions {
+    flex-direction: row;
+    justify-content: stretch;
+  }
+  .ra-filter-actions button {
+    flex: 1 1 auto;
+  }
+}

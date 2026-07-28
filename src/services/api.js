@@ -1,0 +1,151 @@
+import { getUser } from "../utils/auth";
+
+const API_BASE =
+  process.env.REACT_APP_API_BASE?.trim() ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "");
+
+// Endpoints where a 401 is *not* a session-expiry signal. They're either
+// public (login/register/password-reset) or called during the App bootstrap
+// before we know whether the user has a session. Excluding these stops the
+// global listener from redirecting on the very first page load or on a
+// genuine wrong-password login attempt.
+const NON_SESSION_401_PATHS = [
+  "/api/login",
+  "/api/register",
+  "/api/register/available",
+  "/api/auth/user",
+  "/api/password-reset/request",
+  "/api/password-reset/confirm",
+];
+
+const isSessionExpiry401 = (url, status) => {
+  if (status !== 401) return false;
+  return !NON_SESSION_401_PATHS.some(
+    (p) => url === p || url.startsWith(p + "/") || url.startsWith(p + "?")
+  );
+};
+
+// CSRF: read the XSRF-TOKEN cookie (set by the backend on login, NOT
+// HttpOnly so JS can read it) and echo it as the X-CSRF-Token header on
+// every non-GET request. The server compares header to cookie and rejects
+// mismatches with 403. A cross-site attacker can't read the cookie, so
+// they can't produce the header.
+const getCsrfToken = () => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+};
+
+const getScopedParams = (params = {}) => {
+  const user = getUser();
+  if (!user) return params || {};
+
+  const shouldScope =
+    user.role !== "SUPER_OWNER" || (user.storeType && user.storeType !== "system");
+  if (!shouldScope) return params || {};
+
+  return {
+    ...(params || {}),
+    ...(user.storeType ? { storeType: user.storeType } : {}),
+    ...(user.storeId ? { storeId: user.storeId } : {}),
+  };
+};
+
+const buildQuery = (url, params = {}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === "object") {
+      searchParams.append(key, JSON.stringify(value));
+    } else {
+      searchParams.append(key, String(value));
+    }
+  });
+  const queryString = searchParams.toString();
+  return queryString ? `${url}?${queryString}` : url;
+};
+
+const request = async (method, url, data, params, options = {}) => {
+  const scopedParams = getScopedParams(params);
+  const finalUrl = Object.keys(scopedParams).length ? buildQuery(url, scopedParams) : url;
+  const fullUrl = `${API_BASE}${finalUrl}`;
+  const init = {
+    method,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  };
+
+  // Inject CSRF token on state-changing requests. The server's
+  // csrfProtection middleware requires the header to match the cookie;
+  // public endpoints exempt themselves server-side so this is harmless
+  // even on login/register.
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      init.headers["X-CSRF-Token"] = csrfToken;
+    }
+  }
+
+  if (data && method !== "GET" && method !== "HEAD") {
+    init.body = JSON.stringify(data);
+  }
+
+  let response;
+  try {
+    response = await fetch(fullUrl, init);
+  } catch (err) {
+    const origin =
+      API_BASE || (typeof window !== "undefined" ? window.location.origin : "<unknown origin>");
+    throw new Error(`Unable to connect to backend at ${origin}${finalUrl}. ${err.message}`);
+  }
+
+  const text = await response.text();
+  if (!response.ok) {
+    let body = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      body = { raw: text };
+    }
+    const message =
+      body.error || body.message || `API ${method} ${finalUrl} failed: ${response.status}`;
+    const err = new Error(message);
+    // Attach structured fields so callers can branch on HTTP status
+    // (e.g. 409 insufficient stock → body.available / body.requested).
+    err.status = response.status;
+    err.body = body;
+
+    // Dispatch a global session-expired signal for protected endpoints.
+    // The listener in App.js decides whether to redirect based on the
+    // current pathname (avoids redirecting on a public page).
+    if (isSessionExpiry401(finalUrl, response.status)) {
+      try {
+        window.dispatchEvent(new CustomEvent("sessionExpired"));
+      } catch {
+        /* SSR safety — no-op */
+      }
+    }
+
+    throw err;
+  }
+
+  try {
+    return JSON.parse(text || "null");
+  } catch {
+    return text;
+  }
+};
+
+export const apiGet = async (url, params) => request("GET", url, null, params);
+export const apiPost = async (url, data, params) => request("POST", url, data, params);
+export const apiPut = async (url, data, params) => request("PUT", url, data, params);
+export const apiDelete = async (url, data, params) => request("DELETE", url, data, params);

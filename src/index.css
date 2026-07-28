@@ -1,0 +1,343 @@
+/* Responsive adjustments for mobile and iPad */
+html {
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", Arial, sans-serif;
+  background: #f8fafc;
+  color: #111;
+}
+
+body.theme-classic {
+  background: #f8fafc;
+  color: #111;
+}
+
+body.theme-dark {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+body.theme-dark .card,
+body.theme-dark .pos-container,
+body.theme-dark .sidebar-container,
+body.theme-dark .header-navbar,
+body.theme-dark .form-control,
+body.theme-dark .table,
+body.theme-dark .table th,
+body.theme-dark .table td,
+body.theme-dark .service-table-pro,
+body.theme-dark .service-table-pro th,
+body.theme-dark .service-table-pro td,
+body.theme-dark .bill-summary-card,
+body.theme-dark .invoice-card {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .btn,
+body.theme-dark .form-select,
+body.theme-dark .input-group-text,
+body.theme-dark .sidebar-link,
+body.theme-dark .service-btn {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+body.theme-dark .invoice-page-pro {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .invoice-page-pro h4 {
+  color: #f8fafc;
+}
+
+body.theme-dark .invoice-table-pro {
+  background: #0f172a;
+}
+
+body.theme-dark .invoice-table-pro th {
+  background: #334155;
+  color: #f8fafc;
+}
+
+body.theme-dark .invoice-table-pro td {
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .invoice-table-pro tr:hover {
+  background: #111827;
+}
+
+body.theme-dark .invoice-filters-pro input[type="text"],
+body.theme-dark .invoice-filters-pro input[type="date"] {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #475569;
+  box-shadow: none;
+}
+
+body.theme-dark .invoice-filters-pro input::placeholder {
+  color: #a5b4fc;
+}
+
+body.theme-dark .invoice-filters-pro .btn,
+body.theme-dark .invoice-table-pro .btn-primary {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+body.theme-minimal {
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Make all containers responsive */
+.container,
+.pos-container,
+.register-card,
+.bill-summary-card,
+.sidebar-container,
+.header-navbar {
+  max-width: 100vw;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive sidebar */
+@media (max-width: 768px) {
+  .sidebar-container {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0;
+    width: 80vw !important;
+    min-width: 0;
+    max-width: 320px;
+    z-index: 2000;
+    height: 100vh;
+    box-shadow: 2px 0 18px 0 rgba(60, 72, 100, 0.18);
+    transition: left 0.3s;
+  }
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+  .header-navbar {
+    min-height: 48px;
+    padding: 0 8px !important;
+  }
+  .header-brand {
+    font-size: 1.1rem;
+    gap: 6px;
+  }
+}
+
+/* Responsive forms and cards */
+@media (max-width: 600px) {
+  .register-card,
+  .bill-summary-card,
+  .pos-container {
+    padding: 1rem !important;
+    max-width: 98vw;
+    min-width: 0;
+    border-radius: 10px;
+  }
+  .register-title {
+    font-size: 1.1rem;
+  }
+}
+
+/* Responsive product list and bill */
+@media (max-width: 900px) {
+  .row {
+    flex-direction: column !important;
+  }
+  .col-md-6 {
+    width: 100% !important;
+    max-width: 100vw;
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Touch-friendly buttons */
+button,
+.btn,
+.form-control,
+.sidebar-link {
+  min-height: 44px;
+  font-size: 1rem;
+  touch-action: manipulation;
+}
+
+/* Hide scrollbars on mobile */
+@media (max-width: 600px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Mobile-friendly improvements */
+@media (max-width: 900px) {
+  .row {
+    flex-direction: column !important;
+  }
+
+  .col-md-4,
+  .col-md-6,
+  .col-md-8,
+  .col-md-12,
+  .col-sm-12 {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .header-navbar {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .header-brand {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+
+  .header-user .btn,
+  .header-user .dropdown-toggle,
+  .header-dropdown .dropdown-item {
+    font-size: 0.92rem;
+    min-height: 42px;
+  }
+
+  .pos-container,
+  .bill-summary-card,
+  .register-card,
+  .invoice-card,
+  .sidebar-container,
+  .profile-modal-body,
+  .pos-header,
+  .profile-modal-footer {
+    padding: 1rem !important;
+  }
+
+  .pos-title {
+    font-size: 1.7rem;
+  }
+
+  .product-item {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .product-item-meta {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .bill-tabs {
+    gap: 10px;
+  }
+
+  .bill-tab {
+    min-width: 100%;
+  }
+
+  .undo-toast,
+  .bill-undo-toast,
+  .export-toast {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: calc(100% - 24px);
+  }
+
+  .btn,
+  .form-control,
+  .form-select {
+    width: 100%;
+  }
+
+  .table,
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .table th,
+  .table td {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 15px;
+  }
+
+  .header-navbar {
+    min-height: 50px;
+  }
+
+  .header-brand {
+    font-size: 1rem;
+  }
+
+  .header-dropdown .dropdown-toggle {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .pos-container,
+  .bill-summary-card,
+  .invoice-card {
+    padding: 0.85rem !important;
+    border-radius: 18px;
+  }
+
+  .pos-title {
+    font-size: 1.4rem;
+  }
+
+  .product-item {
+    padding: 14px;
+  }
+
+  .bill-tab {
+    padding: 10px 12px;
+  }
+
+  .bill-close {
+    top: 6px;
+    right: 8px;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.6rem;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}

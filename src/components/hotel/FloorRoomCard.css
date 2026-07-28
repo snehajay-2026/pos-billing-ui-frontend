@@ -1,0 +1,793 @@
+/* =====================================================================
+   FloorRoomCard.css — modern attractive housekeeping floor-board card
+   Class prefix: fk- (floor king / floor card)
+   ===================================================================== */
+
+.fk-room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 14px 30px -22px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.fk-room:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px -22px rgba(15, 23, 42, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+/* ---------------- Top color stripe by tone ---------------- */
+.fk-stripe {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  z-index: 0;
+}
+
+.fk-room.is-vacant .fk-stripe {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.fk-room.is-occupied .fk-stripe {
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+
+.fk-room.is-due .fk-stripe {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.fk-room.is-overstay .fk-stripe {
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+}
+
+/* Subtle card gradient by tone */
+.fk-room.is-vacant {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.05), #ffffff 40%);
+}
+
+.fk-room.is-occupied {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), #ffffff 40%);
+}
+
+.fk-room.is-due {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), #ffffff 40%);
+}
+
+.fk-room.is-overstay {
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.1), #ffffff 40%);
+}
+
+/* ---------------- Header ---------------- */
+.fk-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fk-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fk-room-no {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.fk-res-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  width: fit-content;
+}
+
+/* Housekeeping pill — colour-tinted by state */
+.hk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.4);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.hk-pill:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+}
+
+.hk-pill:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.fk-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: fk-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes fk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------- Guest hero ---------------- */
+.fk-guest {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.fk-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  box-shadow: 0 8px 20px -10px rgba(99, 102, 241, 0.55);
+  flex-shrink: 0;
+}
+
+.fk-room.is-vacant .fk-avatar-vacant {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  box-shadow: 0 8px 20px -10px rgba(16, 185, 129, 0.55);
+}
+
+.fk-guest-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fk-guest-name {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fk-guest-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.fk-guest-sub span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fk-mobile {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease,
+    color 0.15s ease;
+}
+
+.fk-mobile:hover {
+  background: rgba(99, 102, 241, 0.18);
+  color: #312e81;
+  transform: translateY(-1px);
+}
+
+.fk-mobile svg,
+.fk-mobile span[role] {
+  font-size: 0.85rem;
+}
+
+/* ---------------- Stay strip ---------------- */
+.fk-stay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.06), rgba(99, 102, 241, 0.02));
+  border: 1px solid rgba(99, 102, 241, 0.12);
+}
+
+.fk-stay-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fk-stay-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fk-stay-cell span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.fk-stay-cell strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fk-stay-cell strong.is-due-strong {
+  color: #b45309;
+}
+
+.fk-stay-cell strong.is-overdue {
+  color: #b91c1c;
+}
+
+.fk-progress {
+  height: 8px;
+  background: rgba(99, 102, 241, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.fk-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  border-radius: inherit;
+  transition: width 0.6s ease;
+}
+
+.fk-progress-fill.is-due {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.fk-progress-fill.is-overstay {
+  background: linear-gradient(90deg, #fb7185, #dc2626);
+}
+
+.fk-progress-label {
+  font-size: 0.74rem;
+  color: #6366f1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fk-late-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+/* ---------------- Overstay charge preview ---------------- */
+.fk-overstay {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(254, 226, 226, 0.95), rgba(252, 165, 165, 0.7));
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #991b1b;
+}
+
+.fk-overstay-icon {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.18);
+  color: #b91c1c;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.fk-overstay-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.fk-overstay-body strong {
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7f1d1d;
+}
+
+.fk-overstay-line {
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.fk-overstay-line strong {
+  text-transform: none;
+  letter-spacing: 0;
+  color: #7f1d1d;
+  font-size: 0.86rem;
+}
+
+/* ---------------- Amenities ---------------- */
+.fk-amenities {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fk-amenity {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4338ca;
+  font-size: 0.82rem;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+}
+
+.fk-amenity-empty {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ---------------- Rate card ---------------- */
+.fk-rate-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  flex-wrap: wrap;
+}
+
+.fk-rate-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fk-rate-main span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.fk-rate-main strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.fk-rate-main strong svg {
+  font-size: 1.05rem;
+  color: #64748b;
+}
+
+.fk-rate-main strong small {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+.fk-rate-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fk-rate-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.fk-rate-meta-pill.subtle {
+  background: rgba(15, 23, 42, 0.06);
+  color: #64748b;
+}
+
+/* ---------------- Extras ---------------- */
+.fk-extras {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.fk-extra-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.fk-extra-row svg {
+  color: #94a3b8;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.fk-extra-row strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* ---------------- Actions ---------------- */
+.fk-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.fk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.fk-btn svg {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.fk-btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(79, 70, 229, 0.55);
+}
+
+.fk-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7);
+}
+
+.fk-btn-soft {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+.fk-btn-soft:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.fk-btn-warn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(245, 158, 11, 0.55);
+}
+
+.fk-btn-warn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(245, 158, 11, 0.7);
+}
+
+.fk-btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(16, 185, 129, 0.55);
+}
+
+.fk-btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(16, 185, 129, 0.7);
+}
+
+/* ---------------- Decorative overlay tag ---------------- */
+.fk-overlay-tag {
+  position: absolute;
+  top: 50%;
+  right: -40px;
+  transform: rotate(-30deg);
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+  padding: 6px 50px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+/* ---------------- Flash animation when found via search ---------------- */
+@keyframes fk-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55);
+    transform: translateY(0);
+  }
+  35% {
+    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    transform: translateY(-2px);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    transform: translateY(0);
+  }
+}
+
+.fk-room.hotel-hk-room-card-flash {
+  animation: fk-flash 1.6s ease-out 1;
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 480px) {
+  .fk-room {
+    padding: 16px;
+  }
+  .fk-stay-row {
+    grid-template-columns: 1fr;
+  }
+  .fk-rate-main strong {
+    font-size: 1.25rem;
+  }
+}
+
+/* ---------------- Inline booking draft (vacant rooms only) ---------------- */
+.fk-book-draft {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(79, 70, 229, 0.1), rgba(99, 102, 241, 0.04));
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  animation: fk-draft-pop 0.32s ease;
+}
+
+@keyframes fk-draft-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.fk-book-draft-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4338ca;
+}
+
+.fk-book-draft-row {
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 8px;
+}
+
+.fk-book-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1.5px solid rgba(15, 23, 42, 0.08);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.fk-book-field:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.16);
+}
+
+.fk-book-field svg {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.fk-book-field:focus-within svg {
+  color: #6366f1;
+}
+
+.fk-book-input {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fk-book-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.fk-book-draft-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fk-btn.is-active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 8px 18px -8px rgba(99, 102, 241, 0.6);
+}
+
+@media (max-width: 380px) {
+  .fk-book-draft-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------- Card-with-draft variant (booking flow open) ---------------- */
+.fk-room.is-booking {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.16),
+    0 22px 44px -22px rgba(99, 102, 241, 0.45);
+}
