@@ -1,0 +1,492 @@
+/* LaundryBilling.css — Modern glassmorphism polish for the Laundry Billing page. */
+
+/* ---------- Page shell ---------- */
+.laundry-billing-pro {
+  position: relative;
+  max-width: 1320px;
+  margin: 0 auto 40px;
+  padding: 28px 28px 36px;
+  background:
+    radial-gradient(1100px 600px at -10% -20%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(14, 165, 233, 0.18), transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 28px;
+  box-shadow:
+    0 30px 60px -25px rgba(30, 41, 59, 0.25),
+    0 12px 30px -18px rgba(37, 99, 235, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  overflow: hidden;
+}
+
+.laundry-billing-pro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent 30%);
+  pointer-events: none;
+}
+
+/* ---------- Title ---------- */
+.laundry-billing-pro .pos-title {
+  position: relative;
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1e293b;
+  margin: 4px 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.laundry-billing-pro .pos-title::before {
+  content: "";
+  width: 8px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2563eb, #0ea5e9);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.4);
+}
+
+.laundry-billing-pro h5 {
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Inventory / analytics panel ---------- */
+.laundry-billing-pro .inventory-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(219, 234, 254, 0.9);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.laundry-billing-pro .inventory-cards {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.laundry-billing-pro .inventory-card {
+  position: relative;
+  flex: 1 1 180px;
+  min-width: 160px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff, #f1f5f9);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.18);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.laundry-billing-pro .inventory-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -18px rgba(37, 99, 235, 0.25);
+}
+
+.laundry-billing-pro .inventory-card.healthy {
+  background: linear-gradient(135deg, #ecfdf5, #ffffff);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.laundry-billing-pro .inv-count {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.laundry-billing-pro .inv-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Service health bar */
+.laundry-billing-pro .inventory-health-text {
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.laundry-billing-pro .inventory-health-text b {
+  color: #2563eb;
+}
+
+.laundry-billing-pro .inventory-health-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  overflow: hidden;
+}
+
+.laundry-billing-pro .inventory-health-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9, #22d3ee);
+  background-size: 200% 100%;
+  animation: laundry-shimmer 3s linear infinite;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+  transition: width 0.4s ease;
+}
+
+@keyframes laundry-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Chart card */
+.laundry-billing-pro .inventory-chart {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.laundry-billing-pro .inventory-chart h6 {
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+/* ---------- Search ---------- */
+.laundry-billing-pro .input-group {
+  max-width: 640px;
+}
+
+.laundry-billing-pro .pos-input {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #0f172a;
+  box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.18);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.laundry-billing-pro .pos-input::placeholder {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.laundry-billing-pro .pos-input:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* ---------- Category chips ---------- */
+.laundry-category-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(219, 234, 254, 0.7);
+  backdrop-filter: blur(6px);
+}
+
+.laundry-category-chip {
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.laundry-category-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -16px rgba(37, 99, 235, 0.4);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.laundry-category-chip.active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 14px 28px -14px rgba(37, 99, 235, 0.55);
+}
+
+/* ---------- Quantity quick-buttons ---------- */
+.laundry-billing-pro .d-flex.flex-wrap.gap-2.mb-2 .btn {
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 7px 14px;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.laundry-billing-pro .d-flex.flex-wrap.gap-2.mb-2 .btn:hover {
+  transform: translateY(-1px);
+}
+
+.laundry-billing-pro .d-flex.flex-wrap.gap-2.mb-2 .btn-primary {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border: none;
+  box-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.55);
+}
+
+/* ---------- Services list ---------- */
+.laundry-billing-pro .product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff, #f6fbff);
+  color: #1e293b;
+  font-weight: 700;
+  box-shadow: 0 10px 24px -18px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.laundry-billing-pro .product-item:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #eef6ff, #ffffff);
+  box-shadow: 0 18px 30px -18px rgba(37, 99, 235, 0.3);
+}
+
+.laundry-billing-pro .product-item:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.laundry-empty-services {
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+  color: #64748b;
+  text-align: center;
+  font-weight: 700;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+}
+
+/* ---------- Bill summary card ---------- */
+.laundry-billing-pro .bill-summary-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 22px;
+  border: 1px solid rgba(219, 234, 254, 0.9);
+  padding: 20px 22px;
+  box-shadow:
+    0 22px 40px -24px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.laundry-billing-pro .bill-summary-card h5 {
+  margin-top: 0;
+}
+
+/* ---------- Bill table ---------- */
+.laundry-billing-pro .table {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 16px;
+}
+
+.laundry-billing-pro .table thead th {
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 12px 14px;
+}
+
+.laundry-billing-pro .table thead th:first-child {
+  border-top-left-radius: 14px;
+}
+
+.laundry-billing-pro .table thead th:last-child {
+  border-top-right-radius: 14px;
+}
+
+.laundry-billing-pro .table tbody tr {
+  transition: background 0.16s ease;
+}
+
+.laundry-billing-pro .table tbody tr:hover {
+  background: rgba(241, 245, 249, 0.7);
+}
+
+.laundry-billing-pro .table tbody td {
+  vertical-align: middle;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  padding: 12px 14px;
+}
+
+/* ---------- Bill meta form ---------- */
+.laundry-bill-meta {
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.55), rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  margin-bottom: 16px;
+}
+
+.laundry-bill-meta-label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.laundry-billing-pro .form-control,
+.laundry-billing-pro .form-select {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  color: #0f172a;
+  padding: 9px 12px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.laundry-billing-pro .form-control:focus,
+.laundry-billing-pro .form-select:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* ---------- Totals + actions ---------- */
+.laundry-billing-pro .bill-summary-card > div:not(.laundry-bill-meta):not(.table-responsive) b {
+  color: #1e293b;
+}
+
+.laundry-billing-pro .bill-summary-card .btn {
+  border-radius: 14px;
+  font-weight: 700;
+  padding: 11px 16px;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.laundry-billing-pro .bill-summary-card .btn:hover {
+  transform: translateY(-1px);
+}
+
+.laundry-billing-pro .bill-summary-card .btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  box-shadow: 0 16px 30px -14px rgba(16, 185, 129, 0.5);
+}
+
+.laundry-billing-pro .bill-summary-card .btn-dark {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: none;
+  box-shadow: 0 16px 30px -14px rgba(15, 23, 42, 0.5);
+}
+
+.laundry-billing-pro .bill-summary-card .btn-outline-primary {
+  border: 1px solid rgba(37, 99, 235, 0.45);
+  color: #2563eb;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.laundry-billing-pro .bill-summary-card .btn-outline-primary:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 992px) {
+  .laundry-billing-pro {
+    padding: 22px 18px 28px;
+    border-radius: 22px;
+  }
+
+  .laundry-billing-pro .pos-title {
+    font-size: 1.55rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .laundry-billing-pro {
+    padding: 16px 12px 22px;
+    border-radius: 18px;
+    margin: 0 0 24px;
+  }
+
+  .laundry-billing-pro .pos-title {
+    font-size: 1.35rem;
+  }
+
+  .laundry-billing-pro .pos-title::before {
+    height: 22px;
+  }
+
+  .laundry-category-strip {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .laundry-category-chip {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .laundry-billing-pro {
+    padding: 12px 10px 18px;
+    border-radius: 14px;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+
+  .laundry-billing-pro .inventory-panel,
+  .laundry-billing-pro .bill-summary-card {
+    border-radius: 16px;
+    padding: 14px;
+  }
+}

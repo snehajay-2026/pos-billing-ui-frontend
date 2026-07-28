@@ -1,0 +1,15 @@
+/* POSBillingPro.css - Pro wrapper for Retail POS Billing */
+
+.retail-pos-pro {
+  max-width: 1280px;
+  margin: 0 auto 32px auto;
+
+  /* Reuse existing POS palette from POSBilling.css */
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border: 1.5px solid #e0e7ef;
+  box-shadow: 0 8px 32px rgba(60, 72, 100, 0.1);
+}
+
+.retail-pos-pro .input-group {
+  max-width: 720px;
+}

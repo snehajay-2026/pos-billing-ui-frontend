@@ -1,0 +1,1151 @@
+/* ==========================================================================
+   ServiceBilling — modern, attractive, on-brand for service industry
+   ========================================================================== */
+
+/* ---------- PAGE SHELL ---------- */
+
+.service-billing-pro {
+  max-width: 1280px;
+  margin: 0 auto 32px auto;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.85) 60%, rgba(200, 225, 255, 0.7) 100%);
+  border-radius: 32px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.service-billing-pro .pos-title {
+  color: #2a3b5d;
+  letter-spacing: 0.8px;
+  font-weight: 800;
+  margin: 0 0 18px 0;
+  padding: 18px 24px 0 24px;
+}
+
+/* ---------- FOUNDATION: PANELS / BUTTONS / INPUTS / FIELDS ----------
+   These rules are shared across the ServiceBilling UI: stats cards,
+   empty states, fields, buttons, panels, search bars, and customer
+   avatar. Keep them grouped here so every screen using `.sv-*` looks
+   consistent. */
+
+.sv-stats {
+  display: grid;
+  gap: 14px;
+  padding: 0 24px;
+}
+
+.sv-stats-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sv-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.sv-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+}
+
+.sv-stat-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  flex-shrink: 0;
+}
+
+.sv-stat-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sv-stat-meta span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sv-stat-meta strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.sv-stat-card.tone-sky .sv-stat-icon {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+}
+.sv-stat-card.tone-violet .sv-stat-icon {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+}
+.sv-stat-card.tone-emerald .sv-stat-icon {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+/* ---------- PANEL HEADERS ---------- */
+
+.sv-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sv-panel-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sv-panel-title svg {
+  color: #0ea5e9;
+  font-size: 0.95rem;
+}
+
+.sv-panel-sub {
+  margin: 4px 0 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+/* ---------- EMPTY STATE ---------- */
+
+.sv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 18px;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.6);
+  border: 1px dashed rgba(15, 23, 42, 0.08);
+  gap: 8px;
+}
+
+.sv-empty-icon {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.12));
+  color: #4338ca;
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.sv-empty strong {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sv-empty span {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+/* ---------- FIELDS & INPUTS ---------- */
+
+.sv-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sv-field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.sv-field svg {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.sv-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sv-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.sv-input::placeholder {
+  color: #94a3b8;
+}
+
+.sv-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.sv-textarea {
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.45;
+}
+
+/* ---------- BUTTONS ---------- */
+
+.sv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+  color: #0f172a;
+}
+
+.sv-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sv-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.sv-btn-primary {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(14, 165, 233, 0.3);
+}
+
+.sv-btn-primary:not(:disabled):hover {
+  background: linear-gradient(135deg, #0ea5e9, #0369a1);
+  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.36);
+}
+
+.sv-btn-ghost {
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
+.sv-btn-ghost:not(:disabled):hover {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.32);
+}
+
+/* ---------- BILL TABS ---------- */
+
+.bill-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px 0;
+  padding: 0 24px;
+}
+
+.bill-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.bill-tab:hover {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
+.bill-tab.active {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+}
+
+.bill-tab-title {
+  font-weight: 800;
+}
+
+.bill-total {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.bill-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.bill-close:hover {
+  background: rgba(244, 63, 94, 0.18);
+  color: #be123c;
+}
+
+.bill-tab.active .bill-close {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.bill-tab.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #4338ca;
+}
+
+.bill-tab.add:hover {
+  background: rgba(99, 102, 241, 0.16);
+}
+
+/* ---------- SEARCH ---------- */
+
+.sv-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sv-search:focus-within {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.sv-search svg {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.sv-search .sv-input {
+  border: none;
+  padding: 4px 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sv-search .sv-input:focus {
+  box-shadow: none;
+}
+
+/* ---------- AVATAR (customer initials) ---------- */
+
+.so-avatar {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #4338ca;
+  flex-shrink: 0;
+}
+
+/* ---------- STATS ROW POSITIONING ---------- */
+
+.sv-bill-stats {
+  margin-bottom: 22px;
+}
+
+.sv-stats-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- LAYOUT ---------- */
+
+.sv-bill-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.sv-services-panel,
+.sv-bill-summary {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 16px 38px rgba(31, 38, 135, 0.08);
+  padding: 22px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sv-bill-summary {
+  position: sticky;
+  top: 12px;
+  align-self: flex-start;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sv-bill-summary::-webkit-scrollbar {
+  width: 6px;
+}
+.sv-bill-summary::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 999px;
+}
+
+/* ---------- SEARCH ---------- */
+
+.sv-bill-search {
+  min-width: 0;
+  width: 100%;
+}
+
+/* ---------- QUANTITY CHIPS ---------- */
+/* removed: qty not needed for service billing */
+
+/* ---------- TILE GRID ---------- */
+
+.sv-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.sv-tile {
+  --tile-accent: #0ea5e9;
+  position: relative;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+  overflow: hidden;
+  font: inherit;
+  color: inherit;
+}
+
+.sv-tile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--tile-accent);
+}
+
+.sv-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+}
+
+.sv-tile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.sv-tile-add {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+  font-size: 0.78rem;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.sv-tile:hover .sv-tile-add {
+  background: rgba(14, 165, 233, 0.22);
+  color: #0c4a6e;
+}
+
+.sv-tile.selected {
+  background: linear-gradient(135deg, var(--tile-accent, #0ea5e9), rgba(255, 255, 255, 0.6));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(14, 165, 233, 0.28);
+}
+
+.sv-tile.selected .sv-tile-name,
+.sv-tile.selected .sv-tile-rate,
+.sv-tile.selected .sv-tile-desc,
+.sv-tile.selected .sv-tile-hours {
+  color: #fff;
+}
+
+.sv-tile.selected .sv-cat-pill {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+}
+
+.sv-tile-check {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.92rem;
+}
+
+.sv-tile-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.sv-tile-desc {
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sv-tile-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.sv-tile-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--tile-accent);
+}
+
+.sv-tile-rate svg {
+  font-size: 0.78rem;
+}
+
+.sv-tile-hours {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* ---------- CUSTOMER CARD ---------- */
+
+.sv-customer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(14, 165, 233, 0.06));
+  border: 1px solid rgba(99, 102, 241, 0.18);
+}
+
+.sv-customer-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sv-customer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sv-customer-meta strong {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sv-customer-meta span {
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.sv-customer-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sv-field-inline {
+  position: relative;
+}
+
+.sv-field-inline svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.sv-field-inline .sv-input {
+  padding-left: 36px;
+}
+
+/* Toggle for advanced customer / job fields */
+.sv-customer-toggle {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(99, 102, 241, 0.35);
+  background: rgba(238, 242, 255, 0.55);
+  color: #4338ca;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.sv-customer-toggle:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.55);
+}
+
+.sv-customer-count {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #4338ca;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Expanded customer details */
+.sv-customer-extra {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.sv-customer-extra .sv-field {
+  position: relative;
+}
+
+.sv-customer-extra .sv-field svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.sv-customer-extra .sv-field .sv-input {
+  padding-left: 36px;
+  width: 100%;
+}
+
+.sv-field-full {
+  grid-column: 1 / -1;
+}
+
+.sv-customer-extra .sv-field-full svg {
+  top: 18px;
+  transform: none;
+}
+
+.sv-textarea {
+  resize: vertical;
+  min-height: 60px;
+  padding: 10px 12px 10px 36px;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+/* Stack to one column on narrow screens */
+@media (max-width: 720px) {
+  .sv-customer-fields,
+  .sv-customer-extra {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- LINE ITEMS ---------- */
+
+.sv-line-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sv-line-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sv-line-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sv-line-item-main strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-line-item-main span {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.sv-line-item-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 90px;
+}
+
+.sv-line-item-amount strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sv-line-item-amount span {
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.sv-line-item-remove {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(244, 63, 94, 0.12);
+  color: #be123c;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.sv-line-item-remove:hover {
+  background: rgba(244, 63, 94, 0.22);
+}
+
+/* ---------- TOTALS ---------- */
+
+.sv-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.sv-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+  color: #475569;
+}
+
+.sv-total-row strong {
+  color: #0f172a;
+}
+
+.sv-total-discount {
+  align-items: center;
+  gap: 8px;
+}
+
+.sv-discount-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sv-discount-input .sv-input {
+  width: 64px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.sv-discount-input span {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.sv-discount-amt {
+  color: #be123c !important;
+}
+
+.sv-total-grand {
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 6px;
+}
+
+.sv-total-grand strong {
+  color: #0c4a6e;
+}
+
+/* ---------- PAYMENT + ACTIONS ---------- */
+
+.sv-bill-payment label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.sv-bill-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sv-btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+.sv-btn-sm {
+  padding: 8px 14px;
+  font-size: 0.86rem;
+}
+
+/* ---------- EMPTY SMALL ---------- */
+
+.sv-empty-sm {
+  padding: 32px 18px;
+}
+
+/* ---------- UNDO TOAST POLISH ---------- */
+
+.sv-bill-layout .undo-toast {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.undo-toast-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.undo-toast-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.undo-toast-timer {
+  flex: 1;
+  height: 4px;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.undo-toast-timer-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+  width: 0;
+  animation: undoTimer 5s linear forwards;
+}
+
+@keyframes undoTimer {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0;
+  }
+}
+
+/* ---------- DARK MODE ---------- */
+
+body.theme-dark .service-billing-pro {
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.85) 60%, rgba(30, 41, 59, 0.7) 100%);
+}
+
+body.theme-dark .service-billing-pro .pos-title {
+  color: #f8fafc;
+}
+
+body.theme-dark .sv-services-panel,
+body.theme-dark .sv-bill-summary {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: #334155;
+}
+
+body.theme-dark .sv-tile,
+body.theme-dark .sv-line-item {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.theme-dark .sv-tile-name,
+body.theme-dark .sv-line-item-main strong,
+body.theme-dark .sv-tile-rate,
+body.theme-dark .sv-customer-meta strong,
+body.theme-dark .sv-total-row strong,
+body.theme-dark .sv-total-grand strong {
+  color: #f8fafc;
+}
+
+body.theme-dark .sv-tile-desc,
+body.theme-dark .sv-line-item-main span,
+body.theme-dark .sv-customer-meta span,
+body.theme-dark .sv-total-row,
+body.theme-dark .sv-line-item-amount span {
+  color: #94a3b8;
+}
+
+body.theme-dark .sv-input {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .sv-customer-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(14, 165, 233, 0.12));
+  border-color: rgba(99, 102, 241, 0.32);
+}
+
+body.theme-dark .sv-totals,
+body.theme-dark .sv-total-grand {
+  border-top-color: #334155;
+}
+
+body.theme-dark .undo-toast-body {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+body.theme-dark .bill-close {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+body.theme-dark .bill-close:hover {
+  background: rgba(244, 63, 94, 0.22);
+  color: #fda4af;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 1024px) {
+  .sv-bill-layout {
+    grid-template-columns: 1fr;
+  }
+  .sv-bill-summary {
+    position: static;
+    max-height: none;
+  }
+  .sv-customer-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .service-billing-pro {
+    padding: 20px 12px;
+    border-radius: 18px;
+  }
+  .sv-stats-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sv-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sv-line-item {
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+  }
+  .sv-line-item-amount {
+    align-items: flex-end;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .service-billing-pro {
+    padding: 12px 8px;
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+  .sv-tile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .sv-stats-3 {
+    grid-template-columns: 1fr;
+  }
+  .sv-stat-card {
+    padding: 16px;
+  }
+  .sv-stat-meta strong {
+    font-size: 1.4rem;
+  }
+}

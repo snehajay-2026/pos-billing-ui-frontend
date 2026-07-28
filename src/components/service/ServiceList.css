@@ -1,0 +1,45 @@
+.service-list-container {
+  background: #18181b;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+}
+.service-list-title {
+  color: #6366f1;
+  font-size: 1.4em;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+.service-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #23232a;
+  color: #fff;
+}
+.service-list-table th,
+.service-list-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #333;
+}
+.service-list-table th {
+  background: #23232a;
+  color: #a5b4fc;
+  font-weight: 600;
+}
+.add-service-btn {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.add-service-btn:hover {
+  background: #4f46e5;
+}

@@ -1,0 +1,667 @@
+/* MAIN PAGE CONTAINER */
+.invoice-container {
+  max-width: 520px;
+  margin: 32px auto;
+  padding: 0 0 32px 0;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(60, 72, 100, 0.13);
+  position: relative;
+  animation: fadeInInvoice 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hide container styling during print/preview */
+@media print {
+  .invoice-container {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+}
+
+/* SERVICE INVOICE PREVIEW (A4) */
+.invoice-container-service {
+  max-width: 1120px;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding-bottom: 32px;
+}
+
+.invoice-container-service .invoice-header {
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+
+.invoice-container-service .invoice-card {
+  margin: 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.invoice-container-service .receipt-preview {
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+  padding: 18px 10px;
+}
+
+/* Frame the A4 page nicely in preview */
+.invoice-container-service .service-invoice .si-page {
+  box-shadow: 0 18px 50px rgba(60, 72, 100, 0.18);
+  border-radius: 6px;
+  overflow: hidden;
+  transform: scale(0.92);
+  transform-origin: top center;
+}
+
+@keyframes fadeInInvoice {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fadeInBadge {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* HEADER SECTION */
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 28px 14px 28px;
+  background: rgba(248, 249, 250, 0.92);
+  border-radius: 18px 18px 0 0;
+  margin-bottom: 0;
+  border-bottom: 1.5px solid #e0e7ef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 12px rgba(60, 72, 100, 0.06);
+}
+
+.invoice-header h3 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  color: #3b3b5c;
+}
+
+/* PRINT BUTTON */
+.print-btn {
+  background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%);
+  color: #fff;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.08rem;
+  box-shadow: 0 2px 8px 0 rgba(99, 102, 241, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    box-shadow 0.18s;
+}
+.print-btn:hover,
+.print-btn:focus {
+  background: #6366f1;
+  color: #fff;
+  outline: none;
+  box-shadow: 0 4px 18px 0 rgba(99, 102, 241, 0.13);
+}
+
+/* CARD THAT HOLDS THE RECEIPT */
+.invoice-card {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 32px rgba(60, 72, 100, 0.1);
+  padding: 32px 18px 24px 18px;
+  border-radius: 18px;
+  text-align: center;
+  margin: 0 18px 32px 18px;
+  border: 1.5px solid #e0e7ef;
+  position: relative;
+}
+
+@media print {
+  .invoice-card {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    border-radius: 0 !important;
+    width: auto !important;
+  }
+}
+
+/* RED DUPLICATE COPY LABEL */
+.duplicate-badge {
+  color: #fff;
+  background: linear-gradient(90deg, #dc3545 0%, #ff6b6b 100%);
+  font-size: 1.08rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 6px 18px;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
+  display: inline-block;
+  animation: fadeInBadge 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* CENTERED RECEIPT CONTAINER */
+.receipt-preview {
+  display: flex;
+  justify-content: center;
+}
+
+@media print {
+  .receipt-preview {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* Receipt action styles */
+.invoice-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.invoice-action-btn {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #1d4ed8;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+.invoice-action-btn:hover,
+.invoice-action-btn:focus {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.invoice-subtitle {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.download-status-message {
+  margin-top: 12px;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 0.975rem;
+}
+
+/* PRINT STYLES */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide all UI elements except the invoice */
+  .d-print-none,
+  .invoice-container .invoice-header,
+  .print-btn {
+    display: none !important;
+  }
+
+  /* Hide the outer container styling during print */
+  .invoice-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    background: white !important;
+  }
+
+  /* For thermal receipts - let them handle their own print styling */
+  .invoice-card:not(.msme-invoice-card) {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  /* For MSME invoices - allow full A4 width and proper formatting */
+  .msme-invoice-card,
+  .service-invoice-card {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0;
+    width: 100% !important;
+    padding: 0;
+    max-width: none !important;
+    display: block !important;
+    visibility: visible !important;
+    position: relative;
+    background: white !important;
+  }
+
+  /* Ensure MSME invoice content is visible and properly formatted during print */
+  .msme-invoice-card .msme-invoice,
+  .msme-invoice-card .msme-invoice * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* For retail invoices - maintain thermal receipt width */
+  .retail-invoice-card {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: auto !important;
+    max-width: 80mm !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure content fits and is centered */
+  .receipt-preview {
+    margin: 0;
+    padding: 0;
+    display: block !important;
+    text-align: center;
+  }
+
+  .duplicate-badge {
+    color: red !important;
+    font-size: 16px !important;
+    margin-bottom: 10px;
+  }
+
+  /* Ensure service invoice prints at 100% (no preview scaling) */
+  .service-invoice .si-page {
+    transform: none !important;
+  }
+
+  /* Print Invoice (A4) styles */
+  #print-invoice {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 20mm !important;
+    margin: 0 auto !important;
+    font-family: "Arial, sans-serif" !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    color: #333 !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #print-invoice table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 20px !important;
+    font-size: 11px !important;
+    border: 1px solid #333 !important;
+  }
+
+  #print-invoice th,
+  #print-invoice td {
+    border: 1px solid #333 !important;
+    padding: 6px 5px !important;
+  }
+
+  #print-invoice th {
+    background-color: #f8f9fa !important;
+    font-weight: bold !important;
+  }
+
+  #print-invoice img {
+    max-height: 60px !important;
+    max-width: 150px !important;
+  }
+
+  #print-invoice h2 {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #2c3e50 !important;
+  }
+
+  #print-invoice h3 {
+    font-size: 18px !important;
+    font-weight: bold !important;
+  }
+
+  /* Retail invoice table print styles */
+  #retail-print-invoice {
+    font-family: monospace, "Courier New", Arial, sans-serif !important;
+  }
+
+  /* Retail: print ONLY the receipt (no container/frame) */
+  body.print-retail-only * {
+    visibility: hidden !important;
+  }
+
+  body.print-retail-only #retail-print-area,
+  body.print-retail-only #retail-print-area * {
+    visibility: visible !important;
+  }
+
+  body.print-retail-only #retail-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.print-retail-only #retail-print-invoice {
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  #retail-print-invoice table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11px !important;
+    margin-bottom: 10px !important;
+    table-layout: fixed !important;
+    font-family: inherit !important;
+  }
+
+  #retail-print-invoice th,
+  #retail-print-invoice td {
+    padding: 2px 0 !important;
+    border: none !important;
+  }
+
+  #retail-print-invoice th {
+    border-bottom: 1px solid #000 !important;
+    font-weight: bold !important;
+  }
+
+  #retail-print-invoice td:nth-child(1) {
+    text-align: left !important;
+    width: 40% !important;
+    word-wrap: break-word !important;
+  }
+
+  #retail-print-invoice td:nth-child(2) {
+    text-align: center !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice td:nth-child(3) {
+    text-align: right !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice td:nth-child(4) {
+    text-align: right !important;
+    width: 24% !important;
+  }
+
+  #retail-print-invoice th:nth-child(1) {
+    text-align: left !important;
+    width: 40% !important;
+  }
+
+  #retail-print-invoice th:nth-child(2) {
+    text-align: center !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice th:nth-child(3) {
+    text-align: right !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice th:nth-child(4) {
+    text-align: right !important;
+    width: 24% !important;
+  }
+
+  /* Ensure print invoice text stays dark in dark theme mode */
+  #retail-print-invoice,
+  body.print-retail-only #retail-print-invoice,
+  #print-invoice,
+  .msme-invoice,
+  #service-invoice,
+  .service-invoice .si-page {
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  #retail-print-invoice th,
+  #retail-print-invoice td,
+  #print-invoice th,
+  #print-invoice td,
+  .msme-invoice th,
+  .msme-invoice td,
+  #service-invoice th,
+  #service-invoice td {
+    color: #111 !important;
+  }
+
+  #retail-print-invoice th:nth-child(2) {
+    text-align: center !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice th:nth-child(3) {
+    text-align: right !important;
+    width: 18% !important;
+  }
+
+  #retail-print-invoice th:nth-child(4) {
+    text-align: right !important;
+    width: 24% !important;
+  }
+}
+
+/* ERROR BOX */
+.error-box {
+  padding: 15px;
+  background: #ffe6e6;
+  border: 1px solid #ffb3b3;
+  border-radius: 8px;
+  text-align: center;
+  color: #cc0000;
+  font-weight: bold;
+}
+
+/* ===============================
+   Service invoice status control bar
+   =============================== */
+.invoice-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 22px;
+  border-radius: 18px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  flex-wrap: wrap;
+}
+
+.invoice-status-bar.is-pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.03));
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.invoice-status-bar.is-cleared {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.03));
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.invoice-status-bar.is-cancelled {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.03));
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.invoice-status-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.invoice-status-ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.is-pending .invoice-status-ico {
+  color: #b45309;
+}
+
+.is-cleared .invoice-status-ico {
+  color: #047857;
+}
+
+.is-cancelled .invoice-status-ico {
+  color: #b91c1c;
+}
+
+.invoice-status-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invoice-status-meta strong {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.is-pending .invoice-status-meta strong {
+  color: #92400e;
+}
+
+.is-cleared .invoice-status-meta strong {
+  color: #047857;
+}
+
+.is-cancelled .invoice-status-meta strong {
+  color: #b91c1c;
+}
+
+.invoice-status-meta small {
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+.invoice-status-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.invoice-action-btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 18px -10px rgba(16, 185, 129, 0.55);
+}
+
+.invoice-action-btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -10px rgba(16, 185, 129, 0.7);
+}
+
+.invoice-action-btn-ghost {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border: none;
+}
+
+.invoice-action-btn-ghost:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.invoice-action-btn-danger-soft {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  border: none;
+}
+
+.invoice-action-btn-danger-soft:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.inv-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: inv-spin 0.7s linear infinite;
+}
+
+@keyframes inv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .invoice-status-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .invoice-status-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .invoice-status-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}

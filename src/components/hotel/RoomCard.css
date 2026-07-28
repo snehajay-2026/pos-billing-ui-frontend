@@ -1,0 +1,664 @@
+/* =====================================================================
+   RoomCard.css — modern hotel room booking card
+   Class prefix: rc- (room card)
+   ===================================================================== */
+
+.rc-room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 14px 30px -22px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.rc-room:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px -22px rgba(15, 23, 42, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Top color stripe */
+.rc-stripe {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  z-index: 0;
+}
+
+.rc-room.is-vacant .rc-stripe {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.rc-room.is-occupied .rc-stripe {
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+
+.rc-room.is-due .rc-stripe {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.rc-room.is-overstay .rc-stripe {
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+}
+
+/* Subtle full-card gradient by tone */
+.rc-room.is-vacant {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.05), #ffffff 40%);
+}
+
+.rc-room.is-occupied {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), #ffffff 40%);
+}
+
+.rc-room.is-due {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), #ffffff 40%);
+}
+
+.rc-room.is-overstay {
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.1), #ffffff 40%);
+}
+
+/* ---------------- Header ---------------- */
+.rc-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rc-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rc-room-no {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.rc-room-type {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rc-head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.rc-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rc-pill-vacant {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.rc-pill-occupied {
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+}
+
+.rc-room.is-due .rc-pill-occupied {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.rc-room.is-overstay .rc-pill-occupied {
+  background: rgba(220, 38, 38, 0.22);
+  color: #991b1b;
+}
+
+.rc-badge-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.16);
+  color: #4338ca;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------------- Guest hero ---------------- */
+.rc-guest {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.rc-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  box-shadow: 0 8px 20px -10px rgba(99, 102, 241, 0.55);
+  flex-shrink: 0;
+}
+
+.rc-room.is-vacant .rc-avatar-vacant {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  box-shadow: 0 8px 20px -10px rgba(16, 185, 129, 0.55);
+}
+
+.rc-guest-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rc-guest-name {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-guest-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.rc-guest-sub span,
+.rc-guest-sub .rc-mobile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-mobile {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease,
+    color 0.15s ease;
+}
+
+.rc-mobile:hover {
+  background: rgba(99, 102, 241, 0.18);
+  color: #312e81;
+  transform: translateY(-1px);
+}
+
+/* ---------------- Stay strip (occupied only) ---------------- */
+.rc-stay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.06), rgba(99, 102, 241, 0.02));
+  border: 1px solid rgba(99, 102, 241, 0.12);
+}
+
+.rc-stay-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rc-stay-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rc-stay-cell span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.rc-stay-cell strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-stay-cell strong.is-due-strong {
+  color: #b45309;
+}
+
+.rc-stay-cell strong.is-overdue {
+  color: #b91c1c;
+}
+
+.rc-progress {
+  height: 8px;
+  background: rgba(99, 102, 241, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.rc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  border-radius: inherit;
+  transition: width 0.6s ease;
+}
+
+.rc-progress-fill.is-due {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.rc-progress-fill.is-overstay {
+  background: linear-gradient(90deg, #fb7185, #dc2626);
+}
+
+.rc-progress-label {
+  font-size: 0.74rem;
+  color: #6366f1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Overstay charge preview ---------- */
+.rc-overstay {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(254, 226, 226, 0.95), rgba(252, 165, 165, 0.7));
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #991b1b;
+}
+
+.rc-overstay-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.18);
+  color: #b91c1c;
+  font-size: 0.86rem;
+  flex-shrink: 0;
+}
+
+.rc-overstay-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.rc-overstay-body strong {
+  font-weight: 800;
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #7f1d1d;
+}
+
+.rc-overstay-line {
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.rc-overstay-line strong {
+  text-transform: none;
+  letter-spacing: 0;
+  color: #7f1d1d;
+  font-size: 0.92rem;
+}
+
+/* ---------------- Meta row (amenities + beds) ---------------- */
+.rc-meta-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rc-amenities {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-amenity {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4338ca;
+  font-size: 0.82rem;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  flex-shrink: 0;
+}
+
+.rc-amenity-empty {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.rc-beds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.04);
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rc-beds svg {
+  color: #6366f1;
+  font-size: 0.78rem;
+}
+
+/* ---------------- Rate card ---------------- */
+.rc-rate-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  flex-wrap: wrap;
+}
+
+.rc-rate-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rc-rate-main span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rc-rate-main strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.rc-rate-main strong svg {
+  font-size: 1.05rem;
+  color: #64748b;
+}
+
+.rc-rate-main strong small {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+.rc-rate-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rc-rate-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.rc-rate-meta-pill.subtle {
+  background: rgba(15, 23, 42, 0.06);
+  color: #64748b;
+}
+
+.rc-rate-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.rc-rate-total small {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #047857;
+}
+
+.rc-rate-total strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #047857;
+}
+
+.rc-rate-total strong svg {
+  font-size: 0.78rem;
+}
+
+/* ---------------- Extras ---------------- */
+.rc-extras {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.rc-extra-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.rc-extra-row svg {
+  color: #94a3b8;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.rc-extra-row strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.rc-extra-notes {
+  font-style: italic;
+}
+
+/* ---------------- Actions ---------------- */
+.rc-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.rc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.rc-btn svg {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.rc-btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(79, 70, 229, 0.55);
+}
+
+.rc-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7);
+}
+
+.rc-btn-soft {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+.rc-btn-soft:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.rc-btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(239, 68, 68, 0.5);
+}
+
+.rc-btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(239, 68, 68, 0.7);
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 480px) {
+  .rc-room {
+    padding: 16px;
+  }
+
+  .rc-room-no {
+    font-size: 1.25rem;
+  }
+
+  .rc-stay-row {
+    grid-template-columns: 1fr;
+  }
+}

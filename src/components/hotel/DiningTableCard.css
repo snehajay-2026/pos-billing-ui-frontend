@@ -1,0 +1,623 @@
+/* =====================================================================
+   DiningTableCard.css — modern hotel dining table booking card
+   Class prefix: dtc- (dining table card)
+   ===================================================================== */
+
+.dtc-table {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 14px 30px -22px rgba(15, 23, 42, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+  overflow: hidden;
+  isolation: isolate;
+  cursor: default;
+}
+
+.dtc-table[role="button"] {
+  cursor: pointer;
+}
+
+.dtc-table:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px -22px rgba(15, 23, 42, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dtc-table:focus-visible {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
+}
+
+/* ---------------- Top stripe by status ---------------- */
+.dtc-stripe {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  z-index: 0;
+}
+
+.dtc-table.is-empty .dtc-stripe {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.dtc-table.is-booked .dtc-stripe {
+  background: linear-gradient(90deg, #fb923c, #ef4444);
+}
+
+/* Subtle full-card tint */
+.dtc-table.is-empty {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), #ffffff 45%);
+}
+
+.dtc-table.is-booked {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.05), #ffffff 45%);
+}
+
+.dtc-table.is-selected {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow:
+    0 20px 40px -22px rgba(99, 102, 241, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dtc-selected-ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 22px;
+  border: 2px solid rgba(99, 102, 241, 0.55);
+  pointer-events: none;
+  animation: dtc-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes dtc-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.dtc-selected-ribbon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  box-shadow: 0 8px 18px -8px rgba(99, 102, 241, 0.55);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ---------------- Header ---------------- */
+.dtc-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dtc-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dtc-table-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.dtc-table-name svg {
+  font-size: 1rem;
+  color: #6366f1;
+}
+
+.dtc-table-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dtc-zone-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+
+.dtc-zone-pill svg {
+  font-size: 0.72rem;
+}
+
+.dtc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.dtc-status svg {
+  font-size: 0.74rem;
+}
+
+.dtc-status.is-empty {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.dtc-status.is-booked {
+  background: rgba(249, 115, 22, 0.18);
+  color: #9a3412;
+}
+
+/* ---------------- Seater scale ---------------- */
+.dtc-seater {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.dtc-seat {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.dtc-seat.is-seated {
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.dtc-seater-label {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #475569;
+  font-weight: 700;
+}
+
+.dtc-seater-label strong {
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+/* ---------------- Guest block ---------------- */
+.dtc-guest {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dtc-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  color: #fff;
+  box-shadow: 0 6px 14px -8px rgba(99, 102, 241, 0.55);
+  flex-shrink: 0;
+}
+
+.dtc-guest-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dtc-guest-name {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dtc-guest-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 0.78rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.dtc-guest-sub span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dtc-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease,
+    color 0.15s ease;
+}
+
+.dtc-phone:hover {
+  background: rgba(99, 102, 241, 0.18);
+  color: #312e81;
+  transform: translateY(-1px);
+}
+
+/* ---------------- Empty state ---------------- */
+.dtc-empty-state {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px dashed rgba(16, 185, 129, 0.22);
+  color: #047857;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.dtc-empty-state svg {
+  font-size: 1.2rem;
+  color: #059669;
+}
+
+/* ---------------- Order summary ---------------- */
+.dtc-order {
+  position: relative;
+  z-index: 1;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(239, 68, 68, 0.04));
+  border: 1px solid rgba(249, 115, 22, 0.18);
+}
+
+.dtc-order-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9a3412;
+  margin-bottom: 6px;
+}
+
+.dtc-order-head svg {
+  color: #f97316;
+}
+
+.dtc-order-count {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.18);
+  color: #9a3412;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.dtc-order-summary {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #1e293b;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dtc-order-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* ---------------- Check-in meta ---------------- */
+.dtc-checkin {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dtc-checkin-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dtc-checkin-row svg {
+  color: #6366f1;
+  font-size: 0.78rem;
+}
+
+.dtc-checkin-row span {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-size: 0.66rem;
+}
+
+.dtc-checkin-row strong {
+  color: #1e40af;
+  font-weight: 800;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+}
+
+/* ---------------- Capacity bar ---------------- */
+.dtc-capacity {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dtc-capacity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dtc-capacity-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dtc-capacity-row strong {
+  color: #0f172a;
+  font-weight: 800;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+}
+
+.dtc-capacity-track {
+  height: 8px;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dtc-capacity-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s ease;
+}
+
+.dtc-fill-vacant {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.dtc-fill-light {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+}
+
+.dtc-fill-good {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.dtc-fill-tight {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.dtc-fill-full {
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+
+/* ---------------- Wait tag ---------------- */
+.dtc-wait-tag {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.04));
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dtc-wait-tag svg {
+  color: #d97706;
+}
+
+/* ---------------- Actions ---------------- */
+.dtc-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.dtc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.dtc-btn svg {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.dtc-btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(79, 70, 229, 0.55);
+}
+
+.dtc-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7);
+}
+
+.dtc-btn-soft {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+.dtc-btn-soft:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.dtc-btn-danger {
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(249, 115, 22, 0.5);
+}
+
+.dtc-btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px rgba(239, 68, 68, 0.7);
+}
+
+.dtc-btn-ghost {
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+  flex: 0 0 auto;
+  width: 38px;
+  padding: 9px;
+}
+
+.dtc-btn-ghost span {
+  display: none;
+}
+
+.dtc-btn-ghost:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 480px) {
+  .dtc-table {
+    padding: 16px;
+  }
+  .dtc-table-name {
+    font-size: 1.05rem;
+  }
+  .dtc-checkin {
+    flex-direction: column;
+  }
+}
