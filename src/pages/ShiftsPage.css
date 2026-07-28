@@ -1,0 +1,398 @@
+/* ShiftsPage — admin view + reconciliation. Theme-neutral via the same
+ * CSS variables that Layout.css defines.
+ */
+
+.sh-page {
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  color: var(--ink, #1f2937);
+}
+
+.sh-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.sh-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+.sh-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--muted, #6b7280);
+  font-size: 0.85rem;
+}
+.sh-header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sh-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.sh-back-btn:hover {
+  background: var(--surface-2, #f9fafb);
+  border-color: var(--border-strong, #d1d5db);
+}
+
+.sh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+.sh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.sh-btn-primary {
+  background: var(--accent, #2563eb);
+  color: white;
+}
+.sh-btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong, #1d4ed8);
+}
+.sh-btn-secondary {
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  border-color: var(--border, #e5e7eb);
+}
+.sh-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-2, #f9fafb);
+}
+
+.sh-section {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.sh-section-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: flex-end;
+}
+
+.sh-empty {
+  background: var(--surface-2, #f9fafb);
+  border: 1px dashed var(--border, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--muted, #6b7280);
+  font-size: 0.88rem;
+}
+
+.sh-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted, #6b7280);
+}
+
+.sh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.sh-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted, #6b7280);
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.sh-table tbody td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-soft, #f1f5f9);
+  color: var(--ink, #1f2937);
+}
+.sh-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.sh-table tbody tr:hover {
+  background: var(--surface-2, #f9fafb);
+}
+.sh-num {
+  text-align: right;
+}
+.sh-mono {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem;
+}
+.sh-meta-row {
+  font-size: 0.72rem;
+  color: var(--muted, #6b7280);
+  margin-top: 0.1rem;
+}
+.sh-positive {
+  color: #047857;
+}
+.sh-negative {
+  color: #b91c1c;
+}
+
+.sh-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.sh-pill-open {
+  background: rgba(245, 158, 11, 0.18);
+  color: #92400e;
+}
+.sh-pill-closed {
+  background: rgba(16, 185, 129, 0.18);
+  color: #047857;
+}
+
+.sh-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  margin-left: 0.25rem;
+  font-size: 0.8rem;
+}
+.sh-row-btn:hover {
+  background: var(--surface-2, #f9fafb);
+}
+
+.sh-spin {
+  animation: sh-spin 1.2s linear infinite;
+}
+@keyframes sh-spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal */
+.sh-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  isolation: isolate;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+.sh-modal {
+  background: var(--surface, #fff);
+  border-radius: 0.85rem;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.sh-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.sh-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.sh-modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sh-modal-close:hover {
+  background: var(--surface-2, #f3f4f6);
+  color: var(--ink, #1f2937);
+}
+.sh-modal-body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.sh-modal-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border, #e5e7eb);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.sh-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.55rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+.sh-banner-error {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.sh-help {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.85rem;
+  border-left: 3px solid var(--accent, #2563eb);
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--ink, #1f2937);
+  line-height: 1.45;
+}
+.sh-help em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+}
+
+.sh-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.sh-form-row label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.sh-form-row input,
+.sh-form-row textarea {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.875rem;
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  font-family: inherit;
+}
+.sh-form-row input:focus,
+.sh-form-row textarea:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.sh-form-row textarea {
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.sh-reconcile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem 1rem;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+  background: var(--surface-2, #f9fafb);
+  border-radius: 0.5rem;
+}
+.sh-reconcile-grid-wide {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 640px) {
+  .sh-reconcile-grid,
+  .sh-reconcile-grid-wide {
+    grid-template-columns: 1fr;
+  }
+}
+.sh-reconcile-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.sh-reconcile-grid span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted, #6b7280);
+  font-weight: 600;
+}
+.sh-reconcile-grid strong {
+  font-size: 1rem;
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+}
+
+.sh-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.sh-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.sh-detail-header > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sh-detail h3 {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+  .sh-header {
+    flex-wrap: wrap;
+  }
+}

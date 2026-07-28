@@ -1,0 +1,876 @@
+/* LaundryOrderPage.css — Modern glassmorphism treatment aligned with the
+   Laundry Billing + Inventory visual language. */
+
+:root {
+  --ld-primary: #2563eb;
+  --ld-primary-2: #0ea5e9;
+  --ld-primary-3: #22d3ee;
+  --ld-ink: #0f172a;
+  --ld-ink-2: #1e293b;
+  --ld-muted: #64748b;
+  --ld-line: rgba(148, 163, 184, 0.28);
+  --ld-line-soft: rgba(226, 232, 240, 0.85);
+  --ld-card-bg: rgba(255, 255, 255, 0.92);
+  --ld-shadow: 0 22px 40px -24px rgba(15, 23, 42, 0.22);
+  --ld-radius: 22px;
+}
+
+/* ---------- Page shell ---------- */
+.laundry-order-page-pro {
+  position: relative;
+  max-width: 1320px;
+  margin: 0 auto 40px;
+  padding: 28px 28px 36px;
+  background:
+    radial-gradient(1100px 600px at -10% -20%, rgba(99, 102, 241, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(14, 165, 233, 0.18), transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 28px;
+  box-shadow:
+    0 30px 60px -25px rgba(30, 41, 59, 0.25),
+    0 12px 30px -18px rgba(37, 99, 235, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  overflow: hidden;
+  min-height: 90vh;
+}
+
+.laundry-order-page-pro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent 30%);
+  pointer-events: none;
+}
+
+.laundry-order-page-pro > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Header + title ---------- */
+.laundry-order-title {
+  font-weight: 800;
+  font-size: 1.85rem;
+  letter-spacing: -0.01em;
+  color: var(--ld-ink);
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.laundry-order-title::before {
+  content: "";
+  width: 8px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2563eb, #0ea5e9);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.4);
+}
+
+.laundry-order-subtitle {
+  margin: 4px 0 0;
+  color: var(--ld-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.laundry-order-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* ---------- Cards ---------- */
+.laundry-order-card {
+  background: var(--ld-card-bg);
+  border-radius: var(--ld-radius);
+  box-shadow:
+    var(--ld-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  padding: 22px 22px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(219, 234, 254, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.laundry-order-card h5 {
+  font-weight: 800;
+  color: var(--ld-ink);
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Forms ---------- */
+.laundry-order-card .form-control,
+.laundry-order-card .form-select,
+.laundry-order-toolbar .form-control,
+.laundry-order-toolbar .form-select {
+  border-radius: 12px;
+  border: 1px solid var(--ld-line);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--ld-ink);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.laundry-order-card .form-control:focus,
+.laundry-order-card .form-select:focus,
+.laundry-order-toolbar .form-control:focus,
+.laundry-order-toolbar .form-select:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+  background: #ffffff;
+}
+
+/* ---------- Actions / buttons ---------- */
+.laundry-order-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.laundry-order-btn {
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  padding: 10px 18px !important;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.laundry-order-btn:hover {
+  transform: translateY(-1px);
+}
+
+.laundry-order-btn-primary {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px -14px rgba(37, 99, 235, 0.55);
+}
+
+.laundry-order-btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #0284c7) !important;
+  box-shadow: 0 18px 32px -14px rgba(37, 99, 235, 0.6);
+}
+
+.laundry-order-btn-secondary {
+  background: rgba(241, 245, 249, 0.95) !important;
+  color: var(--ld-ink-2) !important;
+  border: 1px solid var(--ld-line) !important;
+}
+
+.laundry-order-btn-secondary:hover {
+  background: #ffffff !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+}
+
+/* ---------- Tables ---------- */
+.laundry-order-table-wrap {
+  margin-top: 12px;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.laundry-order-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.laundry-order-table th,
+.laundry-order-table td {
+  padding: 14px 14px;
+  text-align: left;
+  font-size: 0.95rem;
+  border-bottom: 1px solid var(--ld-line-soft);
+}
+
+.laundry-order-table th {
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  color: #475569;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--ld-line);
+}
+
+.laundry-order-table thead th:first-child {
+  border-top-left-radius: 14px;
+}
+
+.laundry-order-table thead th:last-child {
+  border-top-right-radius: 14px;
+}
+
+.laundry-order-table tbody tr {
+  transition: background 0.16s ease;
+}
+
+.laundry-order-table tbody tr:hover {
+  background: rgba(241, 245, 249, 0.7);
+}
+
+.laundry-order-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.laundry-order-row-actions .btn {
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+/* ---------- Itemized services table inside form ---------- */
+.laundry-order-items {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.laundry-order-items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.laundry-order-items-head h6 {
+  margin: 0;
+  color: var(--ld-ink);
+  font-weight: 800;
+}
+
+.laundry-order-items-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.laundry-order-items-table th,
+.laundry-order-items-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ld-line-soft);
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.laundry-order-items-table th {
+  background: #f1f5f9;
+  color: var(--ld-ink-2);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.laundry-order-row-remove {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #dc3545;
+  background: #fff;
+  color: #dc3545;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.laundry-order-row-remove:hover {
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.laundry-order-row-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.laundry-order-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--ld-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ---------- Totals ---------- */
+.laundry-order-totals {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.7), rgba(255, 255, 255, 0.85));
+  border: 1px solid var(--ld-line-soft);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.laundry-order-totals > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 0.95rem;
+  color: var(--ld-ink-2);
+  font-weight: 600;
+}
+
+.laundry-order-grand {
+  border-top: 1px solid var(--ld-line-soft);
+  margin-top: 8px;
+  padding-top: 10px !important;
+  font-size: 1.1rem !important;
+}
+
+.laundry-order-grand strong {
+  color: var(--ld-primary);
+}
+
+/* ---------- Toolbar / search / filters ---------- */
+.laundry-order-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.laundry-order-list-head h5 {
+  margin: 0;
+}
+
+.laundry-order-list-tools {
+  display: flex;
+  gap: 10px;
+}
+
+.laundry-order-link {
+  background: none;
+  border: none;
+  color: var(--ld-primary);
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.laundry-order-link:hover {
+  text-decoration: underline;
+}
+
+.laundry-order-toolbar {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  margin: 10px 0 14px 0;
+}
+
+/* ---------- Stats ---------- */
+.laundry-order-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.laundry-order-stat {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  padding: 12px 18px;
+  min-width: 100px;
+  text-align: center;
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.18);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.laundry-order-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -18px rgba(37, 99, 235, 0.25);
+}
+
+.laundry-order-stat span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ld-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.laundry-order-stat strong {
+  display: block;
+  font-size: 1.35rem;
+  color: var(--ld-ink);
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+
+.laundry-order-stat.ready strong {
+  color: #10b981;
+}
+.laundry-order-stat.value strong {
+  color: var(--ld-primary);
+}
+
+/* ---------- Bulk action bar ---------- */
+.laundry-order-bulk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.laundry-order-bulk > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Status pill, token ---------- */
+.laundry-order-status-pill {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  min-width: 150px;
+  transition:
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.laundry-order-status-pill:hover {
+  box-shadow: 0 8px 18px -10px rgba(37, 99, 235, 0.4);
+  transform: translateY(-1px);
+}
+
+.laundry-order-token {
+  display: inline-block;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #f8fafc;
+  font-family: "SF Mono", Menlo, monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 10px -4px rgba(15, 23, 42, 0.5);
+}
+
+/* ---------- Order detail drawer ---------- */
+.laundry-order-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1040;
+  display: flex;
+  justify-content: flex-end;
+  animation: ld-fade 0.18s ease-out;
+}
+
+.laundry-order-drawer {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  height: 100%;
+  padding: 22px 22px 28px 22px;
+  overflow-y: auto;
+  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: ld-slide 0.22s ease-out;
+}
+
+@keyframes ld-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ld-slide {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.laundry-order-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.laundry-order-drawer-head h4 {
+  margin: 0;
+  color: var(--ld-ink);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.laundry-order-drawer-close {
+  background: #f1f5f9;
+  border: none;
+  font-size: 1.4rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #475569;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.laundry-order-drawer-close:hover {
+  background: #e2e8f0;
+  transform: rotate(90deg);
+}
+
+.laundry-order-drawer-section {
+  border-top: 1px solid var(--ld-line-soft);
+  padding-top: 12px;
+}
+
+.laundry-order-drawer-section h6 {
+  font-weight: 800;
+  color: var(--ld-ink);
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+
+.laundry-order-drawer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+
+.laundry-order-drawer-grid > div span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ld-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.laundry-order-drawer-grid > div strong {
+  font-size: 0.95rem;
+  color: var(--ld-ink-2);
+  font-weight: 700;
+}
+
+.laundry-order-drawer-notes {
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 0.92rem;
+  color: #7c2d12;
+}
+
+.laundry-order-drawer-items {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.laundry-order-drawer-items th,
+.laundry-order-drawer-items td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ld-line-soft);
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+.laundry-order-drawer-items th {
+  background: #f1f5f9;
+  color: var(--ld-ink-2);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.laundry-order-drawer-items tfoot td {
+  border-bottom: none;
+  border-top: 2px solid rgba(37, 99, 235, 0.2);
+  padding-top: 8px;
+  font-weight: 700;
+}
+
+.laundry-order-drawer-foot {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--ld-line-soft);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+.laundry-order-drawer-foot .btn {
+  border-radius: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.laundry-order-drawer-foot .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 992px) {
+  .laundry-order-page-pro {
+    padding: 22px 18px 28px;
+    border-radius: 22px;
+  }
+  .laundry-order-title {
+    font-size: 1.55rem;
+  }
+  .laundry-order-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .laundry-order-page-pro {
+    padding: 16px 12px 22px;
+    border-radius: 18px;
+    margin: 0 0 24px;
+  }
+  .laundry-order-title {
+    font-size: 1.35rem;
+  }
+  .laundry-order-title::before {
+    height: 22px;
+  }
+  .laundry-order-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .laundry-order-stat {
+    flex: 1 1 calc(50% - 12px);
+  }
+}
+
+@media (max-width: 600px) {
+  .laundry-order-page-pro {
+    padding: 12px 10px 18px;
+    border-radius: 14px;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+  .laundry-order-card {
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .laundry-order-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .laundry-order-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .laundry-order-btn {
+    width: 100%;
+  }
+  /* Stop forcing 720px-wide orders table on phones. */
+  .laundry-order-table {
+    min-width: 0;
+  }
+  /* Hide less-essential columns on phones to keep the row readable. */
+  .laundry-order-table th:nth-child(3),
+  .laundry-order-table td:nth-child(3),
+  .laundry-order-table th:nth-child(5),
+  .laundry-order-table td:nth-child(5) {
+    display: none;
+  }
+  /* Let the status select shrink to fit the row. */
+  .laundry-order-status-pill {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* Stack the 4 stat tiles vertically on phones so values aren't squished. */
+@media (max-width: 480px) {
+  .laundry-order-stat {
+    flex: 1 1 100%;
+  }
+  .laundry-order-stat strong {
+    font-size: 1.15rem;
+  }
+}
+
+/* ---------- DARK MODE ---------- */
+body.theme-dark .laundry-order-page-pro {
+  background:
+    radial-gradient(1100px 600px at -10% -20%, rgba(99, 102, 241, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(14, 165, 233, 0.22), transparent 55%),
+    linear-gradient(135deg, #0f172a, #1e293b);
+  border-color: #334155;
+  box-shadow:
+    0 30px 60px -25px rgba(0, 0, 0, 0.6),
+    0 12px 30px -18px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+body.theme-dark .laundry-order-title,
+body.theme-dark .laundry-order-card h5,
+body.theme-dark .laundry-order-items-head h6,
+body.theme-dark .laundry-order-drawer-head h4,
+body.theme-dark .laundry-order-drawer-section h6 {
+  color: #f8fafc;
+}
+
+body.theme-dark .laundry-order-subtitle {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-order-card,
+body.theme-dark .laundry-order-table,
+body.theme-dark .laundry-order-items-table {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-dark .laundry-order-card .form-control,
+body.theme-dark .laundry-order-card .form-select,
+body.theme-dark .laundry-order-toolbar .form-control,
+body.theme-dark .laundry-order-toolbar .form-select {
+  background: #0f172a;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-order-card .form-control:focus,
+body.theme-dark .laundry-order-card .form-select:focus {
+  background: #0f172a;
+  border-color: rgba(37, 99, 235, 0.65);
+}
+
+body.theme-dark .laundry-order-table th,
+body.theme-dark .laundry-order-items-table th,
+body.theme-dark .laundry-order-drawer-items th {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-order-table td,
+body.theme-dark .laundry-order-items-table td,
+body.theme-dark .laundry-order-drawer-items td {
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-order-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+body.theme-dark .laundry-order-stat {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body.theme-dark .laundry-order-stat strong {
+  color: #f8fafc;
+}
+
+body.theme-dark .laundry-order-totals {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-order-totals > div {
+  color: #e2e8f0;
+}
+
+body.theme-dark .laundry-order-bulk {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+body.theme-dark .laundry-order-drawer {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-dark .laundry-order-drawer-section,
+body.theme-dark .laundry-order-drawer-foot,
+body.theme-dark .laundry-order-drawer-items tfoot td {
+  border-color: #334155;
+}
+
+body.theme-dark .laundry-order-drawer-grid > div span {
+  color: #94a3b8;
+}
+
+body.theme-dark .laundry-order-drawer-grid > div strong {
+  color: #f1f5f9;
+}
+
+body.theme-dark .laundry-order-drawer-close {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+body.theme-dark .laundry-order-drawer-close:hover {
+  background: #475569;
+}
+
+body.theme-dark .laundry-order-drawer-notes {
+  background: linear-gradient(135deg, #422006, #1e293b);
+  border-color: #78350f;
+  color: #fed7aa;
+}

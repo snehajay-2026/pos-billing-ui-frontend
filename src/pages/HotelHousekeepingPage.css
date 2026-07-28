@@ -1,0 +1,249 @@
+/* HotelHousekeepingPage.css - Kanban-style housekeeping board */
+
+.hotel-hk-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 18px 48px 18px;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.85) 60%, rgba(220, 235, 255, 0.7) 100%);
+  border-radius: 28px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18);
+  min-height: 90vh;
+}
+
+.hotel-hk-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.hotel-hk-title {
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.6px;
+  color: #2a3b5d;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .hotel-hk-title {
+    font-size: 1.3rem;
+    letter-spacing: 0.3px;
+  }
+}
+
+.hotel-hk-subtitle {
+  margin: 4px 0 0 0;
+  color: #5b6b8c;
+  font-size: 0.95rem;
+}
+
+.hotel-hk-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hotel-hk-stat {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  padding: 10px 18px;
+  text-align: center;
+  border: 1px solid #dbeafe;
+  min-width: 96px;
+  box-shadow: 0 1px 6px rgba(31, 38, 135, 0.06);
+}
+
+.hotel-hk-stat span {
+  display: block;
+  font-size: 0.78rem;
+  color: #5b6b8c;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.hotel-hk-stat strong {
+  display: block;
+  font-size: 1.4rem;
+  color: #2a3b5d;
+  margin-top: 2px;
+}
+
+.hotel-hk-stat.sellable strong {
+  color: #198754;
+}
+.hotel-hk-stat.occupied strong {
+  color: #dc3545;
+}
+
+.hotel-hk-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.hotel-hk-toolbar .form-control {
+  max-width: 260px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.hotel-hk-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .hotel-hk-board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  /* Kanban: keep it horizontally swipeable on phones. A vertical stack
+     turns this into an endless scroll; horizontal columns with snap are
+     far more usable. */
+  .hotel-hk-board {
+    grid-template-columns: repeat(4, minmax(78vw, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: 78vw;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
+  .hotel-hk-column {
+    scroll-snap-align: start;
+    min-height: 220px;
+  }
+}
+
+.hotel-hk-column {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  box-shadow: 0 2px 10px rgba(31, 38, 135, 0.08);
+  border: 1px solid rgba(219, 234, 254, 0.9);
+}
+
+.hotel-hk-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-top: 4px solid;
+  border-radius: 16px 16px 0 0;
+  background: #ffffff;
+}
+
+.hotel-hk-column-head strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.hotel-hk-column-head span {
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: #f1f5f9;
+  color: #2a3b5d;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.hotel-hk-column-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+.hotel-hk-empty {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  padding: 18px 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+}
+
+.hotel-hk-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border-left: 4px solid #94a3b8;
+  box-shadow: 0 1px 4px rgba(31, 38, 135, 0.08);
+}
+
+.hotel-hk-card.is-occupied {
+  background: #fff5f5;
+}
+
+.hotel-hk-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.hotel-hk-card-head strong {
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.hotel-hk-card-code {
+  font-family: monospace;
+  background: #0d6efd;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+}
+
+.hotel-hk-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.hotel-hk-tag {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.hotel-hk-tag.occupied {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.hotel-hk-tag.vacant {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.hotel-hk-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hotel-hk-card-actions .btn {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
