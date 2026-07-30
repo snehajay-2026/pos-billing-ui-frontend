@@ -205,9 +205,6 @@ const Login = () => {
         <p className="lg-trademark-line">
           © {new Date().getFullYear()} POS Suite · All rights reserved.
         </p>
-        <p className="lg-trademark-line lg-trademark-line-sub">
-          POS Suite™ is a trademark of POS Suite Inc. Reg. No. U88890XX.
-        </p>
         <p className="lg-trademark-line lg-trademark-line-sub">Built with ♥ in India · v2.0</p>
       </div>
 
