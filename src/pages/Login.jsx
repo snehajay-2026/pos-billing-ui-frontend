@@ -198,6 +198,19 @@ const Login = () => {
         </div>
       </aside>
 
+      {/* Mobile-only trademark strip — sits below the auth card on
+          phones. Hidden on desktop (the brand-foot inside the brand
+          panel already covers that case). */}
+      <div className="lg-trademark" aria-label="Legal">
+        <p className="lg-trademark-line">
+          © {new Date().getFullYear()} POS Suite · All rights reserved.
+        </p>
+        <p className="lg-trademark-line lg-trademark-line-sub">
+          POS Suite™ is a trademark of POS Suite Inc. Reg. No. U88890XX.
+        </p>
+        <p className="lg-trademark-line lg-trademark-line-sub">Built with ♥ in India · v2.0</p>
+      </div>
+
       {/* Auth card — right side */}
       <main className="lg-auth">
         <div className="lg-auth-bg" aria-hidden="true" />
