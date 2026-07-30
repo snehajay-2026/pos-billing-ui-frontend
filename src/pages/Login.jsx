@@ -201,13 +201,6 @@ const Login = () => {
       {/* Mobile-only trademark strip — sits below the auth card on
           phones. Hidden on desktop (the brand-foot inside the brand
           panel already covers that case). */}
-      <div className="lg-trademark" aria-label="Legal">
-        <p className="lg-trademark-line">
-          © {new Date().getFullYear()} POS Suite · All rights reserved.
-        </p>
-        <p className="lg-trademark-line lg-trademark-line-sub">Built with ♥ in India · v2.0</p>
-      </div>
-
       {/* Auth card — right side */}
       <main className="lg-auth">
         <div className="lg-auth-bg" aria-hidden="true" />
@@ -367,6 +360,18 @@ const Login = () => {
           </footer>
         </div>
       </main>
+
+      {/* Mobile-only trademark strip — sits below the auth card on
+          phones. Hidden on desktop (the brand-foot inside the brand
+          panel already covers that case). Must be the LAST child of
+          .lg-page so the grid places it in row 3 (auto) instead of
+          being assigned the 1fr stretch row. */}
+      <div className="lg-trademark" aria-label="Legal">
+        <p className="lg-trademark-line">
+          © {new Date().getFullYear()} POS Suite · All rights reserved.
+        </p>
+        <p className="lg-trademark-line lg-trademark-line-sub">Built with ♥ in India · v2.0</p>
+      </div>
     </div>
   );
 };
