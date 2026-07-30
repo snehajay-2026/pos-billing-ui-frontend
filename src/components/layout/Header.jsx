@@ -87,6 +87,13 @@ const Header = ({ toggleSidebar }) => {
   const [theme, setTheme] = useState(() => getStoreSettings().theme || "classic");
   const [showLogout, setShowLogout] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  // Mobile tray (slides down below the top bar on <=768px) holds the
+  // action buttons that don't fit alongside the brand. Separate from
+  // the per-button dropdowns above the tray (notifications, user, store).
+  const [trayOpen, setTrayOpen] = useState(false);
+  // Mobile search overlay — opens a full-width search input on phones,
+  // since the inline search input is hidden at <=900px to free space.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: "",
     phone: "",
@@ -490,6 +497,34 @@ const Header = ({ toggleSidebar }) => {
             </span>
           </div>
 
+          {/* Mobile-only search-icon — opens a full-width overlay search
+              below the top bar so phones get search back without
+              crowding the row. The desktop search input below is hidden
+              below 900px via CSS. */}
+          <button
+            type="button"
+            className="header-iconbtn header-mobile-search-btn"
+            onClick={() => setMobileSearchOpen(true)}
+            aria-label="Open search"
+            title="Search products, customers, orders…"
+          >
+            <FaSearch />
+          </button>
+
+          {/* Mobile-only tray toggle — opens the slide-down tray that
+              holds the store/language/theme/bell/user actions. Hidden
+              on desktop where the actions sit in a single row. */}
+          <button
+            type="button"
+            className={`header-iconbtn header-mobile-tray-btn ${trayOpen ? "is-open" : ""}`}
+            onClick={() => setTrayOpen((v) => !v)}
+            aria-label={trayOpen ? "Close menu" : "Open menu"}
+            aria-expanded={trayOpen}
+            aria-controls="header-tray"
+          >
+            {trayOpen ? <FaTimes /> : <FaBars />}
+          </button>
+
           <div
             className={`header-dropdown header-search-wrap ${
               openMenu === "search" ? "is-open" : ""
@@ -554,308 +589,372 @@ const Header = ({ toggleSidebar }) => {
             ) : null}
           </div>
 
-          <div className="header-actions">
-            {activeShift && currentStoreNeedsShift() && (
-              <div className="header-shift-chip" title="You have an open shift">
-                <FaCashRegister className="header-shift-icon" />
-                <span className="header-shift-text">
-                  <span className="header-shift-label">Shift open</span>
-                  <span className="header-shift-float">
-                    ₹{Number(activeShift.openingFloat || 0).toFixed(0)}
-                    {activeShift.branchName ? ` · ${activeShift.branchName}` : ""}
+          <div id="header-tray" className={`header-tray ${trayOpen ? "is-open" : ""}`}>
+            <div className="header-actions">
+              {activeShift && currentStoreNeedsShift() && (
+                <div className="header-shift-chip" title="You have an open shift">
+                  <FaCashRegister className="header-shift-icon" />
+                  <span className="header-shift-text">
+                    <span className="header-shift-label">Shift open</span>
+                    <span className="header-shift-float">
+                      ₹{Number(activeShift.openingFloat || 0).toFixed(0)}
+                      {activeShift.branchName ? ` · ${activeShift.branchName}` : ""}
+                    </span>
                   </span>
-                </span>
-                {canCloseActiveShift && (
+                  {canCloseActiveShift && (
+                    <button
+                      type="button"
+                      className="header-shift-close"
+                      onClick={() => setClosingShift(activeShift)}
+                      title="Close my shift"
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
+              )}
+              {isSuperOwner && (
+                <div
+                  className={`header-dropdown header-store-switcher ${
+                    openMenu === "store" ? "is-open" : ""
+                  }`}
+                >
                   <button
                     type="button"
-                    className="header-shift-close"
-                    onClick={() => setClosingShift(activeShift)}
-                    title="Close my shift"
+                    className="header-chip"
+                    onClick={() => toggleMenu("store")}
+                    disabled={availableStores.length === 0}
+                    aria-haspopup="menu"
+                    aria-expanded={openMenu === "store"}
                   >
-                    Close
+                    <FaStoreAlt className="header-chip-icon" />
+                    <span className="header-chip-text">
+                      <span className="header-chip-eyebrow">Active store</span>
+                      <span className="header-chip-value">{activeStoreLabel}</span>
+                    </span>
+                    <FaChevronDown className="header-chip-chevron" />
                   </button>
-                )}
-              </div>
-            )}
-            {isSuperOwner && (
+                  {openMenu === "store" && (
+                    <div className="header-menu" role="menu">
+                      <div className="header-menu-head">
+                        <FaLayerGroup aria-hidden="true" />
+                        <span>Switch store</span>
+                      </div>
+                      <div className="header-menu-list">
+                        {availableStores.length === 0 ? (
+                          <div className="header-menu-empty">No stores available</div>
+                        ) : (
+                          availableStores.map((store) => {
+                            const isActive =
+                              Boolean(activeStore) &&
+                              getStoreOptionKey(activeStore) === getStoreOptionKey(store);
+                            return (
+                              <button
+                                type="button"
+                                key={getStoreOptionKey(store)}
+                                className={`header-menu-item ${isActive ? "is-active" : ""}`}
+                                onClick={() => {
+                                  applySuperOwnerStore(store);
+                                  setOpenMenu(null);
+                                }}
+                                role="menuitem"
+                              >
+                                <span className="header-menu-item-mark" aria-hidden="true">
+                                  {isActive ? <FaCheck /> : <FaStoreAlt />}
+                                </span>
+                                <span className="header-menu-item-text">
+                                  {getStoreOptionLabel(store)}
+                                </span>
+                                {isActive && <span className="header-menu-item-tag">current</span>}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div
-                className={`header-dropdown header-store-switcher ${
-                  openMenu === "store" ? "is-open" : ""
+                className={`header-dropdown header-language ${
+                  openMenu === "language" ? "is-open" : ""
                 }`}
               >
                 <button
                   type="button"
-                  className="header-chip"
-                  onClick={() => toggleMenu("store")}
-                  disabled={availableStores.length === 0}
+                  className="header-iconbtn header-iconbtn-pill"
+                  onClick={() => toggleMenu("language")}
                   aria-haspopup="menu"
-                  aria-expanded={openMenu === "store"}
+                  aria-expanded={openMenu === "language"}
+                  title={locale.languageLabel || "Language"}
                 >
-                  <FaStoreAlt className="header-chip-icon" />
-                  <span className="header-chip-text">
-                    <span className="header-chip-eyebrow">Active store</span>
-                    <span className="header-chip-value">{activeStoreLabel}</span>
+                  <FaGlobe />
+                  <span className="header-iconbtn-label">
+                    {languageOptions.find((item) => item.code === language)?.code?.toUpperCase() ||
+                      "EN"}
                   </span>
-                  <FaChevronDown className="header-chip-chevron" />
                 </button>
-                {openMenu === "store" && (
+                {openMenu === "language" && (
                   <div className="header-menu" role="menu">
                     <div className="header-menu-head">
-                      <FaLayerGroup aria-hidden="true" />
-                      <span>Switch store</span>
+                      <FaGlobe aria-hidden="true" />
+                      <span>{locale.languageLabel || "Language"}</span>
                     </div>
                     <div className="header-menu-list">
-                      {availableStores.length === 0 ? (
-                        <div className="header-menu-empty">No stores available</div>
-                      ) : (
-                        availableStores.map((store) => {
-                          const isActive =
-                            Boolean(activeStore) &&
-                            getStoreOptionKey(activeStore) === getStoreOptionKey(store);
-                          return (
-                            <button
-                              type="button"
-                              key={getStoreOptionKey(store)}
-                              className={`header-menu-item ${isActive ? "is-active" : ""}`}
-                              onClick={() => {
-                                applySuperOwnerStore(store);
-                                setOpenMenu(null);
-                              }}
-                              role="menuitem"
-                            >
-                              <span className="header-menu-item-mark" aria-hidden="true">
-                                {isActive ? <FaCheck /> : <FaStoreAlt />}
-                              </span>
-                              <span className="header-menu-item-text">
-                                {getStoreOptionLabel(store)}
-                              </span>
-                              {isActive && <span className="header-menu-item-tag">current</span>}
-                            </button>
-                          );
-                        })
-                      )}
+                      {languageOptions.map((lang) => {
+                        const isActive = language === lang.code;
+                        return (
+                          <button
+                            type="button"
+                            key={lang.code}
+                            className={`header-menu-item ${isActive ? "is-active" : ""}`}
+                            onClick={() => {
+                              setLanguage(lang.code);
+                              setOpenMenu(null);
+                            }}
+                            role="menuitem"
+                          >
+                            <span className="header-menu-item-mark" aria-hidden="true">
+                              {isActive ? <FaCheck /> : <FaGlobe />}
+                            </span>
+                            <span className="header-menu-item-text">{lang.label}</span>
+                            <span className="header-menu-item-tag language">
+                              {lang.code.toUpperCase()}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
-            )}
 
-            <div
-              className={`header-dropdown header-language ${
-                openMenu === "language" ? "is-open" : ""
-              }`}
-            >
               <button
                 type="button"
-                className="header-iconbtn header-iconbtn-pill"
-                onClick={() => toggleMenu("language")}
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "language"}
-                title={locale.languageLabel || "Language"}
+                className="header-iconbtn"
+                onClick={cycleTheme}
+                title={locale.switchTheme || "Switch theme"}
+                aria-label={locale.switchTheme || "Switch theme"}
               >
-                <FaGlobe />
-                <span className="header-iconbtn-label">
-                  {languageOptions.find((item) => item.code === language)?.code?.toUpperCase() ||
-                    "EN"}
-                </span>
+                {themeIcons[theme]}
+                <span className="header-iconbtn-pulse" aria-hidden="true" />
               </button>
-              {openMenu === "language" && (
-                <div className="header-menu" role="menu">
-                  <div className="header-menu-head">
-                    <FaGlobe aria-hidden="true" />
-                    <span>{locale.languageLabel || "Language"}</span>
-                  </div>
-                  <div className="header-menu-list">
-                    {languageOptions.map((lang) => {
-                      const isActive = language === lang.code;
-                      return (
-                        <button
-                          type="button"
-                          key={lang.code}
-                          className={`header-menu-item ${isActive ? "is-active" : ""}`}
-                          onClick={() => {
-                            setLanguage(lang.code);
-                            setOpenMenu(null);
-                          }}
-                          role="menuitem"
-                        >
-                          <span className="header-menu-item-mark" aria-hidden="true">
-                            {isActive ? <FaCheck /> : <FaGlobe />}
-                          </span>
-                          <span className="header-menu-item-text">{lang.label}</span>
-                          <span className="header-menu-item-tag language">
-                            {lang.code.toUpperCase()}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
 
-            <button
-              type="button"
-              className="header-iconbtn"
-              onClick={cycleTheme}
-              title={locale.switchTheme || "Switch theme"}
-              aria-label={locale.switchTheme || "Switch theme"}
-            >
-              {themeIcons[theme]}
-              <span className="header-iconbtn-pulse" aria-hidden="true" />
-            </button>
-
-            <div
-              className={`header-dropdown header-bell ${openMenu === "notifications" ? "is-open" : ""}`}
-            >
-              <button
-                type="button"
-                className="header-iconbtn header-iconbtn-bell"
-                title={
-                  notifications.length
-                    ? `${notifications.length} active notification${notifications.length === 1 ? "" : "s"}`
-                    : "Notifications"
-                }
-                aria-label={
-                  notifications.length
-                    ? `Notifications, ${notifications.length} active`
-                    : "Notifications"
-                }
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "notifications"}
-                onClick={() => toggleMenu("notifications")}
+              <div
+                className={`header-dropdown header-bell ${openMenu === "notifications" ? "is-open" : ""}`}
               >
-                <FaBell />
-                {notifications.length > 0 ? (
-                  <span className="header-iconbtn-badge" aria-hidden="true">
-                    {notifications.length > 9 ? "9+" : notifications.length}
-                  </span>
-                ) : null}
-              </button>
-              {openMenu === "notifications" ? (
-                <NotificationPanel
-                  notifications={notifications}
-                  loading={notificationsLoading}
-                  error={notificationsError}
-                  lastFetchedAt={lastFetchedAt}
-                  onPick={handlePickNotification}
-                  onRefresh={refreshNotifications}
-                />
-              ) : null}
-            </div>
-
-            <div className={`header-dropdown header-user ${openMenu === "user" ? "is-open" : ""}`}>
-              <button
-                type="button"
-                className="header-user-trigger"
-                onClick={() => toggleMenu("user")}
-                aria-haspopup="menu"
-                aria-expanded={openMenu === "user"}
-              >
-                <span
-                  className="header-user-avatar"
-                  style={{ background: userAvatarBg }}
-                  aria-hidden="true"
+                <button
+                  type="button"
+                  className="header-iconbtn header-iconbtn-bell"
+                  title={
+                    notifications.length
+                      ? `${notifications.length} active notification${notifications.length === 1 ? "" : "s"}`
+                      : "Notifications"
+                  }
+                  aria-label={
+                    notifications.length
+                      ? `Notifications, ${notifications.length} active`
+                      : "Notifications"
+                  }
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu === "notifications"}
+                  onClick={() => toggleMenu("notifications")}
                 >
-                  {userInitials}
-                </span>
-                <span className="header-user-meta">
-                  <strong>{loginId || locale.unknownUser}</strong>
-                  <span className="header-user-role">
-                    {getRoleLabel(user?.role) || locale.unknownRole}
-                  </span>
-                </span>
-                <FaChevronDown className="header-user-chevron" />
-              </button>
-              {openMenu === "user" && (
-                <div className="header-menu header-menu-user" role="menu">
-                  <div className="header-menu-user-hero">
-                    <span
-                      className="header-user-avatar header-user-avatar-lg"
-                      style={{ background: userAvatarBg }}
-                      aria-hidden="true"
-                    >
-                      {userInitials}
+                  <FaBell />
+                  {notifications.length > 0 ? (
+                    <span className="header-iconbtn-badge" aria-hidden="true">
+                      {notifications.length > 9 ? "9+" : notifications.length}
                     </span>
-                    <div className="header-menu-user-meta">
-                      <strong>{loginId || locale.unknownUser}</strong>
-                      <span>{getRoleLabel(user?.role) || locale.unknownRole}</span>
-                      <span className="header-menu-user-email">{user?.email || ""}</span>
+                  ) : null}
+                </button>
+                {openMenu === "notifications" ? (
+                  <NotificationPanel
+                    notifications={notifications}
+                    loading={notificationsLoading}
+                    error={notificationsError}
+                    lastFetchedAt={lastFetchedAt}
+                    onPick={handlePickNotification}
+                    onRefresh={refreshNotifications}
+                  />
+                ) : null}
+              </div>
+
+              <div
+                className={`header-dropdown header-user ${openMenu === "user" ? "is-open" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="header-user-trigger"
+                  onClick={() => toggleMenu("user")}
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu === "user"}
+                >
+                  <span
+                    className="header-user-avatar"
+                    style={{ background: userAvatarBg }}
+                    aria-hidden="true"
+                  >
+                    {userInitials}
+                  </span>
+                  <span className="header-user-meta">
+                    <strong>{loginId || locale.unknownUser}</strong>
+                    <span className="header-user-role">
+                      {getRoleLabel(user?.role) || locale.unknownRole}
+                    </span>
+                  </span>
+                  <FaChevronDown className="header-user-chevron" />
+                </button>
+                {openMenu === "user" && (
+                  <div className="header-menu header-menu-user" role="menu">
+                    <div className="header-menu-user-hero">
+                      <span
+                        className="header-user-avatar header-user-avatar-lg"
+                        style={{ background: userAvatarBg }}
+                        aria-hidden="true"
+                      >
+                        {userInitials}
+                      </span>
+                      <div className="header-menu-user-meta">
+                        <strong>{loginId || locale.unknownUser}</strong>
+                        <span>{getRoleLabel(user?.role) || locale.unknownRole}</span>
+                        <span className="header-menu-user-email">{user?.email || ""}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="header-menu-list">
-                    <button
-                      type="button"
-                      className="header-menu-item"
-                      onClick={() => {
-                        openProfile();
-                        setOpenMenu(null);
-                      }}
-                      role="menuitem"
-                    >
-                      <span className="header-menu-item-mark" aria-hidden="true">
-                        <FaUserCircle />
-                      </span>
-                      <span className="header-menu-item-text">{locale.myProfile}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="header-menu-item"
-                      onClick={() => {
-                        cycleTheme();
-                      }}
-                      role="menuitem"
-                    >
-                      <span className="header-menu-item-mark" aria-hidden="true">
-                        <FaPalette />
-                      </span>
-                      <span className="header-menu-item-text">
-                        {locale.switchTheme || "Switch theme"}
-                      </span>
-                      <span className="header-menu-item-tag">{theme}</span>
-                    </button>
-                    {activeShift && canCloseActiveShift && (
+                    <div className="header-menu-list">
                       <button
                         type="button"
                         className="header-menu-item"
                         onClick={() => {
-                          setClosingShift(activeShift);
+                          openProfile();
                           setOpenMenu(null);
                         }}
                         role="menuitem"
                       >
                         <span className="header-menu-item-mark" aria-hidden="true">
-                          <FaCashRegister />
+                          <FaUserCircle />
+                        </span>
+                        <span className="header-menu-item-text">{locale.myProfile}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="header-menu-item"
+                        onClick={() => {
+                          cycleTheme();
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="header-menu-item-mark" aria-hidden="true">
+                          <FaPalette />
                         </span>
                         <span className="header-menu-item-text">
-                          Close my shift
-                          <span className="header-menu-item-tag header-menu-item-tag-warn">
-                            ₹{Number(activeShift.openingFloat || 0).toFixed(0)} open
-                          </span>
+                          {locale.switchTheme || "Switch theme"}
                         </span>
+                        <span className="header-menu-item-tag">{theme}</span>
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="header-menu-item is-danger"
-                      onClick={() => {
-                        setShowLogout(true);
-                        setOpenMenu(null);
-                      }}
-                      role="menuitem"
-                    >
-                      <span className="header-menu-item-mark" aria-hidden="true">
-                        <FaSignOutAlt />
-                      </span>
-                      <span className="header-menu-item-text">{locale.logout}</span>
-                    </button>
+                      {activeShift && canCloseActiveShift && (
+                        <button
+                          type="button"
+                          className="header-menu-item"
+                          onClick={() => {
+                            setClosingShift(activeShift);
+                            setOpenMenu(null);
+                          }}
+                          role="menuitem"
+                        >
+                          <span className="header-menu-item-mark" aria-hidden="true">
+                            <FaCashRegister />
+                          </span>
+                          <span className="header-menu-item-text">
+                            Close my shift
+                            <span className="header-menu-item-tag header-menu-item-tag-warn">
+                              ₹{Number(activeShift.openingFloat || 0).toFixed(0)} open
+                            </span>
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="header-menu-item is-danger"
+                        onClick={() => {
+                          setShowLogout(true);
+                          setOpenMenu(null);
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="header-menu-item-mark" aria-hidden="true">
+                          <FaSignOutAlt />
+                        </span>
+                        <span className="header-menu-item-text">{locale.logout}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
       </header>
+
+      {/* Mobile search overlay — full-width bar that slides down from the
+          top of the page when the search icon is tapped. Reuses the same
+          input + palette as the desktop search by binding to the same
+          query state. CSS hides this overlay above 768px. */}
+      {mobileSearchOpen && (
+        <div className="header-mobile-search-overlay" role="search">
+          <div className="header-mobile-search-bar">
+            <FaSearch className="header-search-icon" aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              placeholder="Search products, customers, orders…"
+              aria-label="Global search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (event.target.value.trim().length > 0) {
+                  setOpenMenu("search");
+                }
+              }}
+              onFocus={() => {
+                if (query.trim().length > 0) setOpenMenu("search");
+              }}
+              onKeyDown={handleSearchKeyDown}
+              autoComplete="off"
+              spellCheck={false}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="header-mobile-search-close"
+              onClick={() => {
+                setMobileSearchOpen(false);
+                clearSearch();
+                setOpenMenu(null);
+              }}
+              aria-label="Close search"
+            >
+              <FaTimes />
+            </button>
+          </div>
+          {openMenu === "search" && (
+            <div className="header-mobile-search-palette">
+              <GlobalSearchPalette
+                query={query}
+                results={results}
+                loading={loading}
+                error={error}
+                hasAny={hasAny}
+                onPick={(result) => {
+                  handlePickResult(result);
+                  setMobileSearchOpen(false);
+                }}
+                inputId={SEARCH_INPUT_ID}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {showProfile && (
         <div

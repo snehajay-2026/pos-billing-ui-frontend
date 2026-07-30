@@ -288,7 +288,14 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  margin-left: auto;
+}
+
+/* Desktop: tray is an invisible wrapper around .header-actions, so
+   push the whole tray to the right (instead of the inner actions). */
+@media (min-width: 769px) {
+  .header-tray {
+    margin-left: auto;
+  }
 }
 
 .header-dropdown {
@@ -1298,5 +1305,224 @@
   }
   .header-actions {
     gap: 6px;
+  }
+}
+
+/* =====================================================================
+   Mobile responsive — compact two-row layout at <=768px
+   Row 1: [burger] [brand] [search-icon] [tray-toggle]
+   Row 2: tray that slides down with all actions (store / language /
+          theme / bell / user)
+   ===================================================================== */
+
+/* Mobile-only buttons: hidden on desktop, shown on phones */
+.header-mobile-search-btn,
+.header-mobile-tray-btn {
+  display: none;
+}
+
+/* Tray wrapper — desktop: a transparent flex row that holds .header-actions.
+   Mobile (inside the @media below): a full-width slide-down panel
+   anchored under the navbar. */
+.header-tray {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  /* Row 1 — keep only the four essentials in the top bar */
+  .header-mobile-search-btn,
+  .header-mobile-tray-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  /* Brand subtitle is already hidden at <=700px. Make sure the brand
+     doesn't take more than 50% of the row so 2 icon buttons fit. */
+  .header-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 10px;
+  }
+  .header-brand-text {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .header-brand-text strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  /* Tray becomes a slide-down panel beneath the navbar. It spans the
+     full width so action buttons can wrap to multiple rows on very
+     narrow screens. */
+  .header-tray {
+    order: 99; /* below .header-navbar-inner items in the column flow */
+    flex-basis: 100%;
+    margin: 8px -8px 0;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px) saturate(1.4);
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition:
+      max-height 0.22s ease,
+      opacity 0.18s ease,
+      margin-top 0.22s ease;
+    pointer-events: none;
+  }
+
+  .header-tray.is-open {
+    max-height: 480px;
+    opacity: 1;
+    pointer-events: auto;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+
+  /* Inside the tray, the actions become a horizontal flex that wraps. */
+  .header-tray .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  /* All dropdown buttons inside the tray stretch to fill their row.
+     Keep icon buttons at their natural width; chips/triggers can grow. */
+  .header-tray .header-dropdown,
+  .header-tray .header-iconbtn {
+    flex: 0 0 auto;
+  }
+
+  /* The store chip + language pill are wider than icon buttons — give
+     them a bit more breathing room by sharing row space. */
+  .header-tray .header-store-switcher,
+  .header-tray .header-language {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  .header-tray .header-store-switcher .header-chip,
+  .header-tray .header-language .header-iconbtn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Restore labels on chips/pills inside the tray — they're helpful on
+     mobile where the buttons are now wide enough to display them. */
+  .header-tray .header-chip-text,
+  .header-tray .header-iconbtn-label,
+  .header-tray .header-user-meta {
+    display: inline-flex;
+  }
+  .header-tray .header-user-trigger {
+    padding: 5px 12px 5px 5px;
+  }
+  .header-tray .header-iconbtn-bell {
+    display: inline-flex;
+  }
+
+  /* Tray active background cue on the toggle button. */
+  .header-mobile-tray-btn.is-open {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* The navbar-inner becomes a wrapping flex so the tray can drop to
+     a new line below the top row. */
+  .header-navbar-inner {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even tighter on very small screens. The tray stays one row of
+     buttons instead of trying to fit wider pills. */
+  .header-tray .header-store-switcher,
+  .header-tray .header-language {
+    flex: 1 1 100%;
+  }
+  .header-tray.is-open {
+    max-height: 600px;
+  }
+}
+
+/* ---------- Mobile search overlay ---------- */
+.header-mobile-search-overlay {
+  position: sticky;
+  top: 0;
+  z-index: 1041;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 27, 75, 0.96));
+  backdrop-filter: blur(14px) saturate(1.4);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  animation: mobileSearchIn 0.16s ease-out;
+}
+
+@keyframes mobileSearchIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header-mobile-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.header-mobile-search-bar input {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  min-width: 0;
+}
+.header-mobile-search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.header-mobile-search-close {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.header-mobile-search-palette {
+  margin-top: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Hide the mobile overlay entirely on desktop. */
+@media (min-width: 769px) {
+  .header-mobile-search-overlay {
+    display: none;
   }
 }
