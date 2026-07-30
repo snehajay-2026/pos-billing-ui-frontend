@@ -406,9 +406,65 @@ const Header = ({ toggleSidebar }) => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const toggleMenu = (key) => {
-    setOpenMenu((current) => (current === key ? null : key));
+  // Refs for each tray dropdown trigger button. Used on mobile to anchor
+  // the dropdown below the trigger via position:fixed + getBoundingClientRect.
+  const triggerRefs = {
+    store: useRef(null),
+    language: useRef(null),
+    notifications: useRef(null),
+    user: useRef(null),
   };
+  // Anchored position for the currently-open mobile dropdown menu.
+  // null on desktop, {top, left, width} on mobile when a tray dropdown
+  // is open. The dropdown is rendered with position:fixed using these.
+  const [dropdownAnchor, setDropdownAnchor] = useState(null);
+
+  const toggleMenu = (key) => {
+    setOpenMenu((current) => {
+      if (current === key) {
+        setDropdownAnchor(null);
+        return null;
+      }
+      // On mobile (<=768px), compute the trigger's screen rect so the
+      // dropdown menu can render below it via position:fixed (avoids
+      // the tray's rounded-corner clipping).
+      const triggerEl = triggerRefs[key] && triggerRefs[key].current;
+      if (triggerEl && typeof window !== "undefined" && window.innerWidth <= 768) {
+        const rect = triggerEl.getBoundingClientRect();
+        setDropdownAnchor({
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: rect.width,
+        });
+      } else {
+        setDropdownAnchor(null);
+      }
+      return key;
+    });
+  };
+
+  // Recompute the anchor on scroll/resize so the dropdown stays glued
+  // to its trigger if the page moves.
+  useEffect(() => {
+    if (!openMenu || !dropdownAnchor) return undefined;
+    const refresh = () => {
+      const triggerEl = triggerRefs[openMenu] && triggerRefs[openMenu].current;
+      if (!triggerEl) return;
+      const rect = triggerEl.getBoundingClientRect();
+      setDropdownAnchor({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+    window.addEventListener("scroll", refresh, true);
+    window.addEventListener("resize", refresh);
+    return () => {
+      window.removeEventListener("scroll", refresh, true);
+      window.removeEventListener("resize", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openMenu]);
 
   const {
     notifications,
@@ -517,7 +573,18 @@ const Header = ({ toggleSidebar }) => {
           <button
             type="button"
             className={`header-iconbtn header-mobile-tray-btn ${trayOpen ? "is-open" : ""}`}
-            onClick={() => setTrayOpen((v) => !v)}
+            onClick={() => {
+              setTrayOpen((v) => {
+                const next = !v;
+                if (!next) {
+                  // Closing the tray also closes any open dropdown so the
+                  // next tray-open starts fresh.
+                  setOpenMenu(null);
+                  setDropdownAnchor(null);
+                }
+                return next;
+              });
+            }}
             aria-label={trayOpen ? "Close menu" : "Open menu"}
             aria-expanded={trayOpen}
             aria-controls="header-tray"
@@ -621,6 +688,7 @@ const Header = ({ toggleSidebar }) => {
                 >
                   <button
                     type="button"
+                    ref={triggerRefs.store}
                     className="header-chip"
                     onClick={() => toggleMenu("store")}
                     disabled={availableStores.length === 0}
@@ -635,7 +703,19 @@ const Header = ({ toggleSidebar }) => {
                     <FaChevronDown className="header-chip-chevron" />
                   </button>
                   {openMenu === "store" && (
-                    <div className="header-menu" role="menu">
+                    <div
+                      className={`header-menu ${dropdownAnchor ? "header-menu-in-tray" : ""}`}
+                      role="menu"
+                      style={
+                        dropdownAnchor
+                          ? {
+                              top: dropdownAnchor.top,
+                              left: dropdownAnchor.left,
+                              width: Math.max(dropdownAnchor.width, 220),
+                            }
+                          : undefined
+                      }
+                    >
                       <div className="header-menu-head">
                         <FaLayerGroup aria-hidden="true" />
                         <span>Switch store</span>
@@ -683,6 +763,7 @@ const Header = ({ toggleSidebar }) => {
               >
                 <button
                   type="button"
+                  ref={triggerRefs.language}
                   className="header-iconbtn header-iconbtn-pill"
                   onClick={() => toggleMenu("language")}
                   aria-haspopup="menu"
@@ -696,7 +777,19 @@ const Header = ({ toggleSidebar }) => {
                   </span>
                 </button>
                 {openMenu === "language" && (
-                  <div className="header-menu" role="menu">
+                  <div
+                    className={`header-menu ${dropdownAnchor ? "header-menu-in-tray" : ""}`}
+                    role="menu"
+                    style={
+                      dropdownAnchor
+                        ? {
+                            top: dropdownAnchor.top,
+                            left: dropdownAnchor.left,
+                            width: Math.max(dropdownAnchor.width, 220),
+                          }
+                        : undefined
+                    }
+                  >
                     <div className="header-menu-head">
                       <FaGlobe aria-hidden="true" />
                       <span>{locale.languageLabel || "Language"}</span>
@@ -746,6 +839,7 @@ const Header = ({ toggleSidebar }) => {
               >
                 <button
                   type="button"
+                  ref={triggerRefs.notifications}
                   className="header-iconbtn header-iconbtn-bell"
                   title={
                     notifications.length
@@ -769,14 +863,27 @@ const Header = ({ toggleSidebar }) => {
                   ) : null}
                 </button>
                 {openMenu === "notifications" ? (
-                  <NotificationPanel
-                    notifications={notifications}
-                    loading={notificationsLoading}
-                    error={notificationsError}
-                    lastFetchedAt={lastFetchedAt}
-                    onPick={handlePickNotification}
-                    onRefresh={refreshNotifications}
-                  />
+                  <div
+                    className={dropdownAnchor ? "header-menu-in-tray" : undefined}
+                    style={
+                      dropdownAnchor
+                        ? {
+                            top: dropdownAnchor.top,
+                            left: Math.max(8, dropdownAnchor.left + dropdownAnchor.width - 320),
+                            width: Math.max(dropdownAnchor.width, 320),
+                          }
+                        : undefined
+                    }
+                  >
+                    <NotificationPanel
+                      notifications={notifications}
+                      loading={notificationsLoading}
+                      error={notificationsError}
+                      lastFetchedAt={lastFetchedAt}
+                      onPick={handlePickNotification}
+                      onRefresh={refreshNotifications}
+                    />
+                  </div>
                 ) : null}
               </div>
 
@@ -785,6 +892,7 @@ const Header = ({ toggleSidebar }) => {
               >
                 <button
                   type="button"
+                  ref={triggerRefs.user}
                   className="header-user-trigger"
                   onClick={() => toggleMenu("user")}
                   aria-haspopup="menu"
@@ -806,7 +914,19 @@ const Header = ({ toggleSidebar }) => {
                   <FaChevronDown className="header-user-chevron" />
                 </button>
                 {openMenu === "user" && (
-                  <div className="header-menu header-menu-user" role="menu">
+                  <div
+                    className={`header-menu header-menu-user ${dropdownAnchor ? "header-menu-in-tray" : ""}`}
+                    role="menu"
+                    style={
+                      dropdownAnchor
+                        ? {
+                            top: dropdownAnchor.top,
+                            left: Math.max(8, dropdownAnchor.left + dropdownAnchor.width - 280),
+                            width: Math.max(dropdownAnchor.width, 280),
+                          }
+                        : undefined
+                    }
+                  >
                     <div className="header-menu-user-hero">
                       <span
                         className="header-user-avatar header-user-avatar-lg"

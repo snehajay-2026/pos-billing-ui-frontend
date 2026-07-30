@@ -1368,7 +1368,10 @@
     backdrop-filter: blur(12px) saturate(1.4);
     border-radius: 14px;
     border: 1px solid rgba(148, 163, 184, 0.18);
-    overflow: hidden;
+    /* overflow stays visible so dropdowns can extend below the trigger
+       buttons; the rounded corner is decorative and tolerates
+       overflow. The open/close animation uses max-height, not a clip. */
+    overflow: visible;
     max-height: 0;
     opacity: 0;
     transition:
@@ -1379,40 +1382,57 @@
   }
 
   .header-tray.is-open {
-    max-height: 480px;
+    max-height: 520px;
     opacity: 1;
     pointer-events: auto;
-    padding: 10px 12px;
+    padding: 12px;
     margin-top: 10px;
   }
 
-  /* Inside the tray, the actions become a horizontal flex that wraps. */
+  /* Inside the tray, the actions become a clean 2-column grid so every
+     item is equally sized and clearly tappable. Icon-only buttons
+     (theme, bell) sit beside the labeled chips. */
   .header-tray .header-actions {
     width: 100%;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-left: 0;
   }
 
-  /* All dropdown buttons inside the tray stretch to fill their row.
-     Keep icon buttons at their natural width; chips/triggers can grow. */
-  .header-tray .header-dropdown,
-  .header-tray .header-iconbtn {
-    flex: 0 0 auto;
-  }
-
-  /* The store chip + language pill are wider than icon buttons — give
-     them a bit more breathing room by sharing row space. */
+  /* Each dropdown wrapper fills its grid cell. The user-trigger and
+     the bell both span a full row at the bottom since they need more
+     horizontal space. */
   .header-tray .header-store-switcher,
   .header-tray .header-language {
-    flex: 1 1 calc(50% - 4px);
+    grid-column: span 1;
     min-width: 0;
   }
-  .header-tray .header-store-switcher .header-chip,
-  .header-tray .header-language .header-iconbtn {
-    width: 100%;
-    justify-content: center;
+  .header-tray .header-bell,
+  .header-tray .header-user {
+    grid-column: span 2;
+    min-width: 0;
   }
+
+  /* Make every trigger button fill its cell so labels are visible. */
+  .header-tray .header-chip,
+  .header-tray .header-language .header-iconbtn,
+  .header-tray .header-bell .header-iconbtn-bell,
+  .header-tray .header-user-trigger {
+    width: 100%;
+    justify-content: flex-start;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .header-tray .header-bell .header-iconbtn-bell {
+    /* Bell button has fixed 42px width in desktop CSS; override it. */
+    width: 100%;
+    height: 46px;
+  }
+
   /* Restore labels on chips/pills inside the tray — they're helpful on
      mobile where the buttons are now wide enough to display them. */
   .header-tray .header-chip-text,
@@ -1420,11 +1440,22 @@
   .header-tray .header-user-meta {
     display: inline-flex;
   }
-  .header-tray .header-user-trigger {
-    padding: 5px 12px 5px 5px;
-  }
+  /* Show the bell button itself (hidden on mobile via the outer
+     .header-iconbtn-bell rule above 900px wide). */
   .header-tray .header-iconbtn-bell {
     display: inline-flex;
+  }
+
+  /* Dropdown menus inside the tray: render outside the tray so they
+     aren't clipped by its rounded corner. The position:fixed + JS-set
+     top/left/right on .header-menu-in-tray anchors each menu below
+     its trigger. See Header.jsx. */
+  .header-menu-in-tray {
+    position: fixed;
+    z-index: 1100;
+    /* top/left/right are set inline by React from the trigger rect. */
+    max-height: 70vh;
+    overflow-y: auto;
   }
 
   /* Tray active background cue on the toggle button. */
@@ -1442,14 +1473,19 @@
 }
 
 @media (max-width: 480px) {
-  /* Even tighter on very small screens. The tray stays one row of
-     buttons instead of trying to fit wider pills. */
+  /* Single column on very narrow phones — each item gets its own row,
+     making the tray read like a tidy menu list. */
+  .header-tray .header-actions {
+    grid-template-columns: 1fr;
+  }
   .header-tray .header-store-switcher,
-  .header-tray .header-language {
-    flex: 1 1 100%;
+  .header-tray .header-language,
+  .header-tray .header-bell,
+  .header-tray .header-user {
+    grid-column: span 1;
   }
   .header-tray.is-open {
-    max-height: 600px;
+    max-height: 720px;
   }
 }
 
