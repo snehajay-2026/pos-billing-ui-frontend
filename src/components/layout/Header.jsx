@@ -823,68 +823,71 @@ const Header = ({ toggleSidebar }) => {
                 )}
               </div>
 
-              <button
-                type="button"
-                className="header-iconbtn"
-                onClick={cycleTheme}
-                title={locale.switchTheme || "Switch theme"}
-                aria-label={locale.switchTheme || "Switch theme"}
-              >
-                {themeIcons[theme]}
-                <span className="header-iconbtn-pulse" aria-hidden="true" />
-              </button>
-
-              <div
-                className={`header-dropdown header-bell ${openMenu === "notifications" ? "is-open" : ""}`}
-              >
+              <div className="header-tray-row header-tray-row-iconpair">
                 <button
                   type="button"
-                  ref={triggerRefs.notifications}
-                  className="header-iconbtn header-iconbtn-bell"
-                  title={
-                    notifications.length
-                      ? `${notifications.length} active notification${notifications.length === 1 ? "" : "s"}`
-                      : "Notifications"
-                  }
-                  aria-label={
-                    notifications.length
-                      ? `Notifications, ${notifications.length} active`
-                      : "Notifications"
-                  }
-                  aria-haspopup="menu"
-                  aria-expanded={openMenu === "notifications"}
-                  onClick={() => toggleMenu("notifications")}
+                  className="header-iconbtn header-iconbtn-theme"
+                  onClick={cycleTheme}
+                  title={locale.switchTheme || "Switch theme"}
+                  aria-label={locale.switchTheme || "Switch theme"}
                 >
-                  <FaBell />
-                  {notifications.length > 0 ? (
-                    <span className="header-iconbtn-badge" aria-hidden="true">
-                      {notifications.length > 9 ? "9+" : notifications.length}
-                    </span>
-                  ) : null}
+                  {themeIcons[theme]}
+                  <span className="header-iconbtn-pulse" aria-hidden="true" />
                 </button>
-                {openMenu === "notifications" ? (
-                  <div
-                    className={dropdownAnchor ? "header-menu-in-tray" : undefined}
-                    style={
-                      dropdownAnchor
-                        ? {
-                            top: dropdownAnchor.top,
-                            left: Math.max(8, dropdownAnchor.left + dropdownAnchor.width - 320),
-                            width: Math.max(dropdownAnchor.width, 320),
-                          }
-                        : undefined
+
+                <div
+                  className={`header-dropdown header-bell ${openMenu === "notifications" ? "is-open" : ""}`}
+                >
+                  <button
+                    type="button"
+                    ref={triggerRefs.notifications}
+                    className="header-iconbtn header-iconbtn-bell"
+                    title={
+                      notifications.length
+                        ? `${notifications.length} active notification${notifications.length === 1 ? "" : "s"}`
+                        : "Notifications"
                     }
+                    aria-label={
+                      notifications.length
+                        ? `Notifications, ${notifications.length} active`
+                        : "Notifications"
+                    }
+                    aria-haspopup="menu"
+                    aria-expanded={openMenu === "notifications"}
+                    onClick={() => toggleMenu("notifications")}
                   >
-                    <NotificationPanel
-                      notifications={notifications}
-                      loading={notificationsLoading}
-                      error={notificationsError}
-                      lastFetchedAt={lastFetchedAt}
-                      onPick={handlePickNotification}
-                      onRefresh={refreshNotifications}
-                    />
-                  </div>
-                ) : null}
+                    <FaBell />
+                    <span className="header-iconbtn-label">Bell</span>
+                    {notifications.length > 0 ? (
+                      <span className="header-iconbtn-badge" aria-hidden="true">
+                        {notifications.length > 9 ? "9+" : notifications.length}
+                      </span>
+                    ) : null}
+                  </button>
+                  {openMenu === "notifications" ? (
+                    <div
+                      className={dropdownAnchor ? "header-menu-in-tray" : undefined}
+                      style={
+                        dropdownAnchor
+                          ? {
+                              top: dropdownAnchor.top,
+                              left: Math.max(8, dropdownAnchor.left + dropdownAnchor.width - 320),
+                              width: Math.max(dropdownAnchor.width, 320),
+                            }
+                          : undefined
+                      }
+                    >
+                      <NotificationPanel
+                        notifications={notifications}
+                        loading={notificationsLoading}
+                        error={notificationsError}
+                        lastFetchedAt={lastFetchedAt}
+                        onPick={handlePickNotification}
+                        onRefresh={refreshNotifications}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               <div

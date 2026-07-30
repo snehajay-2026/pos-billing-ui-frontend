@@ -1330,6 +1330,17 @@
   flex-shrink: 0;
 }
 
+/* Tray-row: groups a small pair of icon buttons (theme + bell) so they
+   sit side-by-side on a single line in the mobile tray. On desktop
+   the row is invisible (its children use the desktop iconbtn
+   layout). */
+.header-tray-row {
+  display: contents;
+}
+.header-tray-row-iconpair {
+  display: contents;
+}
+
 @media (max-width: 768px) {
   /* Row 1 — keep only the four essentials in the top bar */
   .header-mobile-search-btn,
@@ -1408,16 +1419,70 @@
     grid-column: span 1;
     min-width: 0;
   }
-  .header-tray .header-bell,
+  .header-tray .header-tray-row-iconpair,
   .header-tray .header-user {
     grid-column: span 2;
     min-width: 0;
   }
 
+  /* The icon-pair row (theme + bell) is a horizontal flex — both share
+     the same row, side-by-side. Theme keeps full label-less width
+     (it's a single icon), bell shrinks so the row reads as two equal
+     items. */
+  .header-tray .header-tray-row-iconpair {
+    display: flex;
+    gap: 8px;
+  }
+  .header-tray .header-tray-row-iconpair .header-iconbtn-theme {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    justify-content: flex-start;
+  }
+  .header-tray .header-tray-row-iconpair .header-bell {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .header-tray .header-tray-row-iconpair .header-iconbtn-bell {
+    /* Reduced icon size on mobile — narrower than the 42px desktop
+       default — so theme + bell fit comfortably side-by-side. */
+    width: auto;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .header-tray .header-tray-row-iconpair .header-iconbtn-bell .header-iconbtn-label {
+    /* Show "Bell" text on the smaller mobile button. */
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+  }
+  .header-tray .header-tray-row-iconpair .header-iconbtn-bell .header-iconbtn-badge {
+    /* Smaller, less obtrusive badge. */
+    top: 6px;
+    right: 8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 0.62rem;
+    border-width: 1.5px;
+  }
+
   /* Make every trigger button fill its cell so labels are visible. */
   .header-tray .header-chip,
   .header-tray .header-language .header-iconbtn,
-  .header-tray .header-bell .header-iconbtn-bell,
   .header-tray .header-user-trigger {
     width: 100%;
     justify-content: flex-start;
@@ -1426,11 +1491,6 @@
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.18);
-  }
-  .header-tray .header-bell .header-iconbtn-bell {
-    /* Bell button has fixed 42px width in desktop CSS; override it. */
-    width: 100%;
-    height: 46px;
   }
 
   /* Restore labels on chips/pills inside the tray — they're helpful on
