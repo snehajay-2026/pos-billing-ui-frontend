@@ -622,26 +622,193 @@
 }
 
 @media (max-width: 640px) {
+  /* Mobile: page is a single column, no split panel. The brand lives
+     as a slim hero strip at the top; the auth form sits in a centered
+     glass card below it. */
+  .lg-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  }
+
+  /* Brand: shrunk into a hero strip with a smooth gradient. Keeps
+     the logo + tagline + a row of trust pills, drops the long list
+     of feature cards. The bottom-corner glow from desktop survives
+     so the gradient feels alive. */
   .lg-brand {
+    display: flex;
+    min-height: 220px;
+    border-radius: 0 0 28px 28px;
+    box-shadow: 0 18px 40px rgba(99, 102, 241, 0.22);
+  }
+
+  .lg-brand-bg {
+    background:
+      radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.22), transparent 40%),
+      radial-gradient(circle at 80% 88%, rgba(56, 189, 248, 0.32), transparent 50%);
+  }
+
+  .lg-brand-content {
+    padding: 26px 22px 22px;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  /* Hide the long headline + paragraph + footer on mobile — the
+     tagline inside the brand-mark is enough. */
+  .lg-brand-title,
+  .lg-brand-sub,
+  .lg-brand-foot {
     display: none;
   }
 
-  .lg-page {
-    grid-template-columns: 1fr;
+  /* Compact feature pills row — replaces the 4-card feature grid. */
+  .lg-brand-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .lg-brand-features li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .lg-brand-features li small {
+    display: none; /* hide the description on tiny pills */
+  }
+  .lg-brand-features li strong {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .lg-feat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+    border-radius: 8px;
   }
 
+  /* Auth area: centered, full width, generous top spacing so the
+     card feels like a floating sheet below the hero. */
   .lg-auth {
-    padding: 22px 16px;
+    padding: 22px 16px 32px;
+    align-items: flex-start;
+    background: transparent;
   }
 
   .lg-auth-card {
-    padding: 24px 22px;
+    padding: 26px 22px 22px;
     border-radius: 22px;
+    /* Frosted glass card over the page background. */
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+      0 20px 50px rgba(15, 23, 42, 0.12),
+      0 2px 0 rgba(255, 255, 255, 0.6) inset;
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
   }
 
+  /* Language picker: float on top of the hero strip. */
   .lg-lang {
-    top: 10px;
-    right: 10px;
+    top: 14px;
+    right: 12px;
+    z-index: 2;
+  }
+
+  /* Header + form: tighter spacing on small screens. */
+  .lg-head {
+    text-align: left;
+    margin-bottom: 18px;
+  }
+  .lg-head-eyebrow {
+    font-size: 0.66rem;
+    padding: 4px 10px;
+  }
+  .lg-head-title {
+    font-size: 1.6rem;
+  }
+  .lg-head-sub {
+    font-size: 0.88rem;
+  }
+
+  /* Form fields: bigger tap targets (48px) and a colored focus glow. */
+  .lg-field-row {
+    height: 50px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    transition:
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease;
+  }
+  .lg-field-row:focus-within {
+    border-color: #6366f1;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 4px rgba(99, 102, 241, 0.18),
+      0 4px 16px rgba(99, 102, 241, 0.12);
+  }
+  .lg-field.is-error .lg-field-row {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
+  }
+  .lg-field-ico {
+    font-size: 1.05rem;
+  }
+  .lg-input {
+    font-size: 1rem;
+  }
+
+  /* Submit button: gradient + lift on press. The desktop already has
+     a similar style, but on mobile we make the press scale a touch
+     larger for haptic-feeling feedback. */
+  .lg-submit {
+    height: 50px;
+    border-radius: 14px;
+    font-size: 1rem;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+    box-shadow:
+      0 12px 28px rgba(99, 102, 241, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition:
+      background-position 0.4s ease,
+      transform 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+  .lg-submit:hover:not(:disabled) {
+    background-position: 100% 50%;
+  }
+  .lg-submit:active:not(:disabled) {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  /* Error / hint messages: smaller, with more left padding. */
+  .lg-field-hint,
+  .lg-field-error,
+  .lg-field-warn {
+    font-size: 0.74rem;
+    padding-left: 4px;
   }
 }
 
