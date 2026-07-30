@@ -1182,6 +1182,31 @@
 }
 
 @media (max-width: 720px) {
+  /* Backdrop: switch from centered grid to a top-aligned column so a
+     tall modal can scroll into view from the top. The backdrop itself
+     becomes a scroll container (the user can scroll past the modal
+     bottom edge to dismiss by tapping outside). */
+  .header-modal-backdrop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Modal: cap height to the viewport and let its own contents scroll.
+     On phones the form is taller than the screen, so without this the
+     Save / Close buttons get cut off below the fold. */
+  .header-modal {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px); /* respects mobile browser UI bars */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 18px;
+  }
+
   .header-modal-split {
     grid-template-columns: 1fr;
     min-height: 0;
