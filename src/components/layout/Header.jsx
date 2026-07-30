@@ -857,7 +857,6 @@ const Header = ({ toggleSidebar }) => {
                     onClick={() => toggleMenu("notifications")}
                   >
                     <FaBell />
-                    <span className="header-iconbtn-label">Bell</span>
                     {notifications.length > 0 ? (
                       <span className="header-iconbtn-badge" aria-hidden="true">
                         {notifications.length > 9 ? "9+" : notifications.length}

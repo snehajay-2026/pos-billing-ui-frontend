@@ -1448,31 +1448,25 @@
     min-width: 0;
   }
   .header-tray .header-tray-row-iconpair .header-iconbtn-bell {
-    /* Reduced icon size on mobile — narrower than the 42px desktop
-       default — so theme + bell fit comfortably side-by-side. */
-    width: auto;
+    /* Icon-only — fixed square footprint next to the theme pill. */
+    width: 46px;
     height: 46px;
-    padding: 0 14px;
+    padding: 0;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.18);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
   }
   .header-tray .header-tray-row-iconpair .header-iconbtn-bell .header-iconbtn-label {
-    /* Show "Bell" text on the smaller mobile button. */
-    display: inline-flex;
-    font-size: 0.82rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    color: #ffffff;
+    /* Hide the bell label — icon-only on mobile. */
+    display: none;
   }
   .header-tray .header-tray-row-iconpair .header-iconbtn-bell .header-iconbtn-badge {
-    /* Smaller, less obtrusive badge. */
-    top: 6px;
-    right: 8px;
+    /* Smaller, less obtrusive badge tucked into the corner. */
+    top: 4px;
+    right: 4px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
