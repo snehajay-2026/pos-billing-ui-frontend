@@ -30,7 +30,40 @@ const isSessionExpiry401 = (url, status) => {
 // every non-GET request. The server compares header to cookie and rejects
 // mismatches with 403. A cross-site attacker can't read the cookie, so
 // they can't produce the header.
+// In-memory CSRF token store. Login (and register, when used) echo the
+// freshly-minted XSRF token in the JSON response body; authService stores
+// it here. When the frontend lives on a different origin than the
+// backend (Vercel -> Render), document.cookie can't see the XSRF-TOKEN
+// cookie (cross-origin), so we must source it from the JSON response
+// instead. On same-origin setups, the cookie path below also works.
+//
+// Persisted to sessionStorage so a hard page reload keeps it.
+const CSRF_STORAGE_KEY = "pos_billing_csrf_token";
+
+let csrfTokenMemory = null;
+try {
+  if (typeof sessionStorage !== "undefined") {
+    csrfTokenMemory = sessionStorage.getItem(CSRF_STORAGE_KEY) || null;
+  }
+} catch {
+  /* SSR or storage disabled — fall through */
+}
+
+export const setCsrfToken = (token) => {
+  csrfTokenMemory = token || null;
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      if (token) sessionStorage.setItem(CSRF_STORAGE_KEY, token);
+      else sessionStorage.removeItem(CSRF_STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+};
+export const clearCsrfToken = () => setCsrfToken(null);
+
 const getCsrfToken = () => {
+  if (csrfTokenMemory) return csrfTokenMemory;
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
   if (!match) return null;

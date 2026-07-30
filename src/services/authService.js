@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPost, setCsrfToken, clearCsrfToken } from "./api";
 import { resetStoreSettingsCache } from "./storeSettingsService";
 
 let currentUser = undefined;
@@ -32,7 +32,14 @@ export const canRegister = async () => {
 };
 
 export const login = async (email, password) => {
-  const user = await apiPost("/api/login", { email, password });
+  const response = await apiPost("/api/login", { email, password });
+  // The backend echoes a freshly-minted CSRF token in the login JSON so
+  // cross-origin frontends (Vercel -> Render) can pick it up — document
+  // .cookie can't see the backend's Set-Cookie across origins.
+  if (response && typeof response.csrfToken === "string") {
+    setCsrfToken(response.csrfToken);
+  }
+  const user = response && response.csrfToken ? { ...response, csrfToken: undefined } : response;
   return setCurrentUser(user || null);
 };
 
@@ -46,6 +53,7 @@ export const logout = async () => {
   } catch (err) {
     console.warn("Logout request failed", err);
   }
+  clearCsrfToken();
   resetStoreSettingsCache();
   return setCurrentUser(null);
 };
