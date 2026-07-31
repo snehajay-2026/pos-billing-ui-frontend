@@ -536,6 +536,45 @@ const HotelBilling = () => {
       setTables(defaultHotelTables);
     };
     loadTables();
+
+    // Cross-device sync: overlay any active 'booked' dining tables from the
+    // server onto the local state. The backend /api/hotel/bookings is the
+    // source of truth — locally-cached state is used as a starting point
+    // and any server-side booking is applied on top.
+    const loadBookingsOverlay = async () => {
+      try {
+        const bookings = await hotelService.listBookings({ kind: "dining", status: "booked" });
+        if (!Array.isArray(bookings) || bookings.length === 0) return;
+        setTables((prev) => {
+          const byId = new Map(prev.map((t) => [String(t.id), t]));
+          bookings.forEach((b) => {
+            const id = String(b.tableId || b.id);
+            if (!id) return;
+            const existing = byId.get(id) || { id: b.tableId, name: b.tableName || id };
+            byId.set(id, {
+              ...existing,
+              id: b.tableId,
+              name: b.tableName || existing.name,
+              zone: b.zone || existing.zone,
+              guest: b.guestName || existing.guest,
+              customerMobile: b.customerMobile || existing.customerMobile,
+              partySize: b.partySize || existing.partySize,
+              orderSummary: b.orderSummary || existing.orderSummary,
+              orderedMenuItems: b.orderedMenuItems || existing.orderedMenuItems,
+              checkInDate: b.checkInDate || existing.checkInDate,
+              checkInTime: b.checkInTime || existing.checkInTime,
+              status: "booked",
+              _persisted: true,
+              _bookedAt: b.updatedAt || b.createdAt,
+            });
+          });
+          return Array.from(byId.values());
+        });
+      } catch {
+        /* network blip on initial mount — keep local state */
+      }
+    };
+    loadBookingsOverlay();
     const loadDiningBills = async () => {
       try {
         const bills = await hotelService.getDiningBills();
@@ -618,6 +657,42 @@ const HotelBilling = () => {
       }
     };
     loadRooms();
+
+    // Cross-device sync: overlay any active 'booked' lodging rooms from
+    // the server onto the local state. /api/hotel/bookings is the source
+    // of truth — multiple devices in the same store see each other's
+    // bookings.
+    const loadRoomBookingsOverlay = async () => {
+      try {
+        const bookings = await hotelService.listBookings({ kind: "lodging", status: "booked" });
+        if (!Array.isArray(bookings) || bookings.length === 0) return;
+        setLodgingRooms((prev) => {
+          const byKey = new Map(prev.map((r) => [String(r.id || r.roomId || r.number), r]));
+          bookings.forEach((b) => {
+            const key = String(b.roomId || b.roomNumber);
+            if (!key) return;
+            const existing = byKey.get(key) || { id: key, number: b.roomNumber || key };
+            byKey.set(key, {
+              ...existing,
+              id: b.roomId || existing.id,
+              number: b.roomNumber || existing.number || key,
+              guest: b.guestName || existing.guest,
+              customerMobile: b.customerMobile || existing.customerMobile,
+              checkInDate: b.checkInDate || existing.checkInDate,
+              checkInTime: b.checkInTime || existing.checkInTime,
+              expectedCheckOut: b.expectedCheckOut || existing.expectedCheckOut,
+              status: "booked",
+              _persisted: true,
+              _bookedAt: b.updatedAt || b.createdAt,
+            });
+          });
+          return Array.from(byKey.values());
+        });
+      } catch {
+        /* network blip on initial mount — keep local state */
+      }
+    };
+    loadRoomBookingsOverlay();
   }, [activeStore]);
 
   useEffect(() => {
@@ -976,10 +1051,22 @@ const HotelBilling = () => {
     });
     closeDiningTableBooking();
     try {
-      await hotelService.updateTable(
-        selectedDiningTable.id,
-        nextTables.find((table) => table.id === selectedDiningTable.id) || {}
-      );
+      // Persist the booking to MySQL via /api/hotel/bookings (the legacy
+      // PUT /api/hotel/tables/:id endpoint was a 501 catch-all — this
+      // call now reaches the real backend).
+      await hotelService.bookTable({
+        id: selectedDiningTable.id,
+        name: isEditingDiningTable ? editDiningTableName : selectedDiningTable.name,
+        zone: isEditingDiningTable ? editDiningTableZone : selectedDiningTable.zone,
+        partySize: Number(diningPartySize),
+        guest: sanitizedDiningGuestName,
+        customerMobile: diningCustomerMobile.trim(),
+        orderSummary,
+        orderedMenuItems: selectedDiningMenus,
+        checkInDate: resolvedCheckInDate,
+        checkInTime: resolvedCheckInTime,
+        status: "booked",
+      });
     } catch (err) {
       showToast("error", "Failed to sync table booking to server.");
     }
@@ -1577,23 +1664,21 @@ const HotelBilling = () => {
       try {
         const nextRoom = updatedRooms.find((r) => String(r.id) === String(quickBookRoom.id));
         if (!nextRoom) return;
-        const persisted = nextRoom._persisted === true;
-        if (persisted) {
-          await hotelService.updateRoom(nextRoom.id, nextRoom);
-        } else {
-          const created = await hotelService.createRoom(nextRoom);
-          // Tag the local copy as persisted so future saves use PUT instead
-          // of POST.
-          if (created && (created.id || created._persisted)) {
-            setLodgingRooms((prev) =>
-              prev.map((r) =>
-                String(r.id) === String(nextRoom.id)
-                  ? { ...r, id: created.id || r.id, _persisted: true }
-                  : r
-              )
-            );
-          }
-        }
+        // Persist via /api/hotel/bookings — the legacy /api/hotel/rooms/:id
+        // PUT endpoint was a 501 catch-all; the new booking endpoint
+        // upserts by (kind='lodging', roomId) within the active store
+        // scope so every device sees the same reservation.
+        await hotelService.bookRoom({
+          id: nextRoom.id,
+          number: nextRoom.number || nextRoom.roomNumber,
+          guest: sanitizedGuestName,
+          customerMobile: qbCustomerMobile,
+          checkInDate: nextRoom.checkInDate || resolvedCheckInDate,
+          checkInTime: nextRoom.checkInTime || resolvedCheckInTime,
+          expectedCheckOut: nextRoom.expectedCheckOut,
+          status: "booked",
+          notes: nextRoom.notes,
+        });
       } catch (err) {
         console.warn("Failed to sync room booking to server", err);
       }
