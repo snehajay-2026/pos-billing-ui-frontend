@@ -1,0 +1,241 @@
+/* =====================================================================
+   WelcomeSplash.css — full-screen overlay shown briefly after login.
+   Class prefix: welcome-splash-
+   ===================================================================== */
+
+.welcome-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 3500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  cursor: pointer;
+  /* Fade in fast (180ms), hold, then fade out (handled by adding a
+     leaving class via JS — currently the splash is removed from the
+     DOM after the timeout, so the leaving animation triggers via
+     key-based remount). */
+  animation: welcome-splash-in 0.22s cubic-bezier(0.18, 0.85, 0.4, 1.12);
+}
+
+@keyframes welcome-splash-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.welcome-splash-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(99, 102, 241, 0.55), transparent 55%),
+    radial-gradient(circle at 82% 78%, rgba(236, 72, 153, 0.45), transparent 55%),
+    linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #6d28d9 100%);
+  /* Slow drift so the gradient feels alive while the splash is up. */
+  animation: welcome-splash-drift 6s ease-in-out infinite alternate;
+}
+
+@keyframes welcome-splash-drift {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+.welcome-splash-bg::after {
+  content: "";
+  position: absolute;
+  inset: -120px;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), transparent 60%);
+  pointer-events: none;
+}
+
+.welcome-splash-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 28px 30px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 32px 80px rgba(15, 23, 42, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  text-align: center;
+  animation: welcome-card-in 0.36s cubic-bezier(0.18, 0.85, 0.4, 1.12);
+}
+
+@keyframes welcome-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.welcome-splash-avatar {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+.welcome-splash-initials {
+  font-family: inherit;
+  letter-spacing: 0.02em;
+}
+
+.welcome-splash-check {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-size: 0.85rem;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  animation: welcome-check-pop 0.4s 0.18s cubic-bezier(0.18, 0.85, 0.4, 1.2) backwards;
+}
+
+@keyframes welcome-check-pop {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.welcome-splash-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.16));
+  color: #047857;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.welcome-splash-eyebrow svg {
+  font-size: 0.7rem;
+}
+
+.welcome-splash-title {
+  margin: 0 0 14px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.welcome-splash-title strong {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+}
+
+.welcome-splash-role {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 22px;
+  color: #475569;
+}
+
+.welcome-splash-role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #3730a3;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.welcome-splash-email {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  word-break: break-all;
+}
+
+.welcome-splash-progress {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: rgba(99, 102, 241, 0.16);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.welcome-splash-progress-bar {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #6366f1, #ec4899);
+  transform-origin: left center;
+  animation: welcome-progress 2.5s linear forwards;
+}
+
+@keyframes welcome-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.welcome-splash-hint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 480px) {
+  .welcome-splash-card {
+    padding: 30px 22px 24px;
+    max-width: 320px;
+  }
+  .welcome-splash-title {
+    font-size: 1.32rem;
+  }
+  .welcome-splash-avatar {
+    width: 84px;
+    height: 84px;
+    font-size: 1.55rem;
+  }
+}

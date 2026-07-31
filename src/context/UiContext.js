@@ -16,6 +16,11 @@ export const UiProvider = ({ children }) => {
   const [posMode, setPosMode] = useState(false);
   const [language, setLanguage] = useState(getInitialLanguage);
   const [toasts, setToasts] = useState([]);
+  // Full-screen welcome splash shown briefly after login. The splash
+  // overlays the page for ~2.5s while data is loading, so the user sees
+  // their avatar + name + role before they land on the dashboard/pos.
+  // `null` when hidden. State shape: { name, role, avatarName }
+  const [welcomeSplash, setWelcomeSplash] = useState(null);
   const [activeStore, setActiveStore] = useState(() => {
     try {
       return getActiveStoreContext();
@@ -37,6 +42,22 @@ export const UiProvider = ({ children }) => {
   };
 
   const removeToast = (id) => setToasts((s) => s.filter((x) => x.id !== id));
+
+  // Show the welcome splash. `user` is the response from /api/login,
+  // which already has name + role + email after our sanitize step.
+  const showWelcomeSplash = (user, timeout = 2500) => {
+    if (!user) return;
+    setWelcomeSplash({
+      name: user.name || (user.email || "").split("@")[0] || "there",
+      role: user.role || "USER",
+      email: user.email || "",
+    });
+    if (timeout > 0) {
+      window.setTimeout(() => setWelcomeSplash(null), timeout);
+    }
+  };
+
+  const dismissWelcomeSplash = () => setWelcomeSplash(null);
 
   useEffect(() => {
     localStorage.setItem("appLanguage", language);
@@ -69,6 +90,9 @@ export const UiProvider = ({ children }) => {
         toasts,
         showToast,
         removeToast,
+        welcomeSplash,
+        showWelcomeSplash,
+        dismissWelcomeSplash,
       }}
     >
       {children}

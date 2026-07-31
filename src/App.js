@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import InvoiceView from "./components/invoice/InvoiceView";
 import Layout from "./components/layout/Layout";
 import Toasts from "./components/common/Toasts";
+import WelcomeSplash from "./components/common/WelcomeSplash";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import RouteFallback from "./components/common/RouteFallback";
 import { getStoreSettings, loadStoreSettings } from "./services/storeSettingsService";
@@ -178,6 +179,7 @@ function App() {
       <ThemeListener />
       <SessionExpiredListener />
       <Toasts />
+      <WelcomeSplash />
       <AppErrorBoundaryWithLocation>
         <Suspense fallback={<RouteFallback />}>
           <Routes>

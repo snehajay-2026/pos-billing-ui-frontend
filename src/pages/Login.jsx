@@ -22,7 +22,7 @@ import "./Login.css";
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { locale, languageOptions, language, setLanguage, showToast } = useUi();
+  const { locale, languageOptions, language, setLanguage, showWelcomeSplash } = useUi();
 
   const sessionExpired = searchParams.get("reason") === "expired";
 
@@ -87,7 +87,7 @@ const Login = () => {
         console.warn("Failed to load store settings", err);
       }
 
-      showToast("success", `Welcome back, ${user.name || user.email?.split("@")[0] || "user"}!`);
+      showWelcomeSplash(user);
       setLoginError("");
       // Clear the session-expired flash flag so it doesn't reappear if the
       // user navigates back to /login later in this session.
