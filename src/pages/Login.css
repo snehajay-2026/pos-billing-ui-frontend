@@ -634,6 +634,9 @@
   .lg-page {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr auto;
+    /* Drop desktop overflow:hidden so the trademark strip + auth card
+       don't get clipped on phones where content can exceed 100vh. */
+    overflow: visible;
     background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   }
 
@@ -641,6 +644,7 @@
      Sits at the bottom of the page, centered, with a soft top border
      so it reads as a footer. */
   .lg-trademark {
+    display: block;
     padding: 16px 22px 22px;
     text-align: center;
     color: #64748b;
