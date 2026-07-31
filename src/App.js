@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loadCurrentUser } from "./services/authService";
 import Login from "./pages/Login";
@@ -92,15 +92,22 @@ const AppErrorBoundaryWithLocation = ({ children }) => {
 // any session-protected request returns 401. Redirects to /login with a
 // ?reason=expired flag the Login page surfaces as a flash alert.
 //
-// We skip the redirect when we're already on a public page — this avoids
-// loops during the App bootstrap (loadCurrentUser hits /api/auth/user and
-// gets a 401 on every cold start) and on a normal wrong-password login
-// attempt (where api.js already excludes /api/login from the trigger set).
+// Safari (and other privacy-strict browsers) can briefly drop the
+// third-party session cookie on cross-origin deploys (Vercel -> Render).
+// A single momentary 401 is no longer enough to kick the user out: we
+// require TWO 401s within a 6-second window, then redirect. This stops
+// page reloads, fresh tabs, and other transient cookie misses from
+// forcing a re-login while still catching a truly dead session.
 const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/password-reset"];
+const SESSION_EXPIRY_DEBOUNCE_MS = 6000;
+const SESSION_EXPIRY_THRESHOLD = 2;
 
 const SessionExpiredListener = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const expiryCountRef = useRef(0);
+  const firstExpiryAtRef = useRef(0);
+  const redirectTimerRef = useRef(null);
 
   useEffect(() => {
     const handler = () => {
@@ -109,12 +116,57 @@ const SessionExpiredListener = () => {
         path === "/" ||
         PUBLIC_PATH_PREFIXES.some((p) => path === p || path.startsWith(p + "/"))
       ) {
+        // Already on a public page — no-op.
+        expiryCountRef.current = 0;
+        firstExpiryAtRef.current = 0;
         return;
       }
-      navigate("/login?reason=expired", { replace: true });
+
+      const now = Date.now();
+      // Reset the counter if the gap from the previous 401 is too long.
+      if (now - firstExpiryAtRef.current > SESSION_EXPIRY_DEBOUNCE_MS) {
+        expiryCountRef.current = 1;
+        firstExpiryAtRef.current = now;
+      } else {
+        expiryCountRef.current += 1;
+      }
+
+      if (expiryCountRef.current >= SESSION_EXPIRY_THRESHOLD) {
+        // Two or more 401s within 6s -> session is genuinely dead.
+        if (redirectTimerRef.current) {
+          window.clearTimeout(redirectTimerRef.current);
+          redirectTimerRef.current = null;
+        }
+        expiryCountRef.current = 0;
+        firstExpiryAtRef.current = 0;
+        navigate("/login?reason=expired", { replace: true });
+        return;
+      }
+
+      // Below the threshold: schedule a redirect after the debounce
+      // window in case no further 401 arrives (e.g. last 401 of a dead
+      // session). If another 401 arrives within the window, the
+      // threshold branch above fires instead.
+      if (redirectTimerRef.current) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+      redirectTimerRef.current = window.setTimeout(() => {
+        if (expiryCountRef.current > 0) {
+          expiryCountRef.current = 0;
+          firstExpiryAtRef.current = 0;
+          navigate("/login?reason=expired", { replace: true });
+        }
+        redirectTimerRef.current = null;
+      }, SESSION_EXPIRY_DEBOUNCE_MS);
     };
     window.addEventListener("sessionExpired", handler);
-    return () => window.removeEventListener("sessionExpired", handler);
+    return () => {
+      window.removeEventListener("sessionExpired", handler);
+      if (redirectTimerRef.current) {
+        window.clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
   }, [navigate, location.pathname]);
 
   return null;
