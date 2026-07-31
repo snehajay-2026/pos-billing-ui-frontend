@@ -15,7 +15,15 @@ export const isAuthLoading = () => currentUser === undefined;
 
 export const loadCurrentUser = async () => {
   try {
-    const user = await apiGet("/api/auth/user");
+    // /api/auth/user echoes a fresh CSRF token on every response. Capture
+    // it so any tab that re-validates the session (cookie still valid,
+    // but sessionStorage was empty after a hard refresh or new tab)
+    // has a valid token to send on the next POST.
+    const response = await apiGet("/api/auth/user");
+    if (response && typeof response.csrfToken === "string") {
+      setCsrfToken(response.csrfToken);
+    }
+    const user = response && response.csrfToken ? { ...response, csrfToken: undefined } : response;
     return setCurrentUser(user || null);
   } catch (err) {
     setCurrentUser(null);
