@@ -1,0 +1,428 @@
+/* =====================================================================
+   RetailPrintInvoice.css — modern preview/print styles for retail
+   invoice. Targets #retail-print-invoice (set on the root div). Also
+   keeps the print-only rules from InvoiceView.css working.
+
+   Layout intent:
+     - Fixed 80mm column for the thermal receipt (matches real POS
+       paper width).
+     - On the screen preview (when embedded inside the invoice card)
+       the receipt sits centered with soft shadow + generous padding.
+     - On mobile, the columns rebalance so the rate column doesn't
+       get squeezed into 2 characters.
+   ===================================================================== */
+
+.rpi-root {
+  font-family:
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #0f172a;
+  background: #ffffff;
+  width: 80mm;
+  max-width: 80mm;
+  margin: 0 auto;
+  padding: 14px 14px 18px;
+  border-radius: 14px;
+  box-sizing: border-box;
+  box-shadow:
+    0 14px 40px rgba(15, 23, 42, 0.12),
+    0 2px 0 rgba(255, 255, 255, 0.7) inset;
+  position: relative;
+}
+
+/* COPY TYPE */
+.rpi-copy {
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  padding: 4px 0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+.rpi-copy.is-original {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.18));
+  color: #047857;
+}
+.rpi-copy.is-duplicate {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.18), rgba(185, 28, 28, 0.18));
+  color: #b91c1c;
+}
+
+/* HEADER */
+.rpi-header {
+  text-align: center;
+  margin-bottom: 14px;
+}
+.rpi-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  margin: 0 auto 8px;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+}
+.rpi-logo-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  margin: 0 auto 8px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  color: #ffffff;
+  font-size: 1.5rem;
+  box-shadow: 0 6px 14px rgba(99, 102, 241, 0.32);
+}
+.rpi-store-name {
+  margin: 0 0 4px;
+  font-size: 1.06rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.rpi-store-line {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* INVOICE META */
+.rpi-meta {
+  border-top: 1px dashed #cbd5e1;
+  border-bottom: 1px dashed #cbd5e1;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  font-size: 0.72rem;
+}
+.rpi-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  gap: 8px;
+}
+.rpi-meta-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.rpi-meta-ico {
+  font-size: 0.66rem;
+  color: #6366f1;
+}
+.rpi-meta-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* CUSTOMER */
+.rpi-customer {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.04));
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+}
+.rpi-customer-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6366f1;
+  margin-bottom: 2px;
+}
+.rpi-customer-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.rpi-customer-sub {
+  font-size: 0.7rem;
+  color: #475569;
+  margin-top: 2px;
+}
+
+/* ITEMS TABLE — uses CSS grid for predictable column widths */
+.rpi-items-wrap {
+  margin-bottom: 10px;
+}
+.rpi-items-head {
+  display: grid;
+  grid-template-columns: 1.6fr 0.55fr 0.85fr 0.95fr;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  border-bottom: 1px solid #cbd5e1;
+}
+.rpi-items-head .rpi-item-name {
+  text-align: left;
+}
+.rpi-items-head .rpi-item-qty {
+  text-align: center;
+}
+.rpi-items-head .rpi-item-rate {
+  text-align: right;
+}
+.rpi-items-head .rpi-item-total {
+  text-align: right;
+}
+
+.rpi-item-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.55fr 0.85fr 0.95fr;
+  gap: 4px;
+  padding: 7px 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-size: 0.78rem;
+  align-items: start;
+}
+.rpi-item-row:last-of-type {
+  border-bottom: none;
+}
+.rpi-item-name {
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rpi-item-meta {
+  font-size: 0.62rem;
+  color: #6366f1;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.rpi-item-qty {
+  text-align: center;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+.rpi-item-rate {
+  text-align: right;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+}
+.rpi-item-total {
+  text-align: right;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.rpi-items-foot {
+  text-align: right;
+  font-size: 0.66rem;
+  color: #64748b;
+  font-weight: 600;
+  padding: 4px 0 0;
+}
+
+/* DARK DIVIDER above totals */
+.rpi-divider {
+  height: 0;
+  border-top: 2.5px solid #0f172a;
+  margin: 10px 0 12px;
+}
+
+/* TOTALS */
+.rpi-totals {
+  font-size: 0.84rem;
+}
+.rpi-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  gap: 8px;
+}
+.rpi-total-row > span {
+  color: #475569;
+}
+.rpi-total-row > strong {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+.rpi-total-row-saved {
+  font-size: 0.74rem;
+  color: #15803d;
+}
+.rpi-total-row-saved > span {
+  color: #15803d !important;
+}
+.rpi-total-row-saved > strong {
+  color: #15803d !important;
+}
+.rpi-total-row-grand {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff !important;
+  margin: 8px -8px 0;
+  padding: 10px 12px !important;
+  border-radius: 10px;
+  font-size: 0.96rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.32);
+}
+.rpi-total-row-grand > span,
+.rpi-total-row-grand > strong {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+/* SPLIT PAYMENT */
+.rpi-split {
+  margin-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 8px;
+  font-size: 0.74rem;
+}
+.rpi-split-head {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6366f1;
+  margin-bottom: 4px;
+}
+.rpi-split-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+.rpi-split-row-strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+.rpi-split-row-saved {
+  color: #15803d;
+  font-weight: 700;
+}
+
+/* QR */
+.rpi-qr {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.rpi-qr-block {
+  text-align: center;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.rpi-qr-label {
+  margin-top: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+/* FOOTER */
+.rpi-foot {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+.rpi-foot-thanks {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #047857;
+}
+.rpi-foot-thanks svg {
+  font-size: 0.74rem;
+}
+.rpi-foot-meta {
+  margin-top: 4px;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* =====================================================================
+   Mobile preview tweaks — when the preview card is shown in the
+   invoice view on a phone, give the receipt a softer drop shadow and
+   slightly relaxed column widths so Rate doesn't get squeezed.
+   ===================================================================== */
+
+@media (max-width: 640px) {
+  .rpi-root {
+    width: 100%;
+    max-width: 360px;
+    padding: 16px 16px 20px;
+  }
+  .rpi-items-head,
+  .rpi-item-row {
+    grid-template-columns: 1.4fr 0.6fr 0.9fr 1fr;
+    gap: 6px;
+  }
+  .rpi-store-name {
+    font-size: 1.12rem;
+  }
+  .rpi-logo,
+  .rpi-logo-fallback {
+    width: 64px;
+    height: 64px;
+  }
+  .rpi-total-row-grand {
+    font-size: 1.02rem;
+  }
+}
+
+/* =====================================================================
+   Print overrides — strip the preview styling so the thermal receipt
+   fits on 80mm paper. Hidden outside @media print.
+   ===================================================================== */
+
+@media print {
+  .rpi-root {
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    padding: 4mm !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    border-radius: 0 !important;
+  }
+  .rpi-total-row-grand {
+    box-shadow: none !important;
+  }
+  .rpi-qr-block {
+    border: none !important;
+    padding: 4px 0 !important;
+  }
+  /* Compact tables for paper. */
+  .rpi-items-head,
+  .rpi-item-row {
+    grid-template-columns: 1.6fr 0.55fr 0.85fr 0.95fr !important;
+  }
+  .rpi-divider {
+    border-top-color: #000 !important;
+  }
+}
