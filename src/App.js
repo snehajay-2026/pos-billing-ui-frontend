@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loadCurrentUser } from "./services/authService";
+import { getUser, getActiveStoreContext } from "./utils/auth";
 import { API_BASE } from "./services/api";
 import {
   connectRealtimeSync,
@@ -226,45 +227,25 @@ function App() {
   // and the active store is known. Re-open when the store changes; close
   // on logout. Cross-device sync: hotel bookings, room bookings, live
   // bills, and occupancy changes broadcast to every connected tab.
+  //
+  // Uses the real getUser() helper (which reads window.__CURRENT_USER__
+  // set by authService.setCurrentUser) — NOT localStorage, which is
+  // never written. The previous implementation read a non-existent
+  // "pos_billing_user" key from localStorage and silently bailed,
+  // leaving every device disconnected from the SSE stream.
   useEffect(() => {
-    let scopeStoreType = null;
-    let scopeStoreId = null;
-
-    const readScope = () => {
-      try {
-        const stored = window.localStorage.getItem("active_store_context");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          scopeStoreType = parsed?.storeType || null;
-          scopeStoreId = parsed?.storeId || null;
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-      try {
-        const auth = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
-        scopeStoreType = auth?.storeType || null;
-        scopeStoreId = auth?.storeId || auth?.storeType || null;
-      } catch {
-        /* ignore */
-      }
-    };
-
     const connect = () => {
       if (!API_BASE) return;
-      const user = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
+      const user = getUser();
       if (!user || !user.email || user.email === "nouser") return;
-      readScope();
-      connectRealtimeSync({
-        apiBase: API_BASE,
-        storeType: scopeStoreType,
-        storeId: scopeStoreId,
-      });
+      const activeStore = getActiveStoreContext();
+      const storeType = activeStore?.storeType || user?.storeType || null;
+      const storeId = activeStore?.storeId || user?.storeId || null;
+      connectRealtimeSync({ apiBase: API_BASE, storeType, storeId });
     };
 
     const onAuthChanged = () => {
-      const user = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
+      const user = getUser();
       if (!user || !user.email || user.email === "nouser") {
         disconnectRealtimeSync();
       } else {
@@ -276,16 +257,16 @@ function App() {
 
     window.addEventListener("authChanged", onAuthChanged);
     window.addEventListener("activeStoreChanged", onStoreChanged);
-    window.addEventListener("storage", onAuthChanged);
 
     // Initial connect if the user is already logged in (e.g. hard refresh
     // with a valid session — loadCurrentUser already happened above).
-    connect();
+    // Also guard against the effect running before bootstrapApp finishes
+    // by checking window.__CURRENT_USER__ directly.
+    if (loaded) connect();
 
     return () => {
       window.removeEventListener("authChanged", onAuthChanged);
       window.removeEventListener("activeStoreChanged", onStoreChanged);
-      window.removeEventListener("storage", onAuthChanged);
     };
   }, [loaded]);
 

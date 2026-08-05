@@ -126,8 +126,11 @@ export const connectRealtimeSync = ({ apiBase, storeType, storeId }) => {
     return;
   }
   const scopeKey = `${storeType || ""}:${storeId || ""}`;
-  // Skip reconnect if the scope hasn't changed and a connection is live.
-  if (activeSource && activeScopeKey === scopeKey) return;
+  // Skip reconnect if the scope hasn't changed and the connection is
+  // already active (EventSource readyState === 1). If the source is
+  // closed (e.g. initial connect was a no-op because the user wasn't
+  // ready yet), reopen it.
+  if (activeSource && activeSource.readyState === EventSource.OPEN && activeScopeKey === scopeKey) return;
 
   const params = new URLSearchParams();
   if (storeType) params.append("storeType", storeType);
