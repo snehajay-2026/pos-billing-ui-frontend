@@ -39,6 +39,7 @@ import { findRoomByReservationCode } from "../components/hotel/reservationCodes"
 import { lateCheckOutMinutes } from "../components/hotel/folio";
 import RoomFolioDrawer from "../components/hotel/RoomFolioDrawer";
 import FloorRoomCard from "../components/hotel/FloorRoomCard";
+import { onRealtimeSyncEvent } from "../services/realtimeSync";
 import { getStoreSettings } from "../services/storeSettingsService";
 
 const WAITING_QUEUE_KEY = "hotel_lodging_waiting_list";
@@ -351,6 +352,51 @@ const HotelLodgingPage = () => {
       mounted = false;
     };
   }, [activeStore]);
+
+  // Real-time sync: listen for `booking` events (lodging) and merge them
+  // into the local `rooms` state. A booking made on any device appears
+  // on every other device's Room Booking Card instantly.
+  useEffect(() => {
+    const unsub = onRealtimeSyncEvent((detail) => {
+      const event = detail?.event;
+      if (!event) return;
+      // Only care about lodging booking upserts/checkouts.
+      if (event.kind === "booking" && event.booking?.kind === "lodging") {
+        const b = event.booking;
+        setRooms((prev) => {
+          const byKey = new Map(
+            prev.map((r) => [String(r.id || r.roomId || r.number), r])
+          );
+          const key = String(b.roomId || b.roomNumber);
+          if (!key) return prev;
+          const existing = byKey.get(key) || { id: key, number: b.roomNumber || key };
+          const isCheckedOut = event.action === "checked_out";
+          byKey.set(key, {
+            ...existing,
+            id: b.roomId || existing.id,
+            number: b.roomNumber || existing.number,
+            roomNumber: b.roomNumber || existing.roomNumber,
+            guest: b.guestName || existing.guest,
+            customerMobile: b.customerMobile || existing.customerMobile,
+            checkInDate: b.checkInDate || existing.checkInDate,
+            checkInTime: b.checkInTime || existing.checkInTime,
+            expectedCheckOut: b.expectedCheckOut || existing.expectedCheckOut,
+            status: isCheckedOut ? "vacant" : "occupied",
+            _persisted: true,
+          });
+          return Array.from(byKey.values());
+        });
+      }
+      // Also listen for live_bill updates — the Room Booking Card shows
+      // the current bill total, so a folio change on another device should
+      // push the updated bill to every room card.
+      if (event.kind === "live_bill" && event.data?.tableId) {
+        // live_bill events carry tableId (dining) — disregard here since
+        // this is the lodging page.
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const onDraftStart = (e) => {
