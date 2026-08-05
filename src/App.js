@@ -228,19 +228,39 @@ function App() {
   // on logout. Cross-device sync: hotel bookings, room bookings, live
   // bills, and occupancy changes broadcast to every connected tab.
   //
-  // Uses the real getUser() helper (which reads window.__CURRENT_USER__
-  // set by authService.setCurrentUser) — NOT localStorage, which is
-  // never written. The previous implementation read a non-existent
-  // "pos_billing_user" key from localStorage and silently bailed,
-  // leaving every device disconnected from the SSE stream.
+  // Channel matching caveat: booking events are published with
+  // storeType='hotel' AND storeId='hotel' — the frontend must connect
+  // with the same storeId to receive events. getActiveStoreContext()
+  // sometimes returns null storeId for users whose own storeType is
+  // 'hotel' but no explicit store context is set. We normalize: if the
+  // storeType is 'hotel' and storeId is missing/falsy, use storeType as
+  // storeId (matching the backend's default scope logic).
   useEffect(() => {
     const connect = () => {
       if (!API_BASE) return;
       const user = getUser();
       if (!user || !user.email || user.email === "nouser") return;
       const activeStore = getActiveStoreContext();
-      const storeType = activeStore?.storeType || user?.storeType || null;
-      const storeId = activeStore?.storeId || user?.storeId || null;
+      const rawType = activeStore?.storeType || user?.storeType || null;
+      const rawId = activeStore?.storeId || user?.storeId || null;
+      // Scope detection logic:
+      // 1. If there's an explicit active store context (Super Owner has
+      //    switched into a vertical), use it exactly — the backend
+      //    publishes booking events to bookings:{storeType}:{storeId}.
+      // 2. If the user's own storeType is 'system' (Super Owner at the
+      //    global level, no store context), pass null/null so the SSE
+      //    handler subscribes to the '*' channel and receives ALL events
+      //    from every store. This is critical: booking events for hotel
+      //    go to bookings:hotel:hotel, never to bookings:system:system.
+      // 3. Normal users (hotel / retail / etc.): use their own storeType
+      //    and default storeId to storeType if missing.
+      const storeType =
+        activeStore?.storeType ||
+        (user?.storeType && user.storeType !== "system" ? user.storeType : null);
+      const storeId =
+        activeStore?.storeId ||
+        (storeType && (rawId || storeType)) ||
+        null;
       connectRealtimeSync({ apiBase: API_BASE, storeType, storeId });
     };
 
@@ -260,8 +280,6 @@ function App() {
 
     // Initial connect if the user is already logged in (e.g. hard refresh
     // with a valid session — loadCurrentUser already happened above).
-    // Also guard against the effect running before bootstrapApp finishes
-    // by checking window.__CURRENT_USER__ directly.
     if (loaded) connect();
 
     return () => {
@@ -269,9 +287,6 @@ function App() {
       window.removeEventListener("activeStoreChanged", onStoreChanged);
     };
   }, [loaded]);
-
-    bootstrapApp();
-  }, []);
 
   if (!loaded) {
     return <div className="loading-screen">Loading…</div>;

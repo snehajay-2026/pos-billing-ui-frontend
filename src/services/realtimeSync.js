@@ -60,7 +60,10 @@ const scheduleReconnect = (url, scopeKey) => {
 
 const connect = (url, scopeKey) => {
   if (!isBrowser || !url) return;
-  if (activeSource && activeScopeKey === scopeKey) return; // already connected for this scope
+  // Only skip if the connection is genuinely open for the same scope.
+  // A closed/errored EventSource still has a non-null reference but
+  // readyState === CLOSED (2) — we must reopen it.
+  if (activeSource && activeSource.readyState !== EventSource.CLOSED && activeScopeKey === scopeKey) return;
   close();
   activeScopeKey = scopeKey;
   activeUrl = url;
