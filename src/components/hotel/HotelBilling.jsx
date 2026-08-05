@@ -4,6 +4,7 @@ import { getProducts, updateProduct as updateProductStockApi } from "../../servi
 import { saveInvoice } from "../../services/invoiceService";
 import { getUser } from "../../utils/auth";
 import hotelService from "../../services/hotelService";
+import { onRealtimeSyncEvent } from "../../services/realtimeSync";
 import { useUi } from "../../context/UiContext";
 import {
   FaBed,
@@ -694,6 +695,87 @@ const HotelBilling = () => {
     };
     loadRoomBookingsOverlay();
   }, [activeStore]);
+
+  // Real-time sync listener — merges incoming SSE events into the local
+  // tables / rooms state so a booking made on another device shows up
+  // instantly on this one.
+  useEffect(() => {
+    const unsub = onRealtimeSyncEvent((detail) => {
+      const event = detail?.event;
+      if (!event) return;
+
+      // Booking upserted (created or updated) — merge into tables or rooms.
+      if (event.kind === "booking" && event.booking) {
+        const b = event.booking;
+        if (b.kind === "dining") {
+          setTables((prev) => {
+            const byId = new Map(prev.map((t) => [String(t.id), t]));
+            const id = String(b.tableId || b.id);
+            const existing = byId.get(id) || { id };
+            byId.set(id, {
+              ...existing,
+              id: b.tableId || b.id,
+              name: b.tableName || existing.name,
+              zone: b.zone || existing.zone,
+              guest: b.guestName || existing.guest,
+              customerMobile: b.customerMobile || existing.customerMobile,
+              partySize: b.partySize || existing.partySize,
+              orderSummary: b.orderSummary || existing.orderSummary,
+              orderedMenuItems: b.orderedMenuItems || existing.orderedMenuItems,
+              status: event.action === "checked_out" ? "available" : "booked",
+              _persisted: true,
+            });
+            return Array.from(byId.values());
+          });
+        } else if (b.kind === "lodging") {
+          setLodgingRooms((prev) => {
+            const byKey = new Map(
+              prev.map((r) => [String(r.id || r.roomId || r.number), r])
+            );
+            const key = String(b.roomId || b.roomNumber);
+            const existing = byKey.get(key) || { id: key };
+            byKey.set(key, {
+              ...existing,
+              id: b.roomId || existing.id,
+              number: b.roomNumber || existing.number,
+              guest: b.guestName || existing.guest,
+              customerMobile: b.customerMobile || existing.customerMobile,
+              checkInDate: b.checkInDate || existing.checkInDate,
+              checkInTime: b.checkInTime || existing.checkInTime,
+              expectedCheckOut: b.expectedCheckOut || existing.expectedCheckOut,
+              status: event.action === "checked_out" ? "available" : "booked",
+              _persisted: true,
+            });
+            return Array.from(byKey.values());
+          });
+        }
+      }
+
+      // Live bill updated — mark the table as having an active bill.
+      if (event.kind === "live_bill") {
+        const d = event.data;
+        if (event.action === "live_bill_updated" && d?.tableId) {
+          setTables((prev) =>
+            prev.map((t) =>
+              String(t.id) === String(d.tableId)
+                ? { ...t, bill: d.bill, hasLiveBill: true }
+                : t
+            )
+          );
+        }
+        if (event.action === "live_bill_cleared" && d?.tableId) {
+          setTables((prev) =>
+            prev.map((t) =>
+              String(t.id) === String(d.tableId)
+                ? { ...t, bill: null, hasLiveBill: false }
+                : t
+            )
+          );
+        }
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const onStorage = (e) => {

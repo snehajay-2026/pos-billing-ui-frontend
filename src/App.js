@@ -1,6 +1,11 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loadCurrentUser } from "./services/authService";
+import { API_BASE } from "./services/api";
+import {
+  connectRealtimeSync,
+  disconnectRealtimeSync,
+} from "./services/realtimeSync";
 import Login from "./pages/Login";
 import PasswordReset from "./pages/PasswordReset";
 import RequireAuth from "./components/common/RequireAuth";
@@ -213,6 +218,76 @@ function App() {
       setLoaded(true);
       window.dispatchEvent(new Event("themeChanged"));
     };
+
+    bootstrapApp();
+  }, []);
+
+  // SSE bootstrap: open a real-time channel as soon as the user signs in
+  // and the active store is known. Re-open when the store changes; close
+  // on logout. Cross-device sync: hotel bookings, room bookings, live
+  // bills, and occupancy changes broadcast to every connected tab.
+  useEffect(() => {
+    let scopeStoreType = null;
+    let scopeStoreId = null;
+
+    const readScope = () => {
+      try {
+        const stored = window.localStorage.getItem("active_store_context");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          scopeStoreType = parsed?.storeType || null;
+          scopeStoreId = parsed?.storeId || null;
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const auth = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
+        scopeStoreType = auth?.storeType || null;
+        scopeStoreId = auth?.storeId || auth?.storeType || null;
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const connect = () => {
+      if (!API_BASE) return;
+      const user = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
+      if (!user || !user.email || user.email === "nouser") return;
+      readScope();
+      connectRealtimeSync({
+        apiBase: API_BASE,
+        storeType: scopeStoreType,
+        storeId: scopeStoreId,
+      });
+    };
+
+    const onAuthChanged = () => {
+      const user = JSON.parse(window.localStorage.getItem("pos_billing_user") || "null");
+      if (!user || !user.email || user.email === "nouser") {
+        disconnectRealtimeSync();
+      } else {
+        connect();
+      }
+    };
+
+    const onStoreChanged = () => connect();
+
+    window.addEventListener("authChanged", onAuthChanged);
+    window.addEventListener("activeStoreChanged", onStoreChanged);
+    window.addEventListener("storage", onAuthChanged);
+
+    // Initial connect if the user is already logged in (e.g. hard refresh
+    // with a valid session — loadCurrentUser already happened above).
+    connect();
+
+    return () => {
+      window.removeEventListener("authChanged", onAuthChanged);
+      window.removeEventListener("activeStoreChanged", onStoreChanged);
+      window.removeEventListener("storage", onAuthChanged);
+    };
+  }, [loaded]);
 
     bootstrapApp();
   }, []);
