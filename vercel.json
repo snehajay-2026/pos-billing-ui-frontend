@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/((?!static/|favicon\\.ico|logo192\\.png|logo512\\.png|manifest\\.json|robots\\.txt).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
