@@ -2,6 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { getOrders } from "../services/orderService";
 import { getProducts } from "../services/productService";
 import { getUser } from "../utils/auth";
+import { onRealtimeSyncEvent } from "../services/realtimeSync";
+
+// Window event raised when a backend write crossed the low-stock threshold.
+// Carried as detail = { productName, stock, lowStock } so listeners (toasts,
+// notification bell) can render without re-deriving from full product data.
+const LOW_STOCK_EVENT = "low_stock_alert";
 
 // True when the user is signed in. We don't fetch products/orders for an
 // anonymous visitor — every call would 401 and just spam the console.
@@ -141,6 +147,118 @@ export const DataProvider = ({ children }) => {
     };
   }, [refresh]);
 
+  // SSE bridge: refresh product/order data on any backend write that the
+  // bell / dashboards care about (invoices, stock movements). Cheap because
+  // refresh() is idempotent and in-flight guarded. We deliberately ignore
+  // booking + hotel events here — those components refresh themselves.
+  //
+  // Invoice events also fire the existing `dataUpdated` window event so any
+  // page listening for it (Dashboard's todaySales/cashSales/upiSales tiles,
+  // InvoiceList, etc.) re-fetches without a 60s wait.
+  // Booking events wake the hotel-side stats so Dashboard's
+  // Sellable / In-House / Dirty / Due-Out tiles update on the next device.
+  //
+  // Optional sound: plays a short Web Audio beep per event for users who
+  // opted in via Settings. Skipped when the tab is hidden (no point
+  // beeping at someone who isn't looking) and when the event was created
+  // by the same user (don't beep at yourself).
+  useEffect(() => {
+    const unsub = onRealtimeSyncEvent((detail) => {
+      const kind = detail?.kind;
+      if (kind !== "invoice" && kind !== "stock" && kind !== "booking") return;
+
+      // Sound: only when tab is visible AND the event came from another
+      // user (the SSE server includes `actor` for invoice events; booking
+      // events also include `createdBy`). Falls back to "play anyway" when
+      // no actor info is present, since the server still scopes events
+      // per-store and this user is one of many.
+      const isVisible = typeof document === "undefined" || !document.hidden;
+      if (isVisible) {
+        try {
+          const actor =
+            detail?.event?.invoice?.createdBy ||
+            detail?.event?.booking?.createdBy ||
+            detail?.event?.actor;
+          // Best-effort self-suppression: skip the sound when the acting
+          // user matches the currently signed-in user. We don't have a
+          // global user store here, so we read it lazily.
+          const currentUser =
+            typeof window !== "undefined" && window.__POS_USER__?.email
+              ? window.__POS_USER__.email
+              : null;
+          const isSelf =
+            currentUser &&
+            actor &&
+            String(actor).toLowerCase() === String(currentUser).toLowerCase();
+          if (!isSelf) {
+            const kindForSound =
+              kind === "stock" && detail?.event?.crossedLowStock ? "low-stock" : kind;
+            // Lazy import so the bridge doesn't pull in audio code unless
+            // a sound is actually requested.
+            import("../services/soundNotifier").then(({ playSound }) => {
+              try {
+                playSound(kindForSound);
+              } catch {
+                /* ignore */
+              }
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Low-stock breach → broadcast a window event the toast component
+      // listens for. Dedupe by product id so a flood of decrements (e.g.
+      // many line items on one invoice) collapses to one toast per product.
+      if (kind === "stock" && detail?.event?.crossedLowStock) {
+        const productId = detail?.event?.product?.id;
+        const productName = detail?.event?.product?.name || "Item";
+        const stock = Number(detail?.event?.product?.stock) || 0;
+        const lowStock = Number(detail?.event?.product?.lowStock) || 0;
+        if (!productId) return;
+        try {
+          window.dispatchEvent(
+            new CustomEvent(LOW_STOCK_EVENT, {
+              detail: { productId, productName, stock, lowStock },
+            })
+          );
+        } catch {
+          /* SSR */
+        }
+      }
+
+      // Invoice checkout elsewhere in the store → let every page that
+      // listens for "dataUpdated" refresh its own copy.
+      if (kind === "invoice") {
+        try {
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "invoices" }));
+        } catch {
+          /* SSR */
+        }
+      }
+
+      // Booking create/update/checkout elsewhere → notify hotel stats
+      // listeners. Two events for compatibility:
+      //   - `hotel_lodging_rooms_updated` is the legacy per-app event the
+      //     Dashboard's loadHotelHkStats already wires up.
+      //   - `dataUpdated: "hotel-rooms"` is the generic event used by other
+      //     pages (e.g. HotelLodgingPage) so they also wake up.
+      if (kind === "booking") {
+        try {
+          window.dispatchEvent(new Event("hotel_lodging_rooms_updated"));
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "hotel-rooms" }));
+        } catch {
+          /* SSR */
+        }
+      }
+
+      // Pull fresh products so the bell badge updates without a 60s wait.
+      refresh();
+    });
+    return unsub;
+  }, [refresh]);
+
   const value = {
     products,
     orders,
@@ -160,3 +278,6 @@ export const useDataContext = () => {
   }
   return ctx;
 };
+
+// Re-export so the toast bridge can import the event name from one place.
+export { LOW_STOCK_EVENT };

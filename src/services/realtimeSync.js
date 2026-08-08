@@ -63,7 +63,8 @@ const connect = (url, scopeKey) => {
   // Only skip if the connection is genuinely open for the same scope.
   // A closed/errored EventSource still has a non-null reference but
   // readyState === CLOSED (2) — we must reopen it.
-  if (activeSource && activeSource.readyState !== EventSource.CLOSED && activeScopeKey === scopeKey) return;
+  if (activeSource && activeSource.readyState !== EventSource.CLOSED && activeScopeKey === scopeKey)
+    return;
   close();
   activeScopeKey = scopeKey;
   activeUrl = url;
@@ -109,6 +110,8 @@ const connect = (url, scopeKey) => {
   es.addEventListener("booking", relay("booking"));
   es.addEventListener("hotel", relay("hotel"));
   es.addEventListener("live_bill", relay("live_bill"));
+  es.addEventListener("invoice", relay("invoice"));
+  es.addEventListener("stock", relay("stock"));
   es.addEventListener("message", relay("message"));
 
   es.onerror = () => {
@@ -133,7 +136,8 @@ export const connectRealtimeSync = ({ apiBase, storeType, storeId }) => {
   // already active (EventSource readyState === 1). If the source is
   // closed (e.g. initial connect was a no-op because the user wasn't
   // ready yet), reopen it.
-  if (activeSource && activeSource.readyState === EventSource.OPEN && activeScopeKey === scopeKey) return;
+  if (activeSource && activeSource.readyState === EventSource.OPEN && activeScopeKey === scopeKey)
+    return;
 
   const params = new URLSearchParams();
   if (storeType) params.append("storeType", storeType);

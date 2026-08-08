@@ -29,6 +29,8 @@ import {
   FaPalette,
   FaMoon,
   FaSun,
+  FaVolumeUp,
+  FaVolumeMute,
   FaBars,
   FaSearch,
   FaBell,
@@ -50,6 +52,7 @@ import { useGlobalSearch } from "./useGlobalSearch";
 import GlobalSearchPalette from "./GlobalSearchPalette";
 import { useNotifications } from "./useNotifications";
 import NotificationPanel from "./NotificationPanel";
+import { setSoundEnabled, setVolume, previewSound } from "../../services/soundNotifier";
 import "./Header.css";
 import "./GlobalSearchPalette.css";
 import "./NotificationPanel.css";
@@ -85,6 +88,15 @@ const avatarGradient = (value) => {
 const Header = ({ toggleSidebar }) => {
   const [user, setUser] = useState(() => getUser());
   const [theme, setTheme] = useState(() => getStoreSettings().theme || "classic");
+  // Sound notifier opt-in. Per-user (localStorage). Off by default so
+  // a busy shift never surprises someone with an unexpected beep.
+  const [soundEnabled, setSoundEnabledState] = useState(() => {
+    try {
+      return window.localStorage.getItem("pos.soundNotifier.enabled") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [showLogout, setShowLogout] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   // Mobile tray (slides down below the top bar on <=768px) holds the
@@ -104,7 +116,19 @@ const Header = ({ toggleSidebar }) => {
   const [showProfileToast, setShowProfileToast] = useState(false);
   const [availableStores, setAvailableStores] = useState([]);
   const [openMenu, setOpenMenu] = useState(null);
-  const { language, setLanguage, locale, languageOptions } = useUi();
+  // Sound notifier popover state. The popover is opened by clicking the
+  // sound icon and dismissed by clicking outside / pressing Escape.
+  const [soundPopoverOpen, setSoundPopoverOpen] = useState(false);
+  const [volume, setVolumeState] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("pos.soundNotifier.volume");
+      const n = Number(raw);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5;
+    } catch {
+      return 0.5;
+    }
+  });
+  const { language, setLanguage, locale, languageOptions, showToast } = useUi();
   const toastTimeoutRef = useRef(null);
 
   const themeOptions = ["classic", "dark", "minimal"];
@@ -113,6 +137,224 @@ const Header = ({ toggleSidebar }) => {
     dark: <FaMoon />,
     minimal: <FaSun />,
   };
+
+  // Toggle the SSE sound notifier. Persists immediately so a reload keeps
+  // the user's preference. We play a short preview beep on enable so the
+  // user can confirm it's working at the volume they actually want.
+  // A toast confirms every toggle so keyboard shortcuts (which don't
+  // visually move the toggle) give the user explicit feedback.
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabledState(next);
+    setSoundEnabled(next);
+    try {
+      window.localStorage.setItem("pos.soundNotifier.enabled", next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+    if (next) {
+      // Lazy import so the AudioContext isn't created unless the user
+      // actually opts in.
+      import("../../services/soundNotifier").then(({ previewSound }) => {
+        try {
+          previewSound("invoice");
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+    // Confirmation toast — short timeout since this is a fast toggle
+    // action. Same wording whether the user clicked the button or hit
+    // the keyboard shortcut.
+    try {
+      showToast(
+        next ? "success" : "info",
+        next ? "Activity sounds on" : "Activity sounds muted",
+        2200
+      );
+    } catch {
+      /* toast system may not be wired in tests / SSR */
+    }
+  };
+
+  // Volume slider handler. Live-applies the volume so the user hears the
+  // change as they drag. Persists on every change so a reload keeps it.
+  const handleVolumeChange = (e) => {
+    const next = Number(e.target.value);
+    setVolumeState(next);
+    setVolume(next);
+  };
+
+  // Keyboard detection: returns true when the device is likely to have a
+  // physical/external keyboard. Used to gate the Ctrl+. shortcut and the
+  // keyboard hint in the popover.
+  //
+  // Heuristic: a tablet with a Bluetooth keyboard or any desktop/laptop
+  // reports `(pointer: fine)` and `(hover: hover)`. A phone in landscape
+  // sometimes lies, but phones almost never have a keyboard attached, so
+  // the false-positive risk is low. Combined with the narrow-viewport
+  // check we ignore phones that happen to report fine pointer.
+  const detectKeyboardDevice = () => {
+    if (typeof window === "undefined") return false;
+    const isWideViewport = window.matchMedia("(min-width: 769px)").matches;
+    if (!isWideViewport) return false;
+    const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
+    const canHover = window.matchMedia("(hover: hover)").matches;
+    return hasFinePointer && canHover;
+  };
+  const [keyboardDevice, setKeyboardDevice] = useState(() => detectKeyboardDevice());
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const mq = window.matchMedia("(min-width: 769px), (pointer: fine)");
+    const onChange = () => setKeyboardDevice(detectKeyboardDevice());
+    // matchMedia.addEventListener is the modern API; older Safari uses
+    // addListener. Both forms are required for cross-browser coverage.
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else if (mq.removeListener) mq.removeListener(onChange);
+    };
+  }, []);
+
+  // Ctrl+. (or Cmd+. on macOS) toggles activity sounds. Ignored when an
+  // input/textarea is focused so the keystroke still types "." into a
+  // cart line item, etc. Only active on keyboard devices — phones
+  // without a keyboard never register this, so the shortcut can't be
+  // triggered by stray key events.
+  useEffect(() => {
+    if (!keyboardDevice || typeof window === "undefined") return undefined;
+    const onKey = (e) => {
+      // Ctrl+. on Win/Linux, Cmd+. on macOS. Use event.key for layout
+      // independence — "." with Ctrl/Cmd modifier regardless of locale.
+      if (e.key !== "." && e.code !== "Period") return;
+      const isToggleCombo = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+      if (!isToggleCombo) return;
+      const target = e.target;
+      // Don't hijack typing in an input/textarea/contenteditable. The
+      // cashier might be editing a quantity field and just hit Ctrl+.
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      toggleSound();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // toggleSound intentionally omitted — it reads soundEnabled via the
+    // closure, and including it would re-bind the listener on every
+    // render without functional benefit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyboardDevice, soundEnabled]);
+
+  // Play all three event tones in sequence so a user can verify the
+  // full palette in one tap. Gaps match the natural duration of each
+  // tone so the user hears distinct beats rather than a wall of sound.
+  // Disabled mid-sequence to prevent overlapping sets if the user
+  // mashes the button.
+  const [testingAll, setTestingAll] = useState(false);
+  const handleTestAll = async () => {
+    if (testingAll) return;
+    setTestingAll(true);
+    try {
+      const { previewSound } = await import("../../services/soundNotifier");
+      previewSound("invoice");
+      await new Promise((r) => window.setTimeout(r, 350));
+      previewSound("booking");
+      await new Promise((r) => window.setTimeout(r, 350));
+      previewSound("low-stock");
+    } catch {
+      /* ignore — previewSound is safe to fail */
+    } finally {
+      // Small tail so the low-stock tone (longest, ~140ms) finishes
+      // before re-enabling. 200ms is enough without feeling sluggish.
+      window.setTimeout(() => setTestingAll(false), 200);
+    }
+  };
+
+  // Click-outside / Escape dismisses the sound popover without touching
+  // the existing dropdown state — independent of `openMenu` so closing
+  // the popover doesn't disturb the user/notifications dropdowns.
+  const soundPopoverRef = useRef(null);
+
+  // Swipe-down to dismiss the mobile sound sheet. The gesture only
+  // activates when the popover is open AND the viewport is narrow — on
+  // desktop the sheet isn't anchored to the bottom so a downward swipe
+  // has no semantic meaning. We track horizontal motion too: if the user
+  // is dragging the volume slider horizontally, we ignore the swipe so
+  // range inputs still feel responsive.
+  useEffect(() => {
+    if (!soundPopoverOpen || typeof window === "undefined") return undefined;
+    const isMobileViewport = () => window.matchMedia("(max-width: 768px)").matches;
+    if (!isMobileViewport()) return undefined;
+    const popover = soundPopoverRef.current;
+    if (!popover) return undefined;
+
+    let startY = 0;
+    let startX = 0;
+    let tracking = false;
+    const SWIPE_THRESHOLD = 80; // px of vertical travel required
+
+    const onStart = (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      startY = t.clientY;
+      startX = t.clientX;
+      tracking = true;
+    };
+    const onMove = (e) => {
+      if (!tracking) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const dy = t.clientY - startY;
+      const dx = t.clientX - startX;
+      // If horizontal motion dominates, the user is probably interacting
+      // with the slider rather than swiping the sheet. Bail out.
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 16) {
+        tracking = false;
+        return;
+      }
+      if (dy > SWIPE_THRESHOLD) {
+        tracking = false;
+        setSoundPopoverOpen(false);
+      }
+    };
+    const onEnd = () => {
+      tracking = false;
+    };
+
+    popover.addEventListener("touchstart", onStart, { passive: true });
+    popover.addEventListener("touchmove", onMove, { passive: true });
+    popover.addEventListener("touchend", onEnd, { passive: true });
+    popover.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      popover.removeEventListener("touchstart", onStart);
+      popover.removeEventListener("touchmove", onMove);
+      popover.removeEventListener("touchend", onEnd);
+      popover.removeEventListener("touchcancel", onEnd);
+    };
+  }, [soundPopoverOpen]);
+
+  useEffect(() => {
+    if (!soundPopoverOpen) return undefined;
+    const onDocClick = (e) => {
+      if (!e.target.closest || !e.target.closest("[data-sound-popover]")) {
+        setSoundPopoverOpen(false);
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setSoundPopoverOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [soundPopoverOpen]);
 
   const saveTheme = (newTheme) => {
     setTheme(newTheme);
@@ -834,6 +1076,123 @@ const Header = ({ toggleSidebar }) => {
                   {themeIcons[theme]}
                   <span className="header-iconbtn-pulse" aria-hidden="true" />
                 </button>
+
+                <div className="header-sound-wrap" data-sound-popover>
+                  <button
+                    type="button"
+                    className={`header-iconbtn header-iconbtn-sound${soundEnabled ? " is-on" : ""}`}
+                    onClick={() => setSoundPopoverOpen((v) => !v)}
+                    title={
+                      soundEnabled
+                        ? "Activity sounds on — click to adjust"
+                        : "Activity sounds off — click to adjust"
+                    }
+                    aria-label="Sound settings"
+                    aria-haspopup="dialog"
+                    aria-expanded={soundPopoverOpen}
+                    aria-pressed={soundEnabled}
+                  >
+                    {soundEnabled ? <FaVolumeUp /> : <FaVolumeMute />}
+                  </button>
+
+                  {soundPopoverOpen && (
+                    <div
+                      className="header-sound-scrim"
+                      onClick={() => setSoundPopoverOpen(false)}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {soundPopoverOpen && (
+                    <div
+                      ref={soundPopoverRef}
+                      role="dialog"
+                      aria-label="Activity sound settings"
+                      className="header-sound-popover"
+                    >
+                      <div className="header-sound-popover-row">
+                        <label className="header-sound-popover-label" htmlFor="sound-enabled">
+                          Activity sounds
+                        </label>
+                        <button
+                          type="button"
+                          id="sound-enabled"
+                          className={`header-sound-toggle ${soundEnabled ? "is-on" : ""}`}
+                          onClick={toggleSound}
+                          aria-pressed={soundEnabled}
+                        >
+                          <span className="header-sound-toggle-knob" aria-hidden="true" />
+                          <span className="sr-only">
+                            {soundEnabled ? "Disable activity sounds" : "Enable activity sounds"}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="header-sound-popover-row">
+                        <label className="header-sound-popover-label" htmlFor="sound-volume">
+                          Volume
+                        </label>
+                        <input
+                          id="sound-volume"
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={volume}
+                          onChange={handleVolumeChange}
+                          className="header-sound-volume"
+                          aria-valuetext={`${Math.round(volume * 100)} percent`}
+                        />
+                      </div>
+
+                      <div className="header-sound-popover-test">
+                        <span className="header-sound-popover-label">Test sounds</span>
+                        {keyboardDevice && (
+                          <p className="header-sound-popover-hint">
+                            Tip: press{" "}
+                            <kbd>
+                              {typeof navigator !== "undefined" &&
+                              navigator.platform?.toLowerCase().includes("mac")
+                                ? "Cmd"
+                                : "Ctrl"}
+                            </kbd>
+                            +<kbd>.</kbd> to toggle sounds anywhere
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="header-sound-test-all-btn"
+                          onClick={handleTestAll}
+                          disabled={testingAll}
+                        >
+                          {testingAll ? "Playing…" : "Test all"}
+                        </button>
+                        <div className="header-sound-popover-test-buttons">
+                          <button
+                            type="button"
+                            className="header-sound-test-btn"
+                            onClick={() => previewSound("invoice")}
+                          >
+                            Sale
+                          </button>
+                          <button
+                            type="button"
+                            className="header-sound-test-btn"
+                            onClick={() => previewSound("booking")}
+                          >
+                            Booking
+                          </button>
+                          <button
+                            type="button"
+                            className="header-sound-test-btn"
+                            onClick={() => previewSound("low-stock")}
+                          >
+                            Low stock
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div
                   className={`header-dropdown header-bell ${openMenu === "notifications" ? "is-open" : ""}`}

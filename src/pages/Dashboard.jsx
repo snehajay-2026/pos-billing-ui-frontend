@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { getOrders } from "../services/orderService";
 import hotelService from "../services/hotelService";
 import { resolveLaundryStatus, orderGrandTotal } from "../components/laundry/laundryStatus";
@@ -186,38 +186,92 @@ function TopServices({ invoices }) {
 /* =====================================================================
    Animated counter (used inside modern tile)
    ===================================================================== */
-const useCountUp = (value, duration = 900) => {
-  const [display, setDisplay] = useState(value);
+// Delta-aware count-up. On first render animates 0 → value; on subsequent
+// renders animates from the previous value to the new one so SSE-driven
+// invoice updates show a smooth "ticking up" rather than restarting at 0.
+// Duration scales with the delta so small increments feel snappy and large
+// jumps (a fresh sale landing) still feel natural.
+const useCountUp = (value, baseDuration = 700) => {
+  const numericEnd =
+    typeof value === "number" ? value : Number(String(value).replace(/[^\d.-]/g, "")) || 0;
+  const [display, setDisplay] = useState(numericEnd);
+  const prevEndRef = useRef(numericEnd);
+  const firstRenderRef = useRef(true);
+
   useEffect(() => {
-    const end =
-      typeof value === "number" ? value : Number(String(value).replace(/[^\d.-]/g, "")) || 0;
-    const start = 0;
+    const start = firstRenderRef.current ? 0 : prevEndRef.current;
+    const end = numericEnd;
+    const delta = Math.abs(end - start);
+    // 350ms minimum so even a +1 increment is perceivable; +0.5ms per unit
+    // of delta, capped at 1200ms so a giant sale doesn't drag on forever.
+    const duration = Math.min(1200, Math.max(350, baseDuration + delta * 0.5));
     const t0 = performance.now();
     let raf;
+    // ease-out cubic — fast at the start, gentle landing. Feels like cash
+    // ticking over on a register.
+    const ease = (t) => 1 - Math.pow(1 - t, 3);
     const tick = (now) => {
       const p = Math.min((now - t0) / duration, 1);
-      const cur = start + (end - start) * p;
-      setDisplay(
-        typeof value === "number"
-          ? cur
-          : String(value).replace(
-              /[\d,.]+/,
-              cur.toLocaleString("en-IN", { maximumFractionDigits: 2 })
-            )
-      );
+      const cur = start + (end - start) * ease(p);
+      setDisplay(cur);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
+    prevEndRef.current = end;
+    firstRenderRef.current = false;
     return () => cancelAnimationFrame(raf);
-  }, [value, duration]);
-  return display;
+  }, [numericEnd, baseDuration]);
+
+  if (typeof value === "number") return display;
+  // Preserve the original formatted string's non-numeric wrapper
+  // (e.g. currency symbols) and only swap the numeric portion.
+  return String(value).replace(
+    /[\d,.]+/,
+    display.toLocaleString("en-IN", { maximumFractionDigits: 2 })
+  );
+};
+
+// Returns a transient className for ~700ms after a numeric value changes.
+// Used by Tile to flash a brief green ring so SSE-driven updates are
+// visibly distinct from background re-renders. No-op for non-numeric
+// values (e.g. text-only sub-labels) or first render.
+const useFlashOnChange = (value) => {
+  const [flashing, setFlashing] = useState(false);
+  const prevRef = useRef(value);
+  useEffect(() => {
+    if (typeof value !== "number") return;
+    if (prevRef.current === value) return;
+    if (typeof prevRef.current === "number" && prevRef.current !== value) {
+      setFlashing(true);
+      const id = window.setTimeout(() => setFlashing(false), 700);
+      prevRef.current = value;
+      return () => window.clearTimeout(id);
+    }
+    prevRef.current = value;
+    return undefined;
+  }, [value]);
+  return flashing ? "is-flashing" : "";
+};
+
+// Inline animated stat — same count-up + flash treatment as Tile but
+// without the surrounding card chrome. Used by the Lodging/Dining Summary
+// sections so individual counters (Bookings, Covers, Revenue…) tick up
+// smoothly when a booking event lands on another device.
+const AnimatedStat = ({ value, format = (v) => v.toLocaleString("en-IN") }) => {
+  const numericValue = typeof value === "number" ? value : 0;
+  const animated = useCountUp(numericValue);
+  const flashClass = useFlashOnChange(numericValue);
+  const display = typeof value === "number" ? format(animated) : value;
+  return <strong className={flashClass}>{display}</strong>;
 };
 
 const Tile = ({ icon, label, value, tone = "blue", trend, sub }) => {
-  const animated = useCountUp(typeof value === "number" ? value : 0);
+  const numericValue = typeof value === "number" ? value : 0;
+  const animated = useCountUp(numericValue);
+  const flashClass = useFlashOnChange(numericValue);
   const display = typeof value === "number" ? animated.toLocaleString("en-IN") : value;
   return (
-    <article className={`db-tile db-tile-${tone}`}>
+    <article className={`db-tile db-tile-${tone} ${flashClass}`.trim()}>
       <div className="db-tile-icon">{icon}</div>
       <div className="db-tile-meta">
         <span>{label}</span>
@@ -241,11 +295,16 @@ const Dashboard = ({ storeType }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [approvalError, setApprovalError] = useState("");
   const [now, setNow] = useState(new Date());
+  // Timestamp of the most recent invoice fetch. Bumped by manual refresh,
+  // the SSE-driven dataUpdated listener, and any other loadInvoices() path
+  // so the hero pill can render a live "Updated Xs ago" string.
+  const [lastInvoiceUpdatedAt, setLastInvoiceUpdatedAt] = useState(null);
 
   const loadInvoices = async () => {
     try {
       const invoices = await getInvoices();
       setInvoiceData(Array.isArray(invoices) ? invoices : []);
+      setLastInvoiceUpdatedAt(Date.now());
     } catch (err) {
       console.error("Failed to load invoices:", err);
       setInvoiceData([]);
@@ -458,6 +517,30 @@ const Dashboard = ({ storeType }) => {
     window.addEventListener("dataUpdated", onCustom);
     return () => window.removeEventListener("dataUpdated", onCustom);
   }, [activeStore]);
+
+  /* ------------------ Relative "Updated Xs ago" ------------------ */
+  // Ticks once per 15s so the pill stays current. Cheap — no layout work,
+  // just a string swap. Returns null when no fetch has happened yet so we
+  // can render an empty pill before the first fetch completes.
+  const relativeInvoiceUpdated = useMemo(() => {
+    if (!lastInvoiceUpdatedAt) return null;
+    const diffMs = Date.now() - lastInvoiceUpdatedAt;
+    const sec = Math.floor(diffMs / 1000);
+    if (sec < 5) return "just now";
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    return new Date(lastInvoiceUpdatedAt).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    // `now` is also a dependency so the pill re-renders on each clock tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastInvoiceUpdatedAt, now]);
 
   const invoices = filterInvoices(invoiceData, filter);
 
@@ -674,6 +757,20 @@ const Dashboard = ({ storeType }) => {
               <FaClock />{" "}
               <span>{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
+            {relativeInvoiceUpdated && (
+              <div
+                className={`db-hero-freshness${lastInvoiceUpdatedAt && Date.now() - lastInvoiceUpdatedAt < 5000 ? " is-live" : ""}`}
+                title={
+                  lastInvoiceUpdatedAt
+                    ? `Last invoice fetch: ${new Date(lastInvoiceUpdatedAt).toLocaleTimeString("en-IN")}`
+                    : ""
+                }
+                aria-live="polite"
+              >
+                <span className="db-hero-freshness-dot" aria-hidden="true" />
+                <span>Updated {relativeInvoiceUpdated}</span>
+              </div>
+            )}
           </div>
           <div className="db-filter-row">
             {[
@@ -798,19 +895,19 @@ const Dashboard = ({ storeType }) => {
                 <div className="db-section-stats">
                   <div>
                     <span>Bookings</span>
-                    <strong>{lodgingInvoices}</strong>
+                    <AnimatedStat value={lodgingInvoices} />
                   </div>
                   <div>
                     <span>Room items</span>
-                    <strong>{lodgingItems.length}</strong>
+                    <AnimatedStat value={lodgingItems.length} />
                   </div>
                   <div>
                     <span>Guest count</span>
-                    <strong>{lodgingGuests}</strong>
+                    <AnimatedStat value={lodgingGuests} />
                   </div>
                   <div>
                     <span>Revenue</span>
-                    <strong>₹{fmt(lodgingSales)}</strong>
+                    <AnimatedStat value={lodgingSales} format={(v) => `₹${fmt(Math.round(v))}`} />
                   </div>
                 </div>
               </div>
@@ -827,19 +924,19 @@ const Dashboard = ({ storeType }) => {
                 <div className="db-section-stats">
                   <div>
                     <span>Dining bills</span>
-                    <strong>{diningInvoices}</strong>
+                    <AnimatedStat value={diningInvoices} />
                   </div>
                   <div>
                     <span>Menu items</span>
-                    <strong>{diningItems.length}</strong>
+                    <AnimatedStat value={diningItems.length} />
                   </div>
                   <div>
                     <span>Covers</span>
-                    <strong>{diningCovers}</strong>
+                    <AnimatedStat value={diningCovers} />
                   </div>
                   <div>
                     <span>Revenue</span>
-                    <strong>₹{fmt(diningSales)}</strong>
+                    <AnimatedStat value={diningSales} format={(v) => `₹${fmt(Math.round(v))}`} />
                   </div>
                 </div>
               </div>

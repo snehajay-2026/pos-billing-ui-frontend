@@ -119,6 +119,95 @@
   backdrop-filter: blur(8px);
 }
 
+/* "Updated Xs ago" pill. Same shape as the clock so they sit visually
+   paired in the hero. The pulsing dot signals live SSE-driven refresh
+   for the first ~5s after a fetch — green for in-sync, neutral when idle. */
+.db-hero-freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  margin-left: 10px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.85);
+}
+.db-hero-freshness-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 200ms ease;
+}
+.db-hero-freshness.is-live .db-hero-freshness-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: db-freshness-pulse 1.4s ease-out infinite;
+}
+@keyframes db-freshness-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+
+/* Flash highlight on KPI tiles when the underlying value jumps.
+   Triggered by SSE-driven invoice refresh — the user sees a brief green
+   ring confirming "something just changed" without needing to read the
+   number. Subtle so it doesn't fatigue on a busy shift. */
+.db-tile.is-flashing {
+  animation: db-tile-flash 700ms ease-out;
+}
+@keyframes db-tile-flash {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(52, 211, 153, 0),
+      0 0 0 0 rgba(0, 0, 0, 0);
+  }
+  15% {
+    box-shadow:
+      0 0 0 4px rgba(52, 211, 153, 0.45),
+      0 0 18px rgba(52, 211, 153, 0.25);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(52, 211, 153, 0),
+      0 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+/* Inline-stat flash (no surrounding card chrome — used by Lodging/Dining
+   Summary's AnimatedStat). Same pulse, scoped to the text element so it
+   doesn't reshape the layout. */
+strong.is-flashing {
+  animation: db-stat-flash 700ms ease-out;
+  border-radius: 6px;
+}
+@keyframes db-stat-flash {
+  0% {
+    background-color: rgba(52, 211, 153, 0);
+    color: inherit;
+  }
+  20% {
+    background-color: rgba(52, 211, 153, 0.3);
+    color: #065f46;
+  }
+  100% {
+    background-color: rgba(52, 211, 153, 0);
+    color: inherit;
+  }
+}
+
 .db-filter-row {
   display: inline-flex;
   gap: 8px;
@@ -972,6 +1061,37 @@
     font-size: 0.85rem;
   }
 
+  /* Hero clock + freshness pill: stack vertically so they don't squeeze
+     off the right edge of narrow viewports. Both pills keep their own
+     visual treatment; just no longer sit on the same row. */
+  .db-hero-clock,
+  .db-hero-freshness {
+    display: flex;
+    margin-left: 0;
+    margin-top: 10px;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  /* Section stats (Lodging/Dining Summary) — keep 2-column grid on
+     phones, but reduce the typography so ₹4,50,000 fits without
+     overflow. */
+  .db-section-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .db-section-stats > div {
+    padding: 12px 12px;
+  }
+  .db-section-stats strong {
+    font-size: 1.05rem;
+    /* Force-wrap long currency values like ₹1,23,45,678 mid-string
+       so they don't blow out the cell on narrow phones. */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
   .db-section-grid {
     grid-template-columns: 1fr;
   }
@@ -995,5 +1115,11 @@
   .db-btn-approve {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Very narrow phones: collapse section stats to a single column so
+     long currency values never get clipped. */
+  .db-section-stats {
+    grid-template-columns: 1fr;
   }
 }
