@@ -1,0 +1,608 @@
+/* src/components/hotel/HotelInvoice.css
+ *
+ * Modern A4 invoice look for Lodging + Dining receipts.
+ *
+ * Visual hierarchy:
+ *   1. Hero band (deep teal -> gold gradient) with logo + invoice metadata
+ *   2. Stay / visit summary card with icon-led meta
+ *   3. Charges table with zebra rows + accent total
+ *   4. Totals panel + payment pill
+ *   5. QR codes (optional, settings-driven)
+ *   6. Two-column footer with hotel contact + thank-you line
+ *
+ * Print rules:
+ *   - Force exact A4 portrait for the receipt region only. The surrounding
+ *     UI (preview chrome, share buttons) is hidden via .d-print-none on
+ *     the parent page; we additionally clamp the page so the PDF export
+ *     never bleeds outside the card.
+ */
+
+.hinv {
+  /* Design tokens — single source of truth for both Lodging + Dining.
+     Kept on .hinv so we never leak these onto the surrounding preview chrome. */
+  --hinv-teal: #0f3b4d;
+  --hinv-teal-2: #1a5670;
+  --hinv-gold: #c79a4a;
+  --hinv-gold-soft: #f1e3c8;
+  --hinv-ink: #14202a;
+  --hinv-ink-soft: #4a5a66;
+  --hinv-line: #e3e7eb;
+  --hinv-bg: #f6f7f9;
+  --hinv-card: #ffffff;
+  --hinv-accent: #d3a35c;
+
+  font-family:
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--hinv-ink);
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto;
+  background: var(--hinv-card);
+  box-shadow:
+    0 6px 28px rgba(15, 59, 77, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Decorative gold rule along the top edge */
+.hinv::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--hinv-gold) 0%, var(--hinv-teal) 100%);
+}
+
+/* ----- HERO ----- */
+.hinv-hero {
+  position: relative;
+  padding: 28px 36px 24px;
+  background: linear-gradient(135deg, var(--hinv-teal) 0%, var(--hinv-teal-2) 70%, #245d77 100%);
+  color: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  overflow: hidden;
+}
+
+.hinv-hero::after {
+  /* Faint watermark of the hotel logo, large and behind the copy */
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -60px;
+  width: 240px;
+  height: 240px;
+  background-image: var(--hinv-watermark, none);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.hinv-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.hinv-brand-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex: 0 0 56px;
+}
+
+.hinv-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hinv-brand-logo-fallback {
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: var(--hinv-gold-soft);
+}
+
+.hinv-brand-meta {
+  min-width: 0;
+}
+
+.hinv-brand-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 2px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hinv-brand-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hinv-brand-contact {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hinv-hero-side {
+  text-align: right;
+  z-index: 1;
+}
+
+.hinv-hero-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: var(--hinv-gold);
+  color: var(--hinv-teal);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.hinv-hero-no {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.hinv-hero-date {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.hinv-hero-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.hinv-hero-status.is-paid {
+  background: rgba(67, 178, 117, 0.18);
+  color: #c4f0d6;
+  border: 1px solid rgba(67, 178, 117, 0.4);
+}
+
+.hinv-hero-status.is-pending {
+  background: rgba(245, 197, 91, 0.18);
+  color: #f6e2b3;
+  border: 1px solid rgba(245, 197, 91, 0.4);
+}
+
+.hinv-hero-status.is-cancelled {
+  background: rgba(228, 96, 96, 0.2);
+  color: #f5c2c2;
+  border: 1px solid rgba(228, 96, 96, 0.45);
+}
+
+.hinv-hero-status.is-duplicate {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ----- BODY WRAPPER ----- */
+.hinv-body {
+  padding: 28px 36px 32px;
+  background: var(--hinv-card);
+}
+
+.hinv-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hinv-ink-soft);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hinv-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hinv-line);
+}
+
+/* ----- STAY / VISIT SUMMARY ----- */
+.hinv-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.hinv-summary-cell {
+  background: var(--hinv-bg);
+  border: 1px solid var(--hinv-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hinv-summary-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--hinv-teal) 0%, var(--hinv-teal-2) 100%);
+  color: var(--hinv-gold-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.hinv-summary-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hinv-summary-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hinv-ink-soft);
+}
+
+.hinv-summary-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hinv-ink);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hinv-summary-sub {
+  font-size: 11.5px;
+  color: var(--hinv-ink-soft);
+  font-weight: 500;
+  line-height: 1.3;
+  margin-top: 1px;
+}
+
+/* ----- CHARGES TABLE ----- */
+.hinv-charges {
+  margin-bottom: 24px;
+}
+
+.hinv-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.hinv-table thead th {
+  background: var(--hinv-bg);
+  color: var(--hinv-ink-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--hinv-line);
+}
+
+.hinv-table thead th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.hinv-table thead th:last-child {
+  border-top-right-radius: 10px;
+  text-align: right;
+}
+
+.hinv-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--hinv-line);
+  vertical-align: top;
+}
+
+.hinv-table tbody tr:nth-child(even) td {
+  background: rgba(246, 247, 249, 0.6);
+}
+
+.hinv-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hinv-table tbody td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.hinv-table .hinv-td-name {
+  font-weight: 600;
+  color: var(--hinv-ink);
+}
+
+.hinv-table .hinv-td-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--hinv-ink-soft);
+  margin-top: 2px;
+}
+
+.hinv-table .hinv-td-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.hinv-empty {
+  text-align: center;
+  padding: 28px 12px;
+  font-size: 12.5px;
+  color: var(--hinv-ink-soft);
+  font-style: italic;
+  border: 1px dashed var(--hinv-line);
+  border-radius: 10px;
+}
+
+/* ----- TOTALS PANEL ----- */
+.hinv-totals-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.hinv-pay-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--hinv-bg);
+  border: 1px solid var(--hinv-line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--hinv-ink-soft);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hinv-pay-pill .hinv-pay-mode {
+  color: var(--hinv-teal);
+  font-weight: 700;
+}
+
+.hinv-totals {
+  min-width: 280px;
+  background: var(--hinv-bg);
+  border: 1px solid var(--hinv-line);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+
+.hinv-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  color: var(--hinv-ink-soft);
+}
+
+.hinv-totals-row .hinv-totals-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--hinv-ink);
+}
+
+.hinv-totals-divider {
+  border-top: 1px dashed var(--hinv-line);
+  margin: 6px 0;
+}
+
+.hinv-totals-grand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, var(--hinv-teal) 0%, var(--hinv-teal-2) 100%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 8px;
+}
+
+.hinv-totals-grand-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hinv-gold-soft);
+}
+
+.hinv-totals-grand-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.hinv-totals-grand-value .hinv-currency {
+  font-size: 14px;
+  margin-right: 4px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* ----- QR CODES ----- */
+.hinv-qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--hinv-line);
+  margin-top: 12px;
+}
+
+.hinv-qr-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--hinv-line);
+  border-radius: 12px;
+  background: var(--hinv-bg);
+}
+
+.hinv-qr-tile-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hinv-ink-soft);
+}
+
+.hinv-qr-tile canvas {
+  border-radius: 6px;
+  display: block;
+}
+
+/* ----- FOOTER ----- */
+.hinv-footer {
+  padding: 18px 36px 22px;
+  background: var(--hinv-bg);
+  border-top: 1px solid var(--hinv-line);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.hinv-footer-thanks {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hinv-ink);
+}
+
+.hinv-footer-thanks-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--hinv-ink-soft);
+  margin-top: 2px;
+}
+
+.hinv-footer-brand {
+  text-align: right;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hinv-ink-soft);
+}
+
+.hinv-footer-brand small {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  color: var(--hinv-ink-soft);
+  margin-top: 3px;
+  opacity: 0.75;
+}
+
+/* ----- RESPONSIVE (not screen but pre-print crop) ----- */
+@media (max-width: 720px) {
+  .hinv-hero {
+    grid-template-columns: 1fr;
+    padding: 22px 22px 18px;
+  }
+  .hinv-hero-side {
+    text-align: left;
+  }
+  .hinv-body {
+    padding: 22px;
+  }
+  .hinv-summary {
+    grid-template-columns: 1fr;
+  }
+  .hinv-totals-wrap {
+    grid-template-columns: 1fr;
+  }
+  .hinv-totals {
+    min-width: 0;
+  }
+  .hinv-footer {
+    grid-template-columns: 1fr;
+    padding: 18px 22px;
+  }
+  .hinv-footer-brand {
+    text-align: left;
+  }
+}
+
+/* ----- PRINT ----- */
+@media print {
+  .hinv {
+    box-shadow: none;
+    border-radius: 0;
+    width: 100%;
+    margin: 0;
+  }
+  .hinv::before {
+    /* Drop the decorative gradient rule in print — printers sometimes
+       smear thin colored bands. */
+    display: none;
+  }
+}

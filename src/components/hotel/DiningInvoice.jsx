@@ -1,6 +1,17 @@
 import React from "react";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  FaUserAlt,
+  FaChair,
+  FaUsers,
+  FaClock,
+  FaReceipt,
+  FaWallet,
+  FaHotel,
+  FaUtensils,
+} from "react-icons/fa";
+import "./HotelInvoice.css";
 
 const DiningInvoice = ({ invoice, isDuplicate }) => {
   const settings = getStoreSettings();
@@ -10,269 +21,274 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   const fmt2 = (n) => (Number(n) || 0).toFixed(2);
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
-  // Calculate totals
+  // ---- helpers ----
+  const getQty = (item) => Number(item?.qty ?? item?.quantity ?? 1);
+  const getRate = (item) => Number(item?.rate ?? item?.price ?? 0);
+  const getAmount = (item) => {
+    const explicit = Number(item?.total);
+    if (!Number.isNaN(explicit) && explicit > 0) return explicit;
+    return getQty(item) * getRate(item);
+  };
+
+  // ---- totals ----
   const subTotal = Number(
-    invoice.subTotal ?? items.reduce((sum, item) => sum + (Number(item.total) || 0), 0)
+    invoice.subTotal ?? items.reduce((sum, item) => sum + getAmount(item), 0)
   );
-  const gstTotal = Number(
-    invoice.gstTotal ?? items.reduce((sum, item) => sum + (Number(item.gst) || 0), 0)
-  );
+  // GST is broken out by slab so mixed-menu invoices (5% packaged + 18%
+  // alcoholic) still display each rate cleanly instead of a single blob.
+  const gstBreakdownMap = new Map();
+  items.forEach((item) => {
+    const pct = Number(item?.gst || 0);
+    if (!pct) return;
+    const amt = (getAmount(item) * pct) / 100;
+    const key = String(pct);
+    const prev = gstBreakdownMap.get(key) || { percent: pct, amount: 0 };
+    gstBreakdownMap.set(key, { percent: pct, amount: prev.amount + amt });
+  });
+  const gstBreakdown = Array.from(gstBreakdownMap.values());
+  const gstTotal = Number(invoice.gstTotal ?? gstBreakdown.reduce((sum, g) => sum + g.amount, 0));
   const grandTotal = Number(invoice.grandTotal ?? subTotal + gstTotal);
 
+  // ---- visit summary fields ----
+  const guestName =
+    invoice?.hotelDetails?.guestName?.trim() ||
+    invoice?.customerName?.trim() ||
+    settings.customerName?.trim() ||
+    "Walking Guest";
+
+  const tableName = invoice?.hotelDetails?.tableName || "—";
+  const partySize = Number(invoice?.hotelDetails?.partySize) || 0;
+  const seatedAt = invoice?.hotelDetails?.checkInTime || invoice?.hotelDetails?.seatedAt || "";
+  const clearedAt = invoice?.hotelDetails?.checkOutTime || "";
+
+  const hotelInitial = (settings.name || "H").trim().charAt(0).toUpperCase();
+
+  const rawStatus = String(invoice?.status || "pending").toLowerCase();
+  const statusKey =
+    rawStatus === "paid" || rawStatus === "cleared"
+      ? "paid"
+      : rawStatus === "cancelled"
+        ? "cancelled"
+        : "pending";
+  const STATUS_LABEL = {
+    paid: "Settled",
+    pending: "Pending",
+    cancelled: "Cancelled",
+  };
+
+  // Inline watermark for the hero — uses the logo if present.
+  const heroStyle = settings.logo ? { "--hinv-watermark": `url('${settings.logo}')` } : {};
+
   return (
-    <div
-      id="dining-print-invoice"
-      style={{
-        fontFamily: "monospace",
-        fontSize: "12px",
-        maxWidth: "80mm",
-        margin: "0 auto",
-        background: "white",
-        color: "#111",
-        padding: "8px",
-        border: "1px solid #ccc",
-      }}
-    >
-      {/* COPY TYPE */}
-      <center>
-        <strong style={{ color: isDuplicate ? "red" : "green" }}>
-          {isDuplicate ? "DUPLICATE COPY" : "ORIGINAL COPY"}
-        </strong>
-      </center>
-
-      {/* LOGO */}
-      {settings.logo && (
-        <center>
-          <img
-            src={settings.logo}
-            alt="Store Logo"
-            style={{ width: "60px", height: "60px", margin: "5px 0" }}
-          />
-        </center>
-      )}
-
-      {/* STORE DETAILS */}
-      <center>
-        <strong style={{ fontSize: "15px" }}>{settings.name}</strong>
-        <br />
-        {settings.address}
-        <br />
-        {settings.phone}
-      </center>
-
-      <div style={{ borderTop: "1px dashed #ccc", margin: "8px 0" }}></div>
-
-      {/* INVOICE INFO */}
-      <div style={{ fontSize: "11px", marginBottom: "6px" }}>
-        Invoice No: {invoice.invoiceNo} <br />
-        Date: {invoice.date} <br />
-        Payment: {invoice.paymentMode}
-        <br />
-        <span style={{ fontSize: "10px", color: "#555" }}>
-          Billed By: {invoice.billedBy || "Unknown"}
-        </span>
-      </div>
-
-      {/* CUSTOMER / GUEST INFO */}
-      {(invoice?.hotelDetails?.guestName || invoice?.customerName || settings.customerName) && (
-        <div
-          style={{
-            fontSize: "11px",
-            borderBottom: "1px dashed #ccc",
-            paddingBottom: "5px",
-            marginBottom: "8px",
-          }}
-        >
-          <div>
-            <strong>Dining Details:</strong>
+    <div id="dining-print-invoice" className="hinv" style={heroStyle}>
+      {/* HERO */}
+      <header className="hinv-hero">
+        <div className="hinv-brand">
+          <div className="hinv-brand-logo">
+            {settings.logo ? (
+              <img src={settings.logo} alt={settings.name || "Hotel logo"} />
+            ) : (
+              <span className="hinv-brand-logo-fallback">{hotelInitial}</span>
+            )}
           </div>
-          {invoice?.hotelDetails?.guestName ? (
-            <div>Guest: {invoice.hotelDetails.guestName}</div>
-          ) : invoice?.customerName ? (
-            <div>Guest: {invoice.customerName}</div>
+          <div className="hinv-brand-meta">
+            <h1 className="hinv-brand-name">{settings.name || "Hotel"}</h1>
+            <div className="hinv-brand-sub">Dining · Restaurant Receipt</div>
+            {settings.address ? <div className="hinv-brand-contact">{settings.address}</div> : null}
+            {settings.phone ? <div className="hinv-brand-contact">☎ {settings.phone}</div> : null}
+          </div>
+        </div>
+        <div className="hinv-hero-side">
+          <span className="hinv-hero-label">Invoice</span>
+          <div className="hinv-hero-no">#{invoice.invoiceNo || "—"}</div>
+          <div className="hinv-hero-date">
+            {invoice.date ? new Date(invoice.date).toLocaleString() : ""}
+          </div>
+          <div className={`hinv-hero-status is-${statusKey}`}>
+            {STATUS_LABEL[statusKey]}
+            {isDuplicate ? " · Duplicate" : ""}
+          </div>
+        </div>
+      </header>
+
+      {/* BODY */}
+      <div className="hinv-body">
+        {/* Visit summary */}
+        <h2 className="hinv-section-title">Visit Summary</h2>
+        <div className="hinv-summary">
+          <div className="hinv-summary-cell">
+            <div className="hinv-summary-icon">
+              <FaUserAlt />
+            </div>
+            <div className="hinv-summary-meta">
+              <span className="hinv-summary-label">Guest</span>
+              <span className="hinv-summary-value">{guestName}</span>
+              {invoice?.hotelDetails?.customerMobile || invoice?.customerMobile ? (
+                <span className="hinv-summary-sub">
+                  📞{" "}
+                  {String(
+                    invoice?.hotelDetails?.customerMobile || invoice?.customerMobile || ""
+                  ).trim()}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="hinv-summary-cell">
+            <div className="hinv-summary-icon">
+              <FaChair />
+            </div>
+            <div className="hinv-summary-meta">
+              <span className="hinv-summary-label">Table</span>
+              <span className="hinv-summary-value">{tableName}</span>
+              <span className="hinv-summary-sub">
+                <FaUsers style={{ marginRight: 4 }} />
+                {partySize > 0 ? `${partySize} guest${partySize > 1 ? "s" : ""}` : "Walk-in"}
+              </span>
+            </div>
+          </div>
+
+          <div className="hinv-summary-cell">
+            <div className="hinv-summary-icon">
+              <FaClock />
+            </div>
+            <div className="hinv-summary-meta">
+              <span className="hinv-summary-label">Timing</span>
+              <span className="hinv-summary-value">{seatedAt || clearedAt ? "Recorded" : "—"}</span>
+              <span className="hinv-summary-sub">In · {seatedAt || "—"}</span>
+              <span className="hinv-summary-sub">Out · {clearedAt || "—"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Charges */}
+        <h2 className="hinv-section-title">Order</h2>
+        <div className="hinv-charges">
+          {items.length === 0 ? (
+            <div className="hinv-empty">No items ordered.</div>
           ) : (
-            settings.customerName && <div>Guest: {settings.customerName}</div>
-          )}
-          {invoice?.hotelDetails?.tableName && <div>Table: {invoice.hotelDetails.tableName}</div>}
-          {invoice?.hotelDetails?.partySize && (
-            <div>Party Size: {invoice.hotelDetails.partySize}</div>
-          )}
-          {invoice?.hotelDetails?.checkInTime && (
-            <div>Check-in: {invoice.hotelDetails.checkInTime}</div>
-          )}
-          {invoice?.hotelDetails?.checkOutTime && (
-            <div>Check-out: {invoice.hotelDetails.checkOutTime}</div>
+            <table className="hinv-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th style={{ textAlign: "center" }}>Qty</th>
+                  <th style={{ textAlign: "right" }}>Rate</th>
+                  <th style={{ textAlign: "right" }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const qty = getQty(item);
+                  const rate = getRate(item);
+                  const total = getAmount(item);
+                  const gstPercent = Number(item?.gst || 0);
+                  const gstAmt = (total * gstPercent) / 100;
+                  return (
+                    <tr key={index}>
+                      <td>
+                        <span className="hinv-td-name">{item.name || "—"}</span>
+                        {gstPercent > 0 && gstAmt > 0 ? (
+                          <span className="hinv-td-sub">
+                            GST {gstPercent.toFixed(0)}% · ₹{fmt2(gstAmt)}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="hinv-td-num">{qty.toFixed(0)}</td>
+                      <td style={{ textAlign: "right" }}>₹{fmt2(rate)}</td>
+                      <td>₹{fmt2(total)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
-      )}
 
-      {/* ITEMS TABLE */}
-      <table
-        style={{
-          width: "100%",
-          fontSize: "11px",
-          borderCollapse: "collapse",
-          marginBottom: "8px",
-          tableLayout: "fixed",
-        }}
-      >
-        <colgroup>
-          <col style={{ width: "41%" }} />
-          <col style={{ width: "13%" }} />
-          <col style={{ width: "20%" }} />
-          <col style={{ width: "26%" }} />
-        </colgroup>
-        <thead>
-          <tr style={{ borderBottom: "1px solid #000" }}>
-            <th style={{ textAlign: "left", padding: "2px 6px 2px 0", fontWeight: "bold" }}>
-              Item
-            </th>
-            <th
-              style={{
-                textAlign: "center",
-                padding: "2px 4px",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Qty
-            </th>
-            <th
-              style={{
-                textAlign: "right",
-                padding: "2px 4px",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Rate
-            </th>
-            <th
-              style={{
-                textAlign: "right",
-                padding: "2px 0 2px 4px",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Amount
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, index) => {
-            const qty = Number(item?.qty ?? item?.quantity ?? 1);
-            const rate = Number(item?.rate ?? item?.price ?? 0);
-            const total = Number(item?.total ?? qty * rate);
-            const gstPercent = Number(item.gst || 0);
-            const gstAmt = (total * gstPercent) / 100;
+        {/* Totals */}
+        <div className="hinv-totals-wrap">
+          <div className="hinv-pay-pill">
+            <FaWallet />
+            Payment via <span className="hinv-pay-mode">{invoice.paymentMode || "—"}</span>
+          </div>
+          <div className="hinv-totals">
+            <div className="hinv-totals-row">
+              <span>Subtotal</span>
+              <span className="hinv-totals-value">₹{fmt2(subTotal)}</span>
+            </div>
+            {gstBreakdown.length === 0 ? (
+              <div className="hinv-totals-row">
+                <span>GST</span>
+                <span className="hinv-totals-value">₹{fmt2(0)}</span>
+              </div>
+            ) : (
+              gstBreakdown.map((g) => (
+                <div className="hinv-totals-row" key={g.percent}>
+                  <span>GST @ {g.percent}%</span>
+                  <span className="hinv-totals-value">₹{fmt2(g.amount)}</span>
+                </div>
+              ))
+            )}
+            <div className="hinv-totals-divider" />
+            <div className="hinv-totals-grand">
+              <span className="hinv-totals-grand-label">Grand Total</span>
+              <span className="hinv-totals-grand-value">
+                <span className="hinv-currency">₹</span>
+                {fmt2(grandTotal)}
+              </span>
+            </div>
+          </div>
+        </div>
 
-            return (
-              <tr key={index}>
-                <td
-                  style={{
-                    textAlign: "left",
-                    padding: "2px 6px 2px 0",
-                    wordBreak: "break-word",
-                    overflowWrap: "anywhere",
-                    verticalAlign: "top",
-                  }}
-                >
-                  <div style={{ paddingRight: 4 }}>{String(item.name || "").trim()}</div>
-                  {gstPercent > 0 && gstAmt > 0 && (
-                    <div style={{ fontSize: "10px", color: "#555" }}>
-                      GST {gstPercent.toFixed(0)}% | ₹{gstAmt.toFixed(2)}
-                    </div>
-                  )}
-                </td>
-                <td
-                  style={{
-                    textAlign: "center",
-                    padding: "2px 4px",
-                    verticalAlign: "top",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {qty.toFixed(0)}
-                </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    padding: "2px 4px",
-                    verticalAlign: "top",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  ₹{fmt2(rate)}
-                </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    padding: "2px 0 2px 4px",
-                    verticalAlign: "top",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  ₹{fmt2(total)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {/* TOTALS */}
-      <table style={{ width: "100%", fontSize: "12px", marginBottom: "8px" }}>
-        <tbody>
-          <tr>
-            <td>Subtotal:</td>
-            <td style={{ textAlign: "right" }}>₹{fmt2(subTotal)}</td>
-          </tr>
-          <tr>
-            <td>GST:</td>
-            <td style={{ textAlign: "right" }}>₹{fmt2(gstTotal)}</td>
-          </tr>
-          <tr>
-            <td>
-              <strong>Grand Total:</strong>
-            </td>
-            <td style={{ textAlign: "right" }}>
-              <strong>₹{fmt2(grandTotal)}</strong>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* QR CODE BLOCK */}
-      <div style={{ marginTop: "10px", marginBottom: "10px" }}>
-        {/* Show UPI QR only if paymentMode is UPI */}
-        {invoice.paymentMode === "UPI" &&
-          (settings.qrType === "UPI" || settings.qrType === "BOTH") && (
-            <center>
-              <QRCodeCanvas
-                value={`upi://pay?pa=${settings.upiId}&pn=${settings.name}&am=${fmt2(grandTotal)}`}
-                size={100}
-              />
-              <div style={{ fontSize: "11px", marginTop: "2px" }}>UPI Payment</div>
-            </center>
-          )}
-        {/* Always show Order QR if enabled */}
-        {(settings.qrType === "INVOICE" || settings.qrType === "BOTH") && (
-          <center>
-            <QRCodeCanvas
-              value={JSON.stringify({ invoiceNo: invoice.invoiceNo, amount: fmt2(grandTotal) })}
-              size={100}
-            />
-            <div style={{ fontSize: "11px", marginTop: "2px" }}>Order QR</div>
-          </center>
-        )}
+        {/* QR codes */}
+        {(invoice.paymentMode === "UPI" &&
+          (settings.qrType === "UPI" || settings.qrType === "BOTH")) ||
+        settings.qrType === "INVOICE" ||
+        settings.qrType === "BOTH" ? (
+          <div className="hinv-qr-row">
+            {invoice.paymentMode === "UPI" &&
+              (settings.qrType === "UPI" || settings.qrType === "BOTH") && (
+                <div className="hinv-qr-tile">
+                  <QRCodeCanvas
+                    value={`upi://pay?pa=${settings.upiId}&pn=${settings.name}&am=${fmt2(
+                      grandTotal
+                    )}`}
+                    size={92}
+                  />
+                  <div className="hinv-qr-tile-label">Scan · UPI Pay</div>
+                </div>
+              )}
+            {(settings.qrType === "INVOICE" || settings.qrType === "BOTH") && (
+              <div className="hinv-qr-tile">
+                <QRCodeCanvas
+                  value={JSON.stringify({
+                    invoiceNo: invoice.invoiceNo,
+                    amount: fmt2(grandTotal),
+                  })}
+                  size={92}
+                />
+                <div className="hinv-qr-tile-label">View · Invoice QR</div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* FOOTER */}
-      <center style={{ fontSize: "10px", marginTop: "8px" }}>
-        <div>Thank you for dining with us!</div>
-        <div style={{ marginTop: "5px", fontSize: "9px" }}>Powered by POS System</div>
-      </center>
+      <footer className="hinv-footer">
+        <div>
+          <div className="hinv-footer-thanks">
+            <FaUtensils style={{ marginRight: 6, color: "var(--hinv-gold)" }} />
+            Thank you for dining with us!
+          </div>
+          <small className="hinv-footer-thanks-sub">
+            Your patronage means the world. See you next visit.
+          </small>
+        </div>
+        <div className="hinv-footer-brand">
+          Served by · {invoice.billedBy || "Service Team"}
+          <small>Powered by POS System</small>
+        </div>
+      </footer>
     </div>
   );
 };
