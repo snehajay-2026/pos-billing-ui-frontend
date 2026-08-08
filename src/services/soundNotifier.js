@@ -12,10 +12,11 @@
 const STORAGE_KEY = "pos.soundNotifier.enabled";
 const VOLUME_KEY = "pos.soundNotifier.volume";
 
-let audioCtx = null;
-let enabled = readEnabledFromStorage();
-let volume = readVolumeFromStorage();
-
+// Declared up front so the storage helpers below can reference it
+// without hitting the const TDZ — webpack's production minifier emits
+// statements in lexical order, so any helper that closes over `isBrowser`
+// must come *after* its declaration. `readEnabledFromStorage` /
+// `readVolumeFromStorage` (and `ensureContext` further down) all need it.
 const isBrowser = typeof window !== "undefined" && typeof window.AudioContext !== "undefined";
 
 const readEnabledFromStorage = () => {
@@ -58,6 +59,14 @@ const writeVolumeToStorage = (next) => {
     /* private mode / quota */
   }
 };
+
+// Now that the helpers above are in scope, the module-level state can
+// safely call them. Order matters: any const arrow function referenced
+// during the initializer of a let/const above must be declared earlier
+// in the file, or the production minifier will emit a TDZ ReferenceError.
+let audioCtx = null;
+let enabled = readEnabledFromStorage();
+let volume = readVolumeFromStorage();
 
 const ensureContext = () => {
   if (!isBrowser) return null;
