@@ -44,26 +44,135 @@ const InvoiceView = () => {
     "Walking Customer";
   const storeNameForMessage = settings.name?.trim() || "Your Store";
 
+  // Render the entire receipt (everything you'd see if you scrolled to the
+  // bottom) into a single tall image, then split it across as many A4 pages
+  // as it needs. Without this, the modernized hotel invoice (and any other
+  // receipt taller than the viewport) gets clipped — html2canvas captures
+  // whatever's in the layout's visible box by default, and the single-page
+  // jsPDF scaled addImage would push the bottom past the page bounds.
   const downloadReceiptPdf = async () => {
     if (!receiptRef.current) return;
+    let captureRoot = null;
     try {
       setDownloadStatus("Downloading...");
-      const canvas = await html2canvas(receiptRef.current, {
+
+      const source = receiptRef.current;
+      // The source already lives in the DOM, but it might be `overflow: auto`
+      // (service invoices) or wrapped in a flex container that constrains the
+      // rendered box. Clone it into an off-screen container with no size cap
+      // so html2canvas gets the full scrollHeight, and strip any preview
+      // `transform: scale(...)` so the captured image is 1:1 with the printed
+      // output.
+      const clone = source.cloneNode(true);
+      clone.style.position = "fixed";
+      clone.style.left = "-10000px";
+      clone.style.top = "0";
+      clone.style.zIndex = "-1";
+      clone.style.transform = "none";
+      clone.style.transformOrigin = "top left";
+      clone.style.maxWidth = "none";
+      clone.style.width = `${source.scrollWidth}px`;
+      clone.style.height = `${source.scrollHeight}px`;
+      clone.style.overflow = "visible";
+      // Walk children and clear any transform / scale the preview chrome
+      // applied, so the captured image isn't visually shrunk.
+      const all = clone.querySelectorAll("*");
+      all.forEach((el) => {
+        el.style.transform = "none";
+        el.style.transformOrigin = "top left";
+      });
+      document.body.appendChild(clone);
+      captureRoot = clone;
+
+      // Wait one frame so the layout settles before html2canvas reads from it.
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         backgroundColor: "#ffffff",
+        useCORS: true,
+        // Width/height + windowWidth/Height force html2canvas to walk the
+        // full node, not just the visible viewport.
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight,
       });
+
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ unit: "mm", format: "a4" });
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = 190;
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, "PNG", 10, 10, pdfWidth, pdfHeight);
+      const imgProps = {
+        width: canvas.width,
+        height: canvas.height,
+      };
+
+      // A4 portrait with 10mm side margins → 190mm printable width.
+      // Total page height (297mm) minus 10mm top + 10mm bottom = 277mm of
+      // printable height per page.
+      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageWidthMm = 210;
+      const pageHeightMm = 297;
+      const marginMm = 10;
+      const printableWidthMm = pageWidthMm - marginMm * 2; // 190mm
+      const printableHeightMm = pageHeightMm - marginMm * 2; // 277mm
+
+      // Scale the captured image so it spans the full printable width. The
+      // image's height in PDF mm becomes (imgHeight / imgWidth) * printableWidth.
+      const imgHeightMm = (imgProps.height * printableWidthMm) / imgProps.width;
+
+      // If it fits on one page, render normally. Otherwise slice the image
+      // into page-height bands and addImage each band as its own page.
+      if (imgHeightMm <= printableHeightMm) {
+        pdf.addImage(imgData, "PNG", marginMm, marginMm, printableWidthMm, imgHeightMm);
+      } else {
+        // Render the full image once into a temporary canvas at print width,
+        // then cut page-height slices out of it for each PDF page. This
+        // keeps the printed content at native resolution rather than
+        // letting jsPDF re-compress the same PNG once per page.
+        const sliceCanvas = document.createElement("canvas");
+        const sliceHeightPx = Math.floor((printableHeightMm / imgHeightMm) * imgProps.height);
+        sliceCanvas.width = imgProps.width;
+        sliceCanvas.height = sliceHeightPx;
+        const sliceCtx = sliceCanvas.getContext("2d");
+        sliceCtx.fillStyle = "#ffffff";
+        sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+
+        let yOffset = 0;
+        let pageIndex = 0;
+        while (yOffset < imgProps.height) {
+          const remaining = imgProps.height - yOffset;
+          const drawHeight = Math.min(sliceHeightPx, remaining);
+          sliceCtx.clearRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sliceCtx.fillStyle = "#ffffff";
+          sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sliceCtx.drawImage(
+            canvas,
+            0,
+            yOffset,
+            imgProps.width,
+            drawHeight,
+            0,
+            0,
+            imgProps.width,
+            drawHeight
+          );
+          const sliceData = sliceCanvas.toDataURL("image/png");
+          const sliceHeightMm = (drawHeight * printableWidthMm) / imgProps.width;
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(sliceData, "PNG", marginMm, marginMm, printableWidthMm, sliceHeightMm);
+          yOffset += drawHeight;
+          pageIndex += 1;
+        }
+      }
+
       pdf.save(`${invoiceNo || "receipt"}.pdf`);
       setDownloadStatus("Download complete");
     } catch (error) {
       console.error(error);
       setDownloadStatus("Download failed. Please try again.");
     } finally {
+      if (captureRoot && captureRoot.parentNode) {
+        captureRoot.parentNode.removeChild(captureRoot);
+      }
       window.setTimeout(() => setDownloadStatus(""), 2400);
     }
   };
