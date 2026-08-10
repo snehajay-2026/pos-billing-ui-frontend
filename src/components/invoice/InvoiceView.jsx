@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { getInvoiceByNo, updateInvoice } from "../../services/invoiceService";
 import { getStoreSettings } from "../../services/storeSettingsService";
@@ -13,7 +13,14 @@ import RetailPrintInvoice from "./RetailPrintInvoice";
 import ServiceInvoice from "./ServiceInvoice";
 import { isHotelDiningInvoice } from "../../utils/invoiceType";
 import { useUi } from "../../context/UiContext";
-import { FaCheckCircle, FaHourglassHalf, FaBan, FaUndo } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaHourglassHalf,
+  FaBan,
+  FaUndo,
+  FaSearchPlus,
+  FaSearchMinus,
+} from "react-icons/fa";
 import "./InvoiceView.css"; // ⬅️ import new CSS
 
 const InvoiceView = () => {
@@ -31,7 +38,15 @@ const InvoiceView = () => {
   const [downloadStatus, setDownloadStatus] = useState("");
   const [settings, setSettings] = useState(() => getStoreSettings());
   const [statusBusy, setStatusBusy] = useState(false);
+  // "fit" (default) — scale the receipt to whatever vertical space the
+  // preview viewport has so the entire invoice is visible without scrolling
+  // the page. "actual" — render at natural size (1:1) letting the user
+  // scroll inside the receipt card. The toggle is the small zoom button in
+  // the header.
+  const [zoomMode, setZoomMode] = useState("fit");
+  const [fitScale, setFitScale] = useState(1);
   const receiptRef = useRef(null);
+  const fitShellRef = useRef(null);
   const invoiceStoreType = invoice?.storeType || invoice?._storeType || settings.businessType;
   const isServiceInvoice = invoiceStoreType === "service" || invoiceStoreType === "msme-service";
   const invoiceLink =
@@ -300,6 +315,44 @@ const InvoiceView = () => {
     setIsDuplicate(false);
   }, [invoiceNo, isForceReprint]);
 
+  // Fit-to-window scaling for the preview. The receipt is rendered at its
+  // natural size (A4 for hotel/service, 80mm for retail, etc.) so the PDF
+  // capture pipeline keeps working unchanged. The shell wrapper uses a CSS
+  // transform (`scale(s)`) to shrink the receipt so it fits the available
+  // vertical space below the sticky header. The receipt's actual DOM size
+  // is *not* changed — only the visual presentation, so the capture path
+  // and the print path both still walk the unmagnified tree.
+  useLayoutEffect(() => {
+    if (zoomMode !== "fit") return undefined;
+    const recompute = () => {
+      const shell = fitShellRef.current;
+      const receipt = receiptRef.current;
+      if (!shell || !receipt) return;
+      const available = shell.clientHeight;
+      if (!available) return;
+      // Read the receipt's natural height BEFORE any transform — the
+      // previous transform is on a different property, so this is the
+      // un-scaled content size.
+      const natural = receipt.scrollHeight;
+      if (!natural) return;
+      // 8px breathing room so the card's bottom shadow doesn't get clipped.
+      const margin = 8;
+      const raw = (available - margin) / natural;
+      const scale = Math.min(1, Math.max(0.2, raw));
+      setFitScale(scale);
+    };
+    recompute();
+    const shell = fitShellRef.current;
+    if (!shell || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(recompute);
+    ro.observe(shell);
+    window.addEventListener("resize", recompute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", recompute);
+    };
+  }, [zoomMode, invoice]);
+
   const handlePrint = () => {
     // Retail: show ONLY the receipt in print preview/output (no surrounding frame)
     if (invoiceStoreType === "retail" || previewMode === "retail") {
@@ -380,6 +433,26 @@ const InvoiceView = () => {
         </div>
         <div className="invoice-action-group">
           <button
+            type="button"
+            className={`invoice-action-btn ${zoomMode === "fit" ? "is-active" : ""}`}
+            onClick={() => setZoomMode(zoomMode === "fit" ? "actual" : "fit")}
+            title={
+              zoomMode === "fit"
+                ? "Switch to 100% (actual size)"
+                : "Switch to fit-to-window (auto-shrink to show whole invoice)"
+            }
+          >
+            {zoomMode === "fit" ? (
+              <>
+                <FaSearchPlus /> Fit
+              </>
+            ) : (
+              <>
+                <FaSearchMinus /> 100%
+              </>
+            )}
+          </button>
+          <button
             className="invoice-action-btn"
             onClick={downloadReceiptPdf}
             disabled={downloadStatus === "Downloading..."}
@@ -454,8 +527,30 @@ const InvoiceView = () => {
         {/* DUPLICATE LABEL ABOVE RECEIPT */}
         {isDuplicate && <div className="duplicate-badge">DUPLICATE COPY</div>}
 
-        <div className="receipt-preview" ref={receiptRef}>
-          {renderThermalReceipt()}
+        {/*
+          Fit shell:
+            - Outer div is the "viewport" — fills the remaining vertical
+              space below the sticky header/toolbar, capped to a sensible
+              max so the receipt never feels tiny on a 4K monitor.
+            - The inner receipt is rendered at its natural size and scaled
+              via CSS `transform: scale(s)` so the whole invoice is visible
+              without scrolling. Scaling does NOT change the DOM/layout,
+              so the PDF capture path and the print path still see the
+              full un-magnified tree.
+            - When the user toggles to "100%", the scale is set to 1 and
+              the shell becomes a normal scrollable container.
+        */}
+        <div
+          ref={fitShellRef}
+          className={`invoice-fit-shell ${zoomMode === "fit" ? "is-fit" : "is-actual"}`}
+        >
+          <div
+            className="receipt-preview"
+            ref={receiptRef}
+            style={zoomMode === "fit" ? { transform: `scale(${fitScale})` } : undefined}
+          >
+            {renderThermalReceipt()}
+          </div>
         </div>
       </div>
     </div>

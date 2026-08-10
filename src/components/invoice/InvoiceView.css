@@ -177,13 +177,71 @@
 .receipt-preview {
   display: flex;
   justify-content: center;
+  transform-origin: top center;
+  /* `width: max-content` keeps the receipt at its natural width even
+     when shrunk — otherwise the flex parent would compress it. */
+  width: max-content;
+  margin: 0 auto;
+}
+
+/* ----- FIT-TO-WINDOW SHELL -----
+   The shell is a flex column that fills the available vertical space
+   below the sticky header. In `fit` mode the receipt inside is
+   `transform: scale(s)` to shrink to fit. In `actual` mode the shell
+   becomes a scrollable container so users can read the receipt at 1:1. */
+.invoice-fit-shell {
+  /* Cap the natural height so a tall receipt on a tall monitor doesn't
+     shrink to a thumbnail. Min 480px so the card is always usable. */
+  max-height: min(calc(100vh - 220px), 1200px);
+  min-height: 480px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+}
+
+.invoice-fit-shell.is-actual {
+  /* Let the user scroll inside the card to read details at 100%. */
+  overflow: auto;
+  max-height: min(calc(100vh - 220px), 1400px);
+  align-items: flex-start;
+}
+
+.invoice-fit-shell.is-fit .receipt-preview {
+  /* Pin to the top so the scaled receipt doesn't drift down when the
+     shell is taller than the scaled content. */
+  flex: 0 0 auto;
+}
+
+/* Active state for the Fit/100% toggle */
+.invoice-action-btn.is-active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  border-color: #4f46e5;
+  box-shadow: 0 6px 16px -10px rgba(79, 70, 229, 0.55);
+}
+
+.invoice-action-btn.is-active:hover,
+.invoice-action-btn.is-active:focus {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: #fff;
+  border-color: #4338ca;
+}
+
+.invoice-action-btn svg {
+  margin-right: 6px;
+  vertical-align: -2px;
 }
 
 @media print {
+  .invoice-fit-shell {
+    /* No scrolling / sizing in print — let the receipt render at 1:1. */
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
   .receipt-preview {
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    transform: none !important;
   }
 }
 
