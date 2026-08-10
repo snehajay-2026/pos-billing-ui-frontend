@@ -87,9 +87,15 @@ const LodgingInvoice = ({ invoice, isDuplicate }) => {
       ""
   ).trim();
 
+  // Guest name resolution. `hotelDetails.guestName` / `customerName` are set
+  // on the live preview, but the server only persists the JSON `items`
+  // column — so a re-printed invoice loses those fields and must fall back
+  // to the guest name captured on each line item's `meta.guest` (set at
+  // booking time by buildLodgingBillItem).
   const guestName =
     invoice?.hotelDetails?.guestName?.trim() ||
     invoice?.customerName?.trim() ||
+    items.find((item) => item?.meta?.guest)?.meta?.guest?.trim() ||
     settings.customerName?.trim() ||
     "Walking Guest";
 

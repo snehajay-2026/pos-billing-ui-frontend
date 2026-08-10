@@ -111,6 +111,7 @@ const flattenDiningBills = (bills = []) =>
         tableId: normalizedTableId,
         tableName: bill.tableName,
         guest: bill.guestName || item.meta?.guest || "",
+        customerMobile: bill.customerMobile || item.meta?.customerMobile || "",
         partySize: bill.partySize || item.meta?.partySize || 0,
         checkInDate: bill.checkInDate || item.meta?.checkInDate || "",
         checkInTime: bill.checkInTime || item.meta?.checkInTime || "",
@@ -729,9 +730,7 @@ const HotelBilling = () => {
           });
         } else if (b.kind === "lodging") {
           setLodgingRooms((prev) => {
-            const byKey = new Map(
-              prev.map((r) => [String(r.id || r.roomId || r.number), r])
-            );
+            const byKey = new Map(prev.map((r) => [String(r.id || r.roomId || r.number), r]));
             const key = String(b.roomId || b.roomNumber);
             const existing = byKey.get(key) || { id: key };
             byKey.set(key, {
@@ -757,18 +756,14 @@ const HotelBilling = () => {
         if (event.action === "live_bill_updated" && d?.tableId) {
           setTables((prev) =>
             prev.map((t) =>
-              String(t.id) === String(d.tableId)
-                ? { ...t, bill: d.bill, hasLiveBill: true }
-                : t
+              String(t.id) === String(d.tableId) ? { ...t, bill: d.bill, hasLiveBill: true } : t
             )
           );
         }
         if (event.action === "live_bill_cleared" && d?.tableId) {
           setTables((prev) =>
             prev.map((t) =>
-              String(t.id) === String(d.tableId)
-                ? { ...t, bill: null, hasLiveBill: false }
-                : t
+              String(t.id) === String(d.tableId) ? { ...t, bill: null, hasLiveBill: false } : t
             )
           );
         }
@@ -910,6 +905,7 @@ const HotelBilling = () => {
         tableId: normalizedTableId,
         tableName: table.name,
         guest: table.guest || "",
+        customerMobile: table.customerMobile || "",
         partySize: table.partySize || 0,
         checkInDate: table.checkInDate || "",
         checkInTime: table.checkInTime || "",
@@ -933,6 +929,7 @@ const HotelBilling = () => {
         tableId: normalizedTableId,
         tableName: table.name,
         guestName: table.guest || "",
+        customerMobile: table.customerMobile || "",
         partySize: table.partySize || 0,
         checkInDate: table.checkInDate || "",
         checkInTime: table.checkInTime || "",
@@ -960,6 +957,7 @@ const HotelBilling = () => {
         tableId: normalizedTableId,
         tableName: table.name,
         guestName: table.guest || "",
+        customerMobile: table.customerMobile || "",
         partySize: table.partySize || 0,
         checkInDate: table.checkInDate || "",
         checkInTime: table.checkInTime || "",
@@ -972,6 +970,7 @@ const HotelBilling = () => {
             tableId: normalizedTableId,
             tableName: table.name,
             guest: table.guest || "",
+            customerMobile: table.customerMobile || "",
             partySize: table.partySize || 0,
             checkInDate: table.checkInDate || "",
             checkInTime: table.checkInTime || "",
@@ -2711,6 +2710,10 @@ const HotelBilling = () => {
               tableId: activeDiningBill?.tableId || diningTableForInvoice?.id,
               tableName: activeDiningBill?.tableName || diningTableForInvoice?.name,
               guestName: activeDiningBill?.guestName || diningTableForInvoice?.guest || undefined,
+              customerMobile:
+                activeDiningBill?.customerMobile ||
+                diningTableForInvoice?.customerMobile ||
+                undefined,
               partySize:
                 activeDiningBill?.partySize || diningTableForInvoice?.partySize || undefined,
               checkInDate:

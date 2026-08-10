@@ -50,11 +50,29 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   const grandTotal = Number(invoice.grandTotal ?? subTotal + gstTotal);
 
   // ---- visit summary fields ----
+  // Guest name resolution. `hotelDetails.guestName` / `customerName` are set
+  // on the live preview, but the server only persists the JSON `items`
+  // column — so a re-printed invoice loses those fields and must fall back
+  // to the guest name captured on each line item's `meta.guest` (set at
+  // booking time via the table booking flow / persistDiningBill).
   const guestName =
     invoice?.hotelDetails?.guestName?.trim() ||
     invoice?.customerName?.trim() ||
+    items.find((item) => item?.meta?.guest)?.meta?.guest?.trim() ||
     settings.customerName?.trim() ||
     "Walking Guest";
+
+  // Same persistence story as the name: `hotelDetails.customerMobile` /
+  // `customerMobile` are set on the live preview but the server only keeps
+  // the JSON `items` column, so re-prints fall back to the mobile captured
+  // on each line item's `meta.customerMobile` (set at booking time via the
+  // table booking flow / persistDiningBill).
+  const guestMobile = String(
+    invoice?.hotelDetails?.customerMobile?.trim() ||
+      invoice?.customerMobile?.trim() ||
+      items.find((item) => item?.meta?.customerMobile)?.meta?.customerMobile?.trim() ||
+      ""
+  );
 
   const tableName = invoice?.hotelDetails?.tableName || "—";
   const partySize = Number(invoice?.hotelDetails?.partySize) || 0;
@@ -123,14 +141,7 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
             <div className="hinv-summary-meta">
               <span className="hinv-summary-label">Guest</span>
               <span className="hinv-summary-value">{guestName}</span>
-              {invoice?.hotelDetails?.customerMobile || invoice?.customerMobile ? (
-                <span className="hinv-summary-sub">
-                  📞{" "}
-                  {String(
-                    invoice?.hotelDetails?.customerMobile || invoice?.customerMobile || ""
-                  ).trim()}
-                </span>
-              ) : null}
+              {guestMobile ? <span className="hinv-summary-sub">📞 {guestMobile}</span> : null}
             </div>
           </div>
 
