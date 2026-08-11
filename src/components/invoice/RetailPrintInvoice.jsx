@@ -4,10 +4,53 @@ import { QRCodeCanvas } from "qrcode.react";
 import { FaReceipt, FaUser, FaCalendarAlt, FaCreditCard, FaCheckCircle } from "react-icons/fa";
 import "./RetailPrintInvoice.css";
 
+// Pure helper that decides what the printed retail invoice shows for the
+// customer name + mobile. Centralised so the rules can be unit-tested:
+//
+//   name:   hotelDetails.guestName  (trimmed)
+//         -> customerName            (trimmed, falls back to "Walking Customer")
+//         -> customer                (legacy string field)
+//   mobile: hotelDetails.customerMobile
+//         -> customerPhone
+//         -> customerMobile          (legacy)
+//
+// The mobile is ALWAYS a non-empty string OR an empty string — never
+// undefined / whitespace — so the renderer can compare against "" to
+// decide whether to draw the "Mobile: …" line at all. Whitespace in the
+// name is treated as "no name" so a stray space doesn't render as
+// "Customer: ".
+export const resolveRetailCustomer = (invoice) => {
+  const safe = invoice && typeof invoice === "object" ? invoice : {};
+  const hd = safe.hotelDetails && typeof safe.hotelDetails === "object" ? safe.hotelDetails : {};
+  const trimmed = (v) => (typeof v === "string" ? v.trim() : "");
+  const nameCandidate =
+    trimmed(hd.guestName) ||
+    trimmed(safe.customerName) ||
+    trimmed(safe.customer) ||
+    "";
+  const mobileCandidate =
+    trimmed(hd.customerMobile) ||
+    trimmed(safe.customerPhone) ||
+    trimmed(safe.customerMobile) ||
+    "";
+  return {
+    name: nameCandidate || "Walking Customer",
+    mobile: mobileCandidate,
+  };
+};
+
 const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
   const settings = getStoreSettings();
 
   if (!invoice) return null;
+
+  // Single source of truth for the customer info shown on the printed
+  // retail invoice. The resolver applies the documented fallback chain
+  // (hotelDetails.guestName -> customerName -> customer -> "Walking
+  // Customer") and never returns an undefined / whitespace-only mobile,
+  // so the JSX below can safely gate the "Mobile: …" line on
+  // `customer.mobile` being a non-empty string.
+  const customer = resolveRetailCustomer(invoice);
 
   const fmt2 = (n) => (Number(n) || 0).toFixed(2);
 
@@ -82,12 +125,7 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
       {/* CUSTOMER */}
       <div className="rpi-customer">
         <div className="rpi-customer-label">Customer</div>
-        <div className="rpi-customer-name">
-          {invoice?.hotelDetails?.guestName?.trim() ||
-            (invoice?.customerName && String(invoice.customerName).trim()) ||
-            (typeof invoice?.customer === "string" && invoice.customer.trim()) ||
-            "Walking Customer"}
-        </div>
+        <div className="rpi-customer-name">{customer.name}</div>
         {invoice?.hotelDetails?.roomNumber && (
           <div className="rpi-customer-sub">Room: {invoice.hotelDetails.roomNumber}</div>
         )}
@@ -101,9 +139,7 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
               {invoice.hotelDetails.idProof.number || ""}
             </div>
           )}
-        {invoice?.customerPhone && String(invoice.customerPhone).trim() && (
-          <div className="rpi-customer-sub">Mobile: {invoice.customerPhone}</div>
-        )}
+        {customer.mobile && <div className="rpi-customer-sub">Mobile: {customer.mobile}</div>}
       </div>
 
       {/* ITEMS TABLE — column widths tuned for the 80mm print + mobile */}
