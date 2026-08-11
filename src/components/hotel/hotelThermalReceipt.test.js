@@ -158,4 +158,47 @@ describe("HotelThermalReceipt — 80mm thermal layout for hotel store", () => {
     expect(html).not.toMatch(/Walking Customer/);
     expect(html).toContain("LODGING");
   });
+
+  test("falls back to meta.tableName on a re-printed dining invoice", () => {
+    // The server only persists the JSON `items` column — the top-level
+    // hotelDetails.tableName is gone. The thermal renderer must still
+    // surface the table number from each line item's meta.tableName
+    // (captured at booking time / when the item was added to the bill),
+    // mirroring the same fallback used for the guest name.
+    const rePrintedDining = {
+      invoiceNo: "HINV-THERMAL-D002",
+      date: "2026-08-10T19:00:00Z",
+      paymentMode: "Cash",
+      billedBy: "Service Team",
+      storeType: "hotel",
+      items: [
+        {
+          id: "table-T8-item-0",
+          name: "Masala Dosa",
+          type: "dining",
+          qty: 2,
+          rate: 120,
+          total: 240,
+          gst: 5,
+          meta: {
+            tableId: "T8",
+            tableName: "T8",
+            guest: "Sneha Iyer",
+            customerMobile: "9876501234",
+            partySize: 2,
+          },
+        },
+      ],
+      subTotal: 240,
+      gstTotal: 12,
+      grandTotal: 252,
+    };
+    const html = renderToString(<HotelThermalReceipt invoice={rePrintedDining} />);
+    expect(html).toContain("Sneha Iyer");
+    expect(html).toContain("9876501234");
+    // Table number pinned: must show T8 even though hotelDetails is missing.
+    expect(html).toContain("T8");
+    expect(html).not.toMatch(/Walking Guest/);
+    expect(html).not.toMatch(/Walking Customer/);
+  });
 });

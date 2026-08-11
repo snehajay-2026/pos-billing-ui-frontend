@@ -74,7 +74,17 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
       ""
   );
 
-  const tableName = invoice?.hotelDetails?.tableName || "—";
+  // Table name resolution. `hotelDetails.tableName` is set on the live
+  // preview, but the server only persists the JSON `items` column — so a
+  // re-printed invoice (loaded via /api/invoices/:invoiceNo) loses the
+  // top-level field and must fall back to the table name captured on each
+  // line item's `meta.tableName` / `meta.tableId` (set at booking time /
+  // when items are added via the dining bill flow).
+  const tableName =
+    invoice?.hotelDetails?.tableName?.trim() ||
+    items.find((item) => item?.meta?.tableName || item?.meta?.tableId)?.meta?.tableName?.trim() ||
+    items.find((item) => item?.meta?.tableName || item?.meta?.tableId)?.meta?.tableId ||
+    "—";
   const partySize = Number(invoice?.hotelDetails?.partySize) || 0;
   const seatedAt = invoice?.hotelDetails?.checkInTime || invoice?.hotelDetails?.seatedAt || "";
   const clearedAt = invoice?.hotelDetails?.checkOutTime || "";

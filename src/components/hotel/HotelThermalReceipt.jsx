@@ -280,7 +280,15 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
 };
 
 function DiningMeta({ invoice, items }) {
-  const tableName = invoice?.hotelDetails?.tableName || "—";
+  // Table name resolution mirrors DiningInvoice.jsx — fall back to the
+  // line-item `meta.tableName` / `meta.tableId` when the server didn't
+  // persist the top-level hotelDetails (re-print path).
+  const tableMeta = items.find((item) => item?.meta?.tableName || item?.meta?.tableId)?.meta;
+  const tableName =
+    invoice?.hotelDetails?.tableName?.trim() ||
+    tableMeta?.tableName?.trim() ||
+    tableMeta?.tableId ||
+    "—";
   const partySize = Number(invoice?.hotelDetails?.partySize) || 0;
   const seatedAt = invoice?.hotelDetails?.checkInTime || invoice?.hotelDetails?.seatedAt || "";
   const clearedAt = invoice?.hotelDetails?.checkOutTime || "";

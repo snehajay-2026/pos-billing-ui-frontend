@@ -96,6 +96,10 @@ describe("hotel invoices — guest name + mobile survive re-print", () => {
     expect(html).toContain("Arjun Mehta");
     expect(html).toContain("9123456780");
     expect(html).not.toMatch(/>Walking Guest</);
+    // Table number must survive re-print: fall back to meta.tableName when
+    // the server only kept the JSON `items` column (top-level hotelDetails
+    // is missing).
+    expect(html).toContain("T3");
   });
 
   test("LodgingInvoice still honours live-preview customerName when present", () => {
@@ -198,6 +202,8 @@ describe("hotel invoices — guest name + mobile survive re-print", () => {
     const html = renderToString(<DiningInvoice invoice={fresh} />);
     expect(html).toContain("Priya Nair");
     expect(html).toContain("9000000002");
+    // Fresh dining invoice: top-level hotelDetails.tableName must surface.
+    expect(html).toContain("T7");
     expect(html).not.toMatch(/>Walking Guest</);
     expect(html).not.toMatch(/>Walking Customer</);
   });
