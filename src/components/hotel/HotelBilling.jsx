@@ -121,6 +121,52 @@ const flattenDiningBills = (bills = []) =>
     }));
   });
 
+// Drop dining cart lines whose source table no longer has a booking or
+// an open bill. Returns the SAME array reference when nothing changes
+// so callers can short-circuit and skip the state update.
+//
+// Why this exists: when the cashier finishes a table (Clear Table +
+// Generate Invoice), the server-side dining bill is deleted and the
+// `diningBillsByTable[id]` entry is also removed. The local `items`
+// cart, however, may still hold a copy of those lines (added when the
+// items first landed in the bill). Without this sweep, the Dining tab
+// badge keeps showing the stale count even though every active bill has
+// been settled — a confusing UX especially right after closing out a
+// table with 6 menu items.
+//
+// Rules:
+//   - Keep a dining line when its tableId has an open bill (items > 0)
+//     OR when its tableId is currently in `booked` status.
+//   - Keep a dining line without a tableId (legacy / orphaned rows — we
+//     never silently drop cashier-entered data).
+//   - Keep every non-dining line.
+export const pruneStaleDiningItems = (items, tables, diningBillsByTable) => {
+  if (!Array.isArray(items) || items.length === 0) return items;
+  const hasAnyDining = items.some((it) => it && it.type === "dining");
+  if (!hasAnyDining) return items;
+  const bookedTableIds = new Set(
+    (Array.isArray(tables) ? tables : [])
+      .filter((table) => String(table.status || "").toLowerCase() === "booked")
+      .map((table) => String(table.id || ""))
+  );
+  const openBillTableIds = new Set(
+    Object.keys(diningBillsByTable || {})
+      .filter((tableId) => {
+        const bill = diningBillsByTable[tableId];
+        return bill && Array.isArray(bill.items) && bill.items.length > 0;
+      })
+      .map((tableId) => String(tableId))
+  );
+  const allowedTableIds = new Set([...bookedTableIds, ...openBillTableIds]);
+  const next = items.filter((it) => {
+    if (!it || it.type !== "dining") return true;
+    const tableId = String(it.meta?.tableId || "");
+    if (!tableId) return true;
+    return allowedTableIds.has(tableId);
+  });
+  return next.length === items.length ? items : next;
+};
+
 const buildDiningBillsMap = (bills = []) =>
   bills.reduce((acc, bill) => {
     if (bill?.tableId == null) return acc;
@@ -2422,6 +2468,27 @@ const HotelBilling = () => {
       setSelectedProductVariant(variants[0]?.value || "regular");
     }
   }, [activeProduct, selectedProductVariant]);
+
+  // Garbage-collect stale dining cart items. A dining line in `items` is
+  // valid only when its source table either has an open bill in
+  // `diningBillsByTable` OR is currently in `booked` state. Without this
+  // sweep, the Dining tab badge (`diningCount`) keeps showing items that
+  // were already cleared + billed — the cashier finishes a table, the
+  // server-side dining bill is deleted, but a leftover line in the cart
+  // never gets cleaned up. We run this whenever the bill map or the
+  // tables list changes so the badge returns to 0 once everything is
+  // settled.
+  useEffect(() => {
+    setItems((prev) => {
+      const next = pruneStaleDiningItems(prev, tables, diningBillsByTable);
+      return next === prev ? prev : next;
+    });
+    // We intentionally don't depend on `items` here — the setter accepts
+    // a functional update and re-running on every cart mutation would
+    // cause an infinite render loop. The bill + tables snapshots are the
+    // inputs that decide what should be live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diningBillsByTable, tables]);
 
   const syncProductStock = async (product, delta) => {
     if (!product?.id) return { ok: false };
