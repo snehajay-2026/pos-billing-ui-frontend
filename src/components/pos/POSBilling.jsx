@@ -173,6 +173,21 @@ const POSBilling = () => {
   const pendingInvoiceRef = useRef(null);
   const [paymentDialog, setPaymentDialog] = useState(null); // { open, invoice, amount, method, invoiceNo } | null
 
+  // Mirror of the active bill's customer details. We mirror on every change
+  // so `generateInvoice` (an async function with a closure over the React
+  // state) always reads the most recently typed customerName / phone even
+  // if the user clicks Save in the same tick as the last keystroke. Without
+  // the mirror, the printed invoice can end up missing the name when the
+  // cashier types into the search / name field and clicks Save immediately.
+  const latestCustomerRef = useRef({ name: "", phone: "" });
+  useEffect(() => {
+    const bill = bills[activeBillId];
+    latestCustomerRef.current = {
+      name: (bill && bill.customerName) || "",
+      phone: (bill && bill.customerPhone) || "",
+    };
+  }, [bills, activeBillId]);
+
   // Shift dialog state. When the cashier hits Save on a cash sale and
   // has no open shift, we open this dialog first; once they open a
   // shift, we resume the original save with the same invoice.
@@ -1024,8 +1039,30 @@ const POSBilling = () => {
       );
       return;
     }
+    // Safety net: if the cashier typed a name in the "Search existing
+    // customer…" input and clicked Save directly (skipping both blur and
+    // Enter handlers), resolve the customerName synchronously here so it
+    // lands on the saved invoice regardless of which input was used and
+    // whether the cashier took the time to blur the search field. We
+    // commit through state AND compute the value inline so the in-flight
+    // `invoice` object built below carries the right name even before
+    // React re-renders.
+    const resolvedCustomerName = resolveCustomerFromSearch({
+      query: customerSearch,
+      hasAttachedCustomer: Boolean(activeBill && activeBill.customerId),
+      currentName: activeBill ? activeBill.customerName || "" : "",
+    });
+    if (resolvedCustomerName && resolvedCustomerName !== (activeBill.customerName || "")) {
+      setBills((prev) => ({
+        ...prev,
+        [activeBillId]: {
+          ...prev[activeBillId],
+          customerName: resolvedCustomerName,
+        },
+      }));
+    }
     // Customer details now come from per-bill fields (shifted from store settings)
-    const billCustomerName = (activeBill.customerName || "").trim();
+    const billCustomerName = (resolvedCustomerName || "").trim();
     const billCustomerPhone = (activeBill.customerPhone || "").trim();
     // Send WhatsApp if phone is present and valid
     if (billCustomerPhone && billCustomerPhone.match(/^\d{10,15}$/)) {
@@ -1600,6 +1637,57 @@ const POSBilling = () => {
                 <span className="bill-summary-badge bill-summary-items">
                   {activeBill.items.length} {activeBill.items.length === 1 ? "item" : "items"}
                 </span>
+              </div>
+            </div>
+
+            {/* Prominent, always-visible customer banner. Sits directly below
+                the Billing Summary header so the cashier can't miss it.
+                Mirrors the side-rail "Customer Details" card: editing here
+                updates the same bill field, so the value flows into
+                invoice.customerName on save. A green pill confirms the
+                customer name will land on the printed invoice; a yellow
+                dashed prompt nudges the cashier to add one. */}
+            <div
+              className={`bill-customer-banner ${
+                activeBill.customerName ? "is-filled" : "is-empty"
+              }`}
+              role="region"
+              aria-label="Customer details for this bill"
+            >
+              <div className="bill-customer-banner-icon" aria-hidden="true">
+                <FaUser />
+              </div>
+              <div className="bill-customer-banner-body">
+                <div className="bill-customer-banner-label">Customer on invoice</div>
+                <div className="bill-customer-banner-value">
+                  {activeBill.customerName ? (
+                    <strong>{activeBill.customerName}</strong>
+                  ) : (
+                    <span className="bill-customer-banner-placeholder">
+                      Add a customer name (e.g. "Walk-in" or actual name)
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="bill-customer-banner-edit">
+                <FaUser className="bill-customer-banner-edit-ico" aria-hidden="true" />
+                <input
+                  type="text"
+                  className="bill-customer-banner-input"
+                  placeholder="Customer name"
+                  value={activeBill.customerName || ""}
+                  onChange={(e) =>
+                    setBills((prev) => ({
+                      ...prev,
+                      [activeBillId]: {
+                        ...prev[activeBillId],
+                        customerName: e.target.value,
+                      },
+                    }))
+                  }
+                  maxLength={50}
+                  aria-label="Customer name (saved onto the invoice)"
+                />
               </div>
             </div>
 
