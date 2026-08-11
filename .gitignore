@@ -4,6 +4,7 @@ build/
 .env
 .env.local
 .env.*.local
+.env.production
 .git
 *.log
 npm-debug.log*

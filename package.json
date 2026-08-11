@@ -23,7 +23,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "cross-env DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build": "node scripts/write-git-sha.js && cross-env DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:no-stamp": "cross-env DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "preview": "npx serve -s build",
     "test": "react-scripts test --watchAll=false",
     "test:watch": "react-scripts test",

@@ -103,4 +103,19 @@ describe("RetailPrintInvoice — customer info block", () => {
     expect(html).not.toContain("Should Not Win");
     expect(html).toContain("9999999999");
   });
+
+  test("renders the build-commit fingerprint in the footer", () => {
+    const html = renderInvoice({
+      invoiceNo: "RINV-005",
+      date: "2026-08-11",
+      paymentMode: "Cash",
+      items: [{ id: "x", name: "Tea", qty: 1, price: 50, gst: 0 }],
+      subTotal: 50,
+      gstTotal: 0,
+      grandTotal: 50,
+    });
+    // The footer must show a "build:" line so anyone holding a printed
+    // receipt can verify the deployed bundle matches the expected commit.
+    expect(html).toMatch(/build:\s*(<!-- -->)?\s*\S+/);
+  });
 });

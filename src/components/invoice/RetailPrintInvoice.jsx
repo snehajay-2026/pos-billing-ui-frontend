@@ -307,6 +307,15 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
           <FaCheckCircle /> Thank you for your business!
         </div>
         <div className="rpi-foot-meta">Powered by POS Suite</div>
+        {/* Build fingerprint — short commit hash of the deployed frontend
+            bundle. Visible on every printed receipt so we can confirm at a
+            glance that the live build matches the expected commit. If the
+            fingerprint on the printed receipt does NOT match the latest
+            commit on GitHub, the deployed bundle is stale and the customer
+            info fix from commits 026a64a / 7718b2d is not live. */}
+        <div className="rpi-foot-build" title="Deployed frontend commit">
+          build: {process.env.REACT_APP_GIT_SHA || "dev"}
+        </div>
       </div>
     </div>
   );
