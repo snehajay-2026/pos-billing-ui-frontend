@@ -110,4 +110,95 @@ describe("hotel invoices — guest name + mobile survive re-print", () => {
     // meta.guest should NOT win over the live preview
     expect(html).not.toContain("Riya Sharma");
   });
+
+  test("LodgingInvoice shows booking-card name on a fresh invoice (hotelDetails + meta)", () => {
+    // What HotelBilling hands the LodgingInvoice right after the cashier
+    // clicks "Generate Invoice". Both top-level fields and item meta carry
+    // the booking-card name. The rendered Guest cell must show the real
+    // name — never "Walking Guest".
+    const fresh = {
+      invoiceNo: "HINV-FRESH-001",
+      date: "2026-08-10T12:00:00Z",
+      paymentMode: "Cash",
+      billedBy: "Front Desk",
+      customerName: "Rahul Verma",
+      hotelDetails: {
+        guestName: "Rahul Verma",
+        roomNumber: "204",
+        idProof: { type: "Aadhaar", number: "XXXX-XXXX-1234" },
+      },
+      items: [
+        {
+          id: "lodging-booking-room-204",
+          name: "Room Booking - 204",
+          type: "lodging",
+          qty: 1,
+          rate: 2200,
+          total: 2200,
+          gst: 12,
+          meta: {
+            roomId: "room-204",
+            roomName: "204",
+            guest: "Rahul Verma",
+            customerMobile: "9000000001",
+            nights: 1,
+            checkInDate: "2026-08-10",
+            checkInTime: "11:00",
+          },
+        },
+      ],
+      subTotal: 2200,
+      gstTotal: 264,
+      grandTotal: 2464,
+    };
+    const html = renderToString(<LodgingInvoice invoice={fresh} />);
+    expect(html).toContain("Rahul Verma");
+    expect(html).not.toMatch(/>Walking Guest</);
+    expect(html).not.toMatch(/>Walking Customer</);
+  });
+
+  test("DiningInvoice shows booking-card name on a fresh invoice", () => {
+    // Same scenario as above but for the dining flow. The cashier booked
+    // a table with guest name "Priya Nair"; the rendered Guest cell must
+    // show "Priya Nair", not "Walking Guest"/"Walking Customer".
+    const fresh = {
+      invoiceNo: "HINV-FRESH-D001",
+      date: "2026-08-10T19:00:00Z",
+      paymentMode: "UPI",
+      billedBy: "Service Team",
+      customerName: "Priya Nair",
+      hotelDetails: {
+        guestName: "Priya Nair",
+        tableName: "T7",
+        partySize: 3,
+        customerMobile: "9000000002",
+      },
+      items: [
+        {
+          id: "table-T7-item-0",
+          name: "Veg Biryani",
+          type: "dining",
+          qty: 3,
+          rate: 220,
+          total: 660,
+          gst: 5,
+          meta: {
+            tableId: "T7",
+            tableName: "T7",
+            guest: "Priya Nair",
+            customerMobile: "9000000002",
+            partySize: 3,
+          },
+        },
+      ],
+      subTotal: 660,
+      gstTotal: 33,
+      grandTotal: 693,
+    };
+    const html = renderToString(<DiningInvoice invoice={fresh} />);
+    expect(html).toContain("Priya Nair");
+    expect(html).toContain("9000000002");
+    expect(html).not.toMatch(/>Walking Guest</);
+    expect(html).not.toMatch(/>Walking Customer</);
+  });
 });
