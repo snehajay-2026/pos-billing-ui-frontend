@@ -2,12 +2,20 @@ import React, { useEffect, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import JsBarcode from "jsbarcode";
 import { getStoreSettings } from "../../services/storeSettingsService";
+import { resolveRetailCustomer } from "../invoice/RetailPrintInvoice";
 import "./ThermalPrint.css";
 
 const ThermalReceipt = ({ invoice, isDuplicate }) => {
   const barcodeRef = useRef();
   const settings = getStoreSettings();
   const fmt2 = (n) => (Number(n) || 0).toFixed(2);
+
+  // Use the same resolver as the RetailPrintInvoice template so the
+  // ESC/POS Bluetooth receipt (this component) and the PDF preview share
+  // one source of truth for customer info. Without this, the printed
+  // thermal receipt could still show "Walking Customer" while the PDF
+  // preview showed the typed name — confusing for the cashier.
+  const customer = resolveRetailCustomer(invoice);
 
   const getUnitForItem = (item) => {
     if (item?.unit) return item.unit;
@@ -31,8 +39,6 @@ const ThermalReceipt = ({ invoice, isDuplicate }) => {
       });
     }
   }, [invoice]);
-
-  if (!invoice) return null;
 
   if (!invoice) return null;
 
@@ -86,14 +92,16 @@ const ThermalReceipt = ({ invoice, isDuplicate }) => {
 
         <div className="divider"></div>
 
-        {/* CUSTOMER / GUEST INFO — always shown; falls back to "Walking Customer" */}
+        {/* CUSTOMER / GUEST INFO — uses the same resolver as RetailPrintInvoice
+            so the Bluetooth-printed receipt and the PDF preview stay in sync.
+            Falls back to "Walking Customer" only when no name exists anywhere
+            on the invoice record (POS billing customer field, hotel guest
+            block, or legacy string). Mobile is shown only when present. */}
         <div>
           {invoice?.hotelDetails?.guestName ? (
             <div>Guest: {invoice.hotelDetails.guestName}</div>
-          ) : invoice?.customerName && String(invoice.customerName).trim() ? (
-            <div>Customer: {invoice.customerName}</div>
           ) : (
-            <div>Customer: Walking Customer</div>
+            <div>Customer: {customer.name}</div>
           )}
           {invoice?.hotelDetails?.roomNumber && <div>Room: {invoice.hotelDetails.roomNumber}</div>}
           {invoice?.hotelDetails?.idProof &&
@@ -106,9 +114,7 @@ const ThermalReceipt = ({ invoice, isDuplicate }) => {
                 {invoice.hotelDetails.idProof.number || ""}
               </div>
             )}
-          {invoice?.customerPhone && String(invoice.customerPhone).trim() && (
-            <div>Mobile: {invoice.customerPhone}</div>
-          )}
+          {customer.mobile && <div>Mobile: {customer.mobile}</div>}
         </div>
 
         <div className="divider"></div>
