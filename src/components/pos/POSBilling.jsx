@@ -47,6 +47,25 @@ import {
   FaUserTie,
 } from "react-icons/fa";
 
+// Pure helper. The cashier's first instinct is to type the customer name
+// in the top "Search existing customer…" input — if no match was clicked
+// (and the bill isn't already attached to an existing customer record),
+// that typed text IS the customer name they want on the invoice.
+// Returning the next customer name (or the current one, when nothing
+// changed) keeps the React setState call free of redundant updates and
+// lets us pin the behaviour with unit tests. Defined at module scope (Babel
+// forbids `export` from appearing inside the component body).
+export const resolveCustomerFromSearch = ({
+  query,
+  hasAttachedCustomer,
+  currentName = "",
+} = {}) => {
+  const trimmed = String(query || "").trim();
+  if (!trimmed) return currentName || "";
+  if (hasAttachedCustomer) return currentName || ""; // an attached record wins
+  return trimmed;
+};
+
 const POSBilling = () => {
   const navigate = useNavigate();
   const receiptRef = useRef();
@@ -1880,7 +1899,10 @@ const POSBilling = () => {
                   {/* Customer attach — search existing customer record. Shows
                       a dropdown of name matches; clicking one populates
                       name+phone and stores customerId on the bill. Walking
-                      customers still work via the free-text fields below. */}
+                      customers still work via the free-text fields below.
+                      If the cashier types a name and moves on without
+                      clicking a match, the typed text is committed as the
+                      bill's customerName (it flows into the invoice). */}
                   <div className="bill-customer-field">
                     <FaUserTie className="bill-customer-field-ico" />
                     <input
@@ -1893,7 +1915,57 @@ const POSBilling = () => {
                         setCustomerSearchOpen(true);
                       }}
                       onFocus={() => setCustomerSearchOpen(true)}
-                      onBlur={() => setTimeout(() => setCustomerSearchOpen(false), 200)}
+                      onBlur={() => {
+                        // The dropdown has its own 200ms close delay so a
+                        // click on a match still wins (it fires onMouseDown
+                        // before this blur). Once we're past that window,
+                        // commit whatever the cashier typed so the typed
+                        // name doesn't disappear into a void.
+                        window.setTimeout(() => {
+                          setCustomerSearchOpen(false);
+                          const bill = bills[activeBillId];
+                          const nextName = resolveCustomerFromSearch({
+                            query: customerSearch,
+                            hasAttachedCustomer: Boolean(bill && bill.customerId),
+                            currentName: bill ? bill.customerName : "",
+                          });
+                          if (bill && nextName && nextName !== (bill.customerName || "")) {
+                            setBills((prev) => ({
+                              ...prev,
+                              [activeBillId]: {
+                                ...prev[activeBillId],
+                                customerName: nextName,
+                              },
+                            }));
+                          }
+                        }, 200);
+                      }}
+                      onKeyDown={(e) => {
+                        // Pressing Enter with a non-empty query and no
+                        // highlighted match commits the typed name (same
+                        // path as blur) so the cashier doesn't have to
+                        // tab away to lock it in.
+                        if (e.key === "Enter" && customerSearch.trim()) {
+                          e.preventDefault();
+                          const bill = bills[activeBillId];
+                          const nextName = resolveCustomerFromSearch({
+                            query: customerSearch,
+                            hasAttachedCustomer: Boolean(bill && bill.customerId),
+                            currentName: bill ? bill.customerName : "",
+                          });
+                          if (bill && nextName && nextName !== (bill.customerName || "")) {
+                            setBills((prev) => ({
+                              ...prev,
+                              [activeBillId]: {
+                                ...prev[activeBillId],
+                                customerName: nextName,
+                              },
+                            }));
+                          }
+                          setCustomerSearchOpen(false);
+                          setCustomerSearch("");
+                        }
+                      }}
                       aria-label="Search existing customer"
                       autoComplete="off"
                     />

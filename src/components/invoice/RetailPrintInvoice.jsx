@@ -83,8 +83,9 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
       <div className="rpi-customer">
         <div className="rpi-customer-label">Customer</div>
         <div className="rpi-customer-name">
-          {invoice?.hotelDetails?.guestName ||
+          {invoice?.hotelDetails?.guestName?.trim() ||
             (invoice?.customerName && String(invoice.customerName).trim()) ||
+            (typeof invoice?.customer === "string" && invoice.customer.trim()) ||
             "Walking Customer"}
         </div>
         {invoice?.hotelDetails?.roomNumber && (
