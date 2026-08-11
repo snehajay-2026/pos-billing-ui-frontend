@@ -8,6 +8,7 @@ import jsPDF from "jspdf";
 import LaundryThermalReceipt from "../laundry/LaundryThermalReceipt";
 import LodgingInvoice from "../hotel/LodgingInvoice";
 import DiningInvoice from "../hotel/DiningInvoice";
+import HotelThermalReceipt from "../hotel/HotelThermalReceipt";
 import MSMEInvoice from "./MSMEInvoice";
 import RetailPrintInvoice from "./RetailPrintInvoice";
 import ServiceInvoice from "./ServiceInvoice";
@@ -45,6 +46,36 @@ const InvoiceView = () => {
   // the header.
   const [zoomMode, setZoomMode] = useState("fit");
   const [fitScale, setFitScale] = useState(1);
+  // Hotel store layout: "a4" (modern A4 invoice) or "thermal" (80mm thermal
+  // pillar). The A4 layout is the default — cashiers who want a narrower
+  // receipt for a thermal printer can flip this from the header. The toggle
+  // is only rendered for hotel invoices; other store types ignore it.
+  // The choice is persisted per-store in localStorage so the same cashier
+  // gets the same receipt size on every re-open. The query string
+  // `?preview=thermal` (added by HotelBilling when forcing a thermal open)
+  // takes priority over the stored value.
+  const HOTEL_LAYOUT_STORAGE_KEY = "hotel_invoice_layout";
+  const readInitialHotelLayout = () => {
+    if (typeof window === "undefined") return "a4";
+    const fromQuery = new URLSearchParams(window.location.search).get("preview");
+    if (fromQuery === "thermal") return "thermal";
+    try {
+      const stored = window.localStorage.getItem(HOTEL_LAYOUT_STORAGE_KEY);
+      if (stored === "thermal" || stored === "a4") return stored;
+    } catch (e) {
+      /* ignore */
+    }
+    return "a4";
+  };
+  const [hotelLayout, setHotelLayout] = useState(readInitialHotelLayout);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HOTEL_LAYOUT_STORAGE_KEY, hotelLayout);
+    } catch (e) {
+      /* ignore */
+    }
+  }, [hotelLayout]);
   const receiptRef = useRef(null);
   const fitShellRef = useRef(null);
   const invoiceStoreType = invoice?.storeType || invoice?._storeType || settings.businessType;
@@ -364,6 +395,24 @@ const InvoiceView = () => {
       };
 
       window.addEventListener("afterprint", cleanup);
+    } else if (
+      invoiceStoreType === "hotel" &&
+      hotelLayout === "thermal" &&
+      previewMode !== "retail"
+    ) {
+      // Hotel thermal layout: hide the surrounding preview chrome so the
+      // 80 mm printout doesn't pull in the InvoiceView action bar / status
+      // controls. The thermal CSS already hides everything but its own
+      // container; toggling this class also hides the action group as a
+      // belt-and-braces guard.
+      document.body.classList.add("print-hotel-thermal-only");
+
+      const cleanup = () => {
+        document.body.classList.remove("print-hotel-thermal-only");
+        window.removeEventListener("afterprint", cleanup);
+      };
+
+      window.addEventListener("afterprint", cleanup);
     }
 
     setTimeout(() => window.print(), 150);
@@ -388,6 +437,9 @@ const InvoiceView = () => {
               <RetailPrintInvoice invoice={invoice} isDuplicate={isDuplicate} />
             </div>
           );
+        }
+        if (hotelLayout === "thermal") {
+          return <HotelThermalReceipt invoice={invoice} isDuplicate={isDuplicate} />;
         }
         return isHotelDiningInvoice(invoice) ? (
           <DiningInvoice invoice={invoice} isDuplicate={isDuplicate} />
@@ -432,6 +484,30 @@ const InvoiceView = () => {
           </p>
         </div>
         <div className="invoice-action-group">
+          {invoiceStoreType === "hotel" && previewMode !== "retail" ? (
+            <div className="invoice-layout-toggle" role="group" aria-label="Hotel invoice layout">
+              <button
+                type="button"
+                className={`invoice-action-btn invoice-layout-toggle-btn ${
+                  hotelLayout === "a4" ? "is-active" : ""
+                }`}
+                onClick={() => setHotelLayout("a4")}
+                title="A4 / full-page invoice layout"
+              >
+                A4
+              </button>
+              <button
+                type="button"
+                className={`invoice-action-btn invoice-layout-toggle-btn ${
+                  hotelLayout === "thermal" ? "is-active" : ""
+                }`}
+                onClick={() => setHotelLayout("thermal")}
+                title="80 mm thermal-pillar layout"
+              >
+                Thermal (80mm)
+              </button>
+            </div>
+          ) : null}
           <button
             type="button"
             className={`invoice-action-btn ${zoomMode === "fit" ? "is-active" : ""}`}

@@ -1,0 +1,372 @@
+/* src/components/hotel/HotelThermalReceipt.css
+ *
+ * 80 mm thermal-pillar layout for the hotel store.
+ *
+ * Print rules:
+ *   - force @page to 80mm auto so a thermal printer gets the exact width
+ *   - hide every other UI element on the page during print
+ *   - keep colors crisp via print-color-adjust: exact so the brand
+ *     gradient survives on capable printers
+ */
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #hotel-thermal-receipt-print,
+  #hotel-thermal-receipt-print * {
+    visibility: visible !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  #hotel-thermal-receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    margin: 0;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+.htr-doc {
+  /* Preview width — visible behind the receipt */
+  width: 80mm;
+  box-sizing: border-box;
+  padding: 8px 6px 10px;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: "SFMono-Regular", "Menlo", "Consolas", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  border: 1px dashed #e5e7eb;
+  border-radius: 6px;
+}
+
+.htr-copy {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.htr-copy.is-original {
+  color: #1f8a3b;
+}
+
+.htr-copy.is-duplicate {
+  color: #c0392b;
+}
+
+/* Brand */
+.htr-brand {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.htr-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.htr-logo-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #14202a;
+  color: #f1e3c8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.htr-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.htr-branch {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #4a5a66;
+  font-weight: 600;
+}
+
+.htr-contact {
+  font-size: 10.5px;
+  color: #4a5a66;
+  word-break: break-word;
+}
+
+/* Divider — dotted rule emulating a thermal cutline */
+.htr-divider {
+  border-top: 1px dashed #999;
+  margin: 6px 0;
+}
+
+.htr-divider-qr {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+/* Receipt metadata */
+.htr-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11.5px;
+}
+
+.htr-meta strong {
+  display: inline-block;
+  width: 48px;
+  color: #14202a;
+}
+
+.htr-meta-reprint {
+  font-style: italic;
+  color: #c0392b;
+  margin-top: 2px;
+}
+
+/* Guest block */
+.htr-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11.5px;
+}
+
+.htr-guest strong {
+  display: inline-block;
+  width: 48px;
+  color: #14202a;
+}
+
+.htr-mini {
+  font-size: 10.5px;
+  color: #4a5a66;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* Items */
+.htr-items-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #4a5a66;
+  margin-bottom: 4px;
+}
+
+.htr-items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.htr-items thead th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #000;
+  padding: 2px 1px;
+}
+
+.htr-items tbody td {
+  padding: 3px 1px;
+  border-bottom: 1px dotted #ccc;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.htr-items-name {
+  width: 42%;
+}
+
+.htr-items-room {
+  width: 12%;
+  text-align: center;
+}
+
+.htr-items-qty {
+  width: 12%;
+  text-align: center;
+}
+
+.htr-items-rate {
+  width: 17%;
+  text-align: right;
+}
+
+.htr-items-amt {
+  width: 17%;
+  text-align: right;
+  font-weight: 600;
+}
+
+.htr-empty {
+  text-align: center;
+  font-style: italic;
+  color: #4a5a66;
+  padding: 6px 0 !important;
+}
+
+/* Totals */
+.htr-totals {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.htr-totals td {
+  padding: 2px 0;
+}
+
+.htr-totals .htr-totals-val {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.htr-grand td {
+  border-top: 1px solid #000;
+  border-bottom: 3px double #000;
+  padding: 4px 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.htr-grand td:first-child {
+  text-align: left;
+  letter-spacing: 0.06em;
+}
+
+/* Payment line */
+.htr-payment {
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+.htr-payment strong {
+  display: inline-block;
+  width: 60px;
+}
+
+/* QR codes */
+.htr-qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+
+.htr-qr-tile {
+  text-align: center;
+}
+
+.htr-qr-tile canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+.htr-qr-label {
+  font-size: 10px;
+  margin-top: 1px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a5a66;
+}
+
+/* Barcode */
+.htr-barcode {
+  text-align: center;
+  margin: 4px 0 2px;
+}
+
+.htr-barcode svg {
+  max-width: 100%;
+  height: 30px;
+}
+
+/* Closing */
+.htr-thanks {
+  text-align: center;
+  font-weight: 700;
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+.htr-thanks-sub {
+  text-align: center;
+  font-size: 10.5px;
+  color: #4a5a66;
+  margin-bottom: 2px;
+}
+
+.htr-servedby {
+  text-align: center;
+  font-size: 10px;
+  color: #4a5a66;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+
+/* Tighter margins for screens so the receipt sits nicely behind a print preview */
+@media screen {
+  body {
+    background: #f6f7f9;
+  }
+}
+
+/* Honor the cashier's "thermal" layout choice when the live preview
+   popup launches the renderer directly. The popup body carries
+   `hotel-preview-thermal` so we can force the @page size to 80mm
+   even when the popup isn't going through InvoiceView's
+   `print-hotel-thermal-only` class. */
+@media print {
+  body.hotel-preview-thermal {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.hotel-preview-thermal #hotel-thermal-receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    margin: 0 !important;
+  }
+  body.hotel-preview-thermal {
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+  }
+}

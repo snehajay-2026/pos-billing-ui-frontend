@@ -40,6 +40,7 @@ import "./HotelBilling.css";
 import ReactDOM from "react-dom/client";
 import LodgingInvoice from "./LodgingInvoice";
 import DiningInvoice from "./DiningInvoice";
+import HotelThermalReceipt from "./HotelThermalReceipt";
 import RoomCard from "./RoomCard";
 import DiningTableCard from "./DiningTableCard";
 import { computeOverstayCharge, resolveLodgingGstRate, syncOverstayIntoBill } from "./folio";
@@ -2777,10 +2778,24 @@ const HotelBilling = () => {
 
     // open popup and render preview
     try {
+      // Honor the cashier's saved hotel layout preference (A4 or 80mm
+      // thermal) when the live preview prints. Without this, the popup
+      // would always render the A4 layout even if the cashier had
+      // previously switched the InvoiceView to thermal.
+      let hotelLayoutPreference = "a4";
+      try {
+        const stored = window.localStorage.getItem("hotel_invoice_layout");
+        if (stored === "thermal" || stored === "a4") hotelLayoutPreference = stored;
+      } catch (e) {
+        /* ignore */
+      }
       const w = window.open("", "_blank", "width=420,height=760");
       if (!w) throw new Error("Popup blocked");
+      // Also append the layout preference as a class on the popup's
+      // <body> so the print stylesheet can scope print-only rules to the
+      // chosen layout (e.g. force `@page size: 80mm auto` when thermal).
       w.document.write(
-        '<!doctype html><html><head><title>Invoice Preview</title></head><body><div id="root"></div></body></html>'
+        '<!doctype html><html><head><title>Invoice Preview</title></head><body class="hotel-preview-popup"><div id="root"></div></body></html>'
       );
       Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).forEach((node) => {
         try {
@@ -2789,7 +2804,23 @@ const HotelBilling = () => {
       });
       const root = w.document.getElementById("root");
       const reactRoot = ReactDOM.createRoot(root);
-      const InvoiceComponent = activeTab === "dining" ? DiningInvoice : LodgingInvoice;
+      // The popup is dedicated to the hotel invoice, so it uses the
+      // choice stored in InvoiceView — when the cashier is on "thermal"
+      // we mount the thermal renderer; otherwise the existing A4 path.
+      const isThermal = hotelLayoutPreference === "thermal";
+      const InvoiceComponent = isThermal
+        ? HotelThermalReceipt
+        : activeTab === "dining"
+          ? DiningInvoice
+          : LodgingInvoice;
+      // Mark the popup body so the print CSS can scope its rules
+      // correctly (force 80mm @page when thermal; otherwise the default
+      // A4 page setup).
+      try {
+        w.document.body.classList.add(isThermal ? "hotel-preview-thermal" : "hotel-preview-a4");
+      } catch (e) {
+        /* ignore */
+      }
       reactRoot.render(<InvoiceComponent invoice={invoiceToPreview} isDuplicate={false} />);
       setTimeout(() => {
         try {
@@ -2807,8 +2838,20 @@ const HotelBilling = () => {
     // if save succeeded, clear local items and shared items
     if (savedInvoice) {
       try {
-        // Open saved invoice route and let InvoiceView auto-select lodging/dining layout
-        const url = `/invoice/${encodeURIComponent(savedInvoice.invoiceNo)}`;
+        // Open saved invoice route and let InvoiceView auto-select lodging/dining layout.
+        // Honor the cashier's saved hotel layout choice (A4 or 80mm thermal)
+        // by threading the same value through ?preview= so InvoiceView boots
+        // straight into the right renderer instead of forcing another toggle.
+        let hotelLayoutPreference = "a4";
+        try {
+          const stored = window.localStorage.getItem("hotel_invoice_layout");
+          if (stored === "thermal" || stored === "a4") hotelLayoutPreference = stored;
+        } catch (e) {
+          /* ignore */
+        }
+        const url =
+          `/invoice/${encodeURIComponent(savedInvoice.invoiceNo)}` +
+          (hotelLayoutPreference === "thermal" ? "?preview=thermal" : "");
         const w = window.open(url, "_blank", "width=820,height=1000");
         if (!w) {
           // popup blocked — fall back to rendering in current tab
