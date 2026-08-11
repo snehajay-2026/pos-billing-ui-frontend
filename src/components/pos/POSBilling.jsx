@@ -1576,6 +1576,23 @@ const POSBilling = () => {
                 </div>
               </div>
               <div className="bill-summary-status">
+                <span
+                  className={`bill-summary-badge bill-summary-customer ${
+                    activeBill.customerName ? "is-filled" : "is-empty"
+                  }`}
+                  title={
+                    activeBill.customerName
+                      ? `Customer: ${activeBill.customerName}`
+                      : "Click 'Customer Details' below to add a customer name"
+                  }
+                >
+                  <FaUser />
+                  {activeBill.customerName ? (
+                    <span className="bill-summary-customer-name">{activeBill.customerName}</span>
+                  ) : (
+                    <span className="bill-summary-customer-hint">+ Customer</span>
+                  )}
+                </span>
                 <span className="bill-summary-badge bill-summary-total">
                   <FaRupeeSign />
                   {grandTotal.toFixed(2)}
@@ -1894,6 +1911,28 @@ const POSBilling = () => {
                       <h6>Customer Details</h6>
                       <p>For this bill & invoice</p>
                     </div>
+                  </div>
+
+                  {/* Live preview of the customer detail that will land on the
+                      invoice. When nothing is filled in, the chip shows a
+                      "Walking customer" placeholder so the cashier knows
+                      the field isn't lost — typing in either the search
+                      (committed on blur/Enter) or the explicit name field
+                      below updates this chip in real time. The same value
+                      is what flows into invoice.customerName on save, so
+                      it's a single source of truth for "what will the
+                      printed invoice say?". */}
+                  <div
+                    id={`bill-customer-live-preview-${activeBillId}`}
+                    className={`bill-customer-live-preview ${
+                      activeBill.customerName ? "is-filled" : "is-empty"
+                    }`}
+                    aria-live="polite"
+                  >
+                    <span className="bill-customer-live-preview-label">On invoice</span>
+                    <strong className="bill-customer-live-preview-value">
+                      {activeBill.customerName ? activeBill.customerName : "Walking customer"}
+                    </strong>
                   </div>
 
                   {/* Customer attach — search existing customer record. Shows

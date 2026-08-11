@@ -2609,6 +2609,50 @@
   outline: none;
 }
 
+/* ---------------- Customer badge in bill-summary header strip ---------------- */
+/* Lives next to "₹ total" and "X items" badges in the strip above the bill
+   body. When customerName is set, it shows the name; when empty, a "+
+   Customer" hint nudges the cashier to fill it. The pill is the same height
+   as the existing badges so the strip stays on one row. */
+.bill-summary-customer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  overflow: hidden;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  transition:
+    background var(--pos-fast) var(--pos-ease),
+    color var(--pos-fast) var(--pos-ease),
+    border-color var(--pos-fast) var(--pos-ease);
+}
+.bill-summary-customer.is-empty {
+  border-style: dashed;
+  background: transparent;
+  color: var(--pos-text-muted);
+}
+.bill-summary-customer.is-filled {
+  border-style: solid;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(236, 72, 153, 0.12));
+  color: #312e81;
+}
+.bill-summary-customer-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.bill-summary-customer-hint {
+  white-space: nowrap;
+}
+
 /* ---------------- Customer Details card in side rail ---------------- */
 .bill-customer-card {
   display: flex;
@@ -2699,6 +2743,52 @@
 .bill-customer-input::placeholder {
   color: var(--pos-text-soft);
   font-weight: 500;
+}
+
+/* ---------------- Live preview of what the printed invoice will show ---- */
+/* Sits directly below the "Customer Details" header. When the cashier
+   has entered a name it shows the actual name in a bright pill; when
+   empty it shows a muted "Walking customer" hint in the same shape so
+   the cashier immediately sees what the printed invoice is going to say.
+   Aria-live=polite on the wrapper announces changes to screen readers. */
+.bill-customer-live-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  margin-bottom: 2px;
+}
+.bill-customer-live-preview.is-filled {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(236, 72, 153, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-style: solid;
+}
+.bill-customer-live-preview-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pos-text-muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.bill-customer-live-preview-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--pos-text);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.bill-customer-live-preview.is-empty .bill-customer-live-preview-value {
+  color: var(--pos-text-muted);
+  font-weight: 600;
+  font-style: italic;
 }
 
 /* ============================================================
