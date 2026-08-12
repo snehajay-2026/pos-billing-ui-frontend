@@ -462,7 +462,7 @@ const LaundryBilling = () => {
       }
 
       showToast("success", `Invoice ${finalInvoice.invoiceNo} saved.`);
-      navigate(`/invoice/${encodeURIComponent(finalInvoice.invoiceNo)}`);
+      navigate(`/invoice/${encodeURIComponent(finalInvoice.invoiceNo)}/preview`);
     } catch (err) {
       console.error("Failed to save invoice:", err);
       showToast("error", "Unable to save invoice. Please try again.");

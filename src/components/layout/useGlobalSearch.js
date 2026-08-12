@@ -87,7 +87,7 @@ const buildInvoices = (invoices, query) => {
         [row.ref.customer, row.ref.customerPhone, row.ref.token ? `Token ${row.ref.token}` : ""]
           .filter(Boolean)
           .join(" · ") || `₹${Number(row.ref.grandTotal || 0).toFixed(2)}`,
-      href: `/invoice/${encodeURIComponent(row.ref.invoiceNo || row.ref.id)}`,
+      href: `/invoice/${encodeURIComponent(row.ref.invoiceNo || row.ref.id)}/preview`,
       score: row.score,
     }));
 };

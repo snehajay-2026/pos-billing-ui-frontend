@@ -297,7 +297,7 @@ const ServiceBilling = () => {
       });
     }
 
-    navigate(`/invoice/${invoice.invoiceNo}`);
+    navigate(`/invoice/${invoice.invoiceNo}/preview`);
   };
 
   if (!hydrated) {

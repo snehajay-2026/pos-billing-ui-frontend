@@ -392,7 +392,10 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
                         </td>
                         <td className="il-ta-right">
                           {hasInvoiceNo ? (
-                            <Link className="il-btn-view" to={`/invoice/${String(inv.invoiceNo)}`}>
+                            <Link
+                              className="il-btn-view"
+                              to={`/invoice/${String(inv.invoiceNo)}/preview`}
+                            >
                               <FaEye />
                               <span>View</span>
                               <FaPrint className="il-print-ico" />

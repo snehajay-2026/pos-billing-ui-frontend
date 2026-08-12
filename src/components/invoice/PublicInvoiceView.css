@@ -1,0 +1,114 @@
+/* src/components/invoice/PublicInvoiceView.css
+ *
+ * Minimal chrome for the public invoice share link. The point is to
+ * strip away everything the cashier preview has (header bar, action
+ * buttons, sidebar, layout frame) and present just the receipt card so
+ * a customer opening the WhatsApp/Email link sees their invoice and
+ * nothing else.
+ *
+ * Print rules suppress the wrapper so the printed page matches the
+ * cashier preview (the existing renderers already handle their own
+ * print styles; we just don't add a card frame around them).
+ */
+
+.public-invoice-page {
+  min-height: 100vh;
+  background: #f3f5f7;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.public-invoice-page--centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.public-invoice-card {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(60, 72, 100, 0.08);
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* The renderers are responsible for their own width (80mm thermal,
+   A4 service, etc.). Center them inside the card. */
+.public-invoice-card > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.public-invoice-loading {
+  font-size: 1rem;
+  color: #475569;
+  padding: 24px;
+}
+
+.public-invoice-error {
+  max-width: 420px;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 32px 24px;
+  box-shadow: 0 6px 24px rgba(60, 72, 100, 0.08);
+}
+
+.public-invoice-error h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  color: #0f172a;
+}
+
+.public-invoice-error p {
+  margin: 0 0 16px;
+  color: #475569;
+}
+
+.public-invoice-error-link,
+.public-invoice-retry {
+  display: inline-block;
+  background: #4f46e5;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.public-invoice-error-link:hover,
+.public-invoice-error-link:focus,
+.public-invoice-retry:hover,
+.public-invoice-retry:focus {
+  background: #4338ca;
+  color: #ffffff;
+  outline: none;
+}
+
+/* PRINT — strip the wrapper so the printed page is exactly the receipt,
+   matching what the cashier preview produces. */
+@media print {
+  .public-invoice-page {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    display: block !important;
+  }
+  .public-invoice-card {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+}

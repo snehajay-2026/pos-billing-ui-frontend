@@ -815,7 +815,7 @@ const LaundryOrderPage = () => {
                                 type="button"
                                 className="btn btn-sm btn-outline-primary"
                                 onClick={() =>
-                                  navigate(`/invoice/${encodeURIComponent(o.invoiceNo)}`)
+                                  navigate(`/invoice/${encodeURIComponent(o.invoiceNo)}/preview`)
                                 }
                               >
                                 View Invoice
@@ -864,7 +864,9 @@ const LaundryOrderPage = () => {
               setDrawerOrder(null);
               editOrder(order);
             }}
-            onViewInvoice={(invoiceNo) => navigate(`/invoice/${encodeURIComponent(invoiceNo)}`)}
+            onViewInvoice={(invoiceNo) =>
+              navigate(`/invoice/${encodeURIComponent(invoiceNo)}/preview`)
+            }
           />
         )}
       </div>

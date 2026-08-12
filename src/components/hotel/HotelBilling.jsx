@@ -2917,7 +2917,7 @@ const HotelBilling = () => {
           /* ignore */
         }
         const url =
-          `/invoice/${encodeURIComponent(savedInvoice.invoiceNo)}` +
+          `/invoice/${encodeURIComponent(savedInvoice.invoiceNo)}/preview` +
           (hotelLayoutPreference === "thermal" ? "?preview=thermal" : "");
         const w = window.open(url, "_blank", "width=820,height=1000");
         if (!w) {

@@ -52,6 +52,17 @@ export const getInvoiceByNo = async (invoiceNo) => {
   return apiGet(`/api/invoices/${encodeURIComponent(invoiceNo)}`, { storeType, email });
 };
 
+// Public counterpart of getInvoiceByNo: no auth check, no scope params.
+// Used by the WhatsApp/Email share link so a customer can open the
+// invoice URL without logging in. Returns `{ invoice, store }` where
+// `invoice` is sanitized (no internal scoping, no cashier email, no
+// items[].meta) and `store` is the store-settings payload the thermal
+// renderers need.
+export const getPublicInvoiceByNo = async (invoiceNo) => {
+  if (!invoiceNo) return undefined;
+  return apiGet(`/api/public/invoices/${encodeURIComponent(invoiceNo)}`);
+};
+
 export const updateInvoice = async (invoiceNo, patch) => {
   if (!invoiceNo) throw new Error("invoiceNo is required");
   if (!isAuthed()) throw new Error("Not signed in");

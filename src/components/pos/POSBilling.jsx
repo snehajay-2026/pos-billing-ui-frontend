@@ -1209,7 +1209,7 @@ const POSBilling = () => {
       recordCashSaleForShift({ invoiceNo: invoice.invoiceNo, amount: invoice.grandTotal });
     }
 
-    navigate(`/invoice/${invoice.invoiceNo}`);
+    navigate(`/invoice/${invoice.invoiceNo}/preview`);
   };
 
   // 1️⃣ Low stock items

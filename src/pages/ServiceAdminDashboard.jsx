@@ -706,7 +706,10 @@ const ServiceAdminDashboard = () => {
                     return (
                       <tr key={inv.invoiceNo}>
                         <td>
-                          <Link to={`/invoice/${inv.invoiceNo}`} className="sd-invoice-link">
+                          <Link
+                            to={`/invoice/${inv.invoiceNo}/preview`}
+                            className="sd-invoice-link"
+                          >
                             {inv.invoiceNo}
                           </Link>
                         </td>

@@ -3,10 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { loadCurrentUser } from "./services/authService";
 import { getUser, getActiveStoreContext } from "./utils/auth";
 import { API_BASE } from "./services/api";
-import {
-  connectRealtimeSync,
-  disconnectRealtimeSync,
-} from "./services/realtimeSync";
+import { connectRealtimeSync, disconnectRealtimeSync } from "./services/realtimeSync";
 import Login from "./pages/Login";
 import PasswordReset from "./pages/PasswordReset";
 import RequireAuth from "./components/common/RequireAuth";
@@ -14,6 +11,7 @@ import RoleRedirect from "./components/common/RoleRedirect";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Register from "./pages/Register";
 import InvoiceView from "./components/invoice/InvoiceView";
+import PublicInvoiceView from "./components/invoice/PublicInvoiceView";
 import Layout from "./components/layout/Layout";
 import Toasts from "./components/common/Toasts";
 import WelcomeSplash from "./components/common/WelcomeSplash";
@@ -104,7 +102,7 @@ const AppErrorBoundaryWithLocation = ({ children }) => {
 // require TWO 401s within a 6-second window, then redirect. This stops
 // page reloads, fresh tabs, and other transient cookie misses from
 // forcing a re-login while still catching a truly dead session.
-const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/password-reset"];
+const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/password-reset", "/invoice"];
 const SESSION_EXPIRY_DEBOUNCE_MS = 6000;
 const SESSION_EXPIRY_THRESHOLD = 2;
 
@@ -257,10 +255,7 @@ function App() {
       const storeType =
         activeStore?.storeType ||
         (user?.storeType && user.storeType !== "system" ? user.storeType : null);
-      const storeId =
-        activeStore?.storeId ||
-        (storeType && (rawId || storeType)) ||
-        null;
+      const storeId = activeStore?.storeId || (storeType && (rawId || storeType)) || null;
       connectRealtimeSync({ apiBase: API_BASE, storeType, storeId });
     };
 
@@ -368,18 +363,34 @@ function App() {
               }
             />
 
-            {/* 
+            {/*
           🔥 NEW ROUTE FOR PRINTING / VIEWING A SINGLE INVOICE
           Example URL: /invoice/INV-12345
+
+          Two routes:
+            /invoice/:invoiceNo/preview  → authed cashier preview
+                                           (full UI: WhatsApp/Email/Print/Download
+                                           buttons, status edit, etc.)
+            /invoice/:invoiceNo          → PUBLIC share link (no auth)
+                                           (renders <PublicInvoiceView> — only
+                                           the receipt, no action bar)
+
+          The /preview path must come first so React Router v6 matches
+          it before the prefix catches it. Internal navigation
+          (POSBilling, HotelBilling, InvoiceList, etc.) is updated to
+          navigate to /preview so cashiers still land on the full-button
+          view, while customers opening the WhatsApp/Email share URL
+          land on the public view.
         */}
             <Route
-              path="/invoice/:invoiceNo"
+              path="/invoice/:invoiceNo/preview"
               element={
                 <RequireAuth>
                   <InvoiceView />
                 </RequireAuth>
               }
             />
+            <Route path="/invoice/:invoiceNo" element={<PublicInvoiceView />} />
 
             {/* DASHBOARD */}
             <Route
