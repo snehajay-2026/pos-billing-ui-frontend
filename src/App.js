@@ -208,12 +208,26 @@ function App() {
 
   useEffect(() => {
     const bootstrapApp = async () => {
-      // Both calls are best-effort. On a cold start the user is unauthenticated
-      // so each returns 401 — that's normal pre-login behavior and we simply
-      // proceed without user/settings until login. The browser still logs the
-      // 401 in DevTools (unavoidable from JS), but the app no longer errors.
+      // Both calls are best-effort. On a cold start the user is
+      // unauthenticated so each returns 401 — that's normal pre-login
+      // behavior and we simply proceed without user/settings until
+      // login. The browser still logs the 401 in DevTools (unavoidable
+      // from JS), but the app no longer errors.
+      //
+      // On PUBLIC pages (e.g. the unauthenticated `/invoice/:no` share
+      // link) we deliberately skip the store-settings fetch: the
+      // endpoint is auth-protected, the 401 it returns would otherwise
+      // wake up the global sessionExpired listener (which can schedule
+      // a redirect-to-login 6 seconds later), and the public viewer
+      // gets its own store chrome from the public API response anyway.
+      const path = typeof window !== "undefined" ? window.location.pathname : "";
+      const isPublicBootstrap = PUBLIC_PATH_PREFIXES.some(
+        (p) => path === p || path.startsWith(p + "/")
+      );
       await loadCurrentUser().catch(() => null);
-      await loadStoreSettings().catch(() => null);
+      if (!isPublicBootstrap) {
+        await loadStoreSettings().catch(() => null);
+      }
       setLoaded(true);
       window.dispatchEvent(new Event("themeChanged"));
     };
