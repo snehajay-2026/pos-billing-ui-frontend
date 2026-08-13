@@ -7,6 +7,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://pos-billing-server-backend.onrender.com/api/:path*"
+    },
+    {
       "source": "/((?!static/|favicon\\.ico|logo192\\.png|logo512\\.png|manifest\\.json|robots\\.txt).*)",
       "destination": "/index.html"
     }
