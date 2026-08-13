@@ -50,14 +50,19 @@ const PublicInvoiceView = () => {
         // "Ajay Merchant" placeholder identity.
         if (response && response.store && typeof response.store === "object") {
           const inv = response.invoice || {};
+          // Use the same scope key the authed `/api/store-settings`
+          // endpoint seeds (`store-settings:<storeType>:<storeId>`) so
+          // the renderer reads the same store the cashier's preview
+          // shows. Mirror storeType onto storeId only when the backend
+          // hasn't told us a separate id (single-tenant stores).
           const storeType = inv.storeType || "";
-          // Single-scope public viewer: storeId mirrors storeType so
-          // getScopeKey() in storeSettingsService produces the same
-          // `store-settings:<storeType>:<storeId>` key the authed
-          // endpoint seeded for this invoice.
+          const storeId =
+            inv.storeId ||
+            (response.store && (response.store.storeId || response.store.store_id)) ||
+            storeType;
           seedStoreSettingsForScope({
             storeType,
-            storeId: storeType,
+            storeId,
             ...response.store,
           });
         }
