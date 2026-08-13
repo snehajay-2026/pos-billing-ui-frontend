@@ -102,9 +102,18 @@ const AppErrorBoundaryWithLocation = ({ children }) => {
 // require TWO 401s within a 6-second window, then redirect. This stops
 // page reloads, fresh tabs, and other transient cookie misses from
 // forcing a re-login while still catching a truly dead session.
+//
+// Fresh-auth grace window: for FRESH_AUTH_GRACE_MS after a successful
+// Login or /api/auth/user response, 401s are ignored entirely. Right
+// after login the first protected fetch can race with Vercel proxy
+// warming + the new cookie being persisted, and a single 401 there
+// would otherwise tick the "session expired" counter toward redirect.
+// The grace window closes the worst-case race without disabling the
+// listener for genuine dead sessions.
 const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/password-reset", "/invoice"];
 const SESSION_EXPIRY_DEBOUNCE_MS = 6000;
 const SESSION_EXPIRY_THRESHOLD = 2;
+const FRESH_AUTH_GRACE_MS = 15000;
 
 const SessionExpiredListener = () => {
   const navigate = useNavigate();
@@ -112,6 +121,24 @@ const SessionExpiredListener = () => {
   const expiryCountRef = useRef(0);
   const firstExpiryAtRef = useRef(0);
   const redirectTimerRef = useRef(null);
+  const freshAuthUntilRef = useRef(0);
+
+  // Listen for sign-in / sign-out events so the fresh-auth grace window
+  // opens the moment a user is successfully authenticated. authService
+  // dispatches `authChanged` with the user object as detail whenever
+  // `setCurrentUser` is called.
+  useEffect(() => {
+    const onAuthChanged = (event) => {
+      const user = event && event.detail;
+      if (user && user.email) {
+        freshAuthUntilRef.current = Date.now() + FRESH_AUTH_GRACE_MS;
+      } else {
+        freshAuthUntilRef.current = 0;
+      }
+    };
+    window.addEventListener("authChanged", onAuthChanged);
+    return () => window.removeEventListener("authChanged", onAuthChanged);
+  }, []);
 
   useEffect(() => {
     const handler = () => {
@@ -123,6 +150,13 @@ const SessionExpiredListener = () => {
         // Already on a public page — no-op.
         expiryCountRef.current = 0;
         firstExpiryAtRef.current = 0;
+        return;
+      }
+
+      // Fresh-auth grace window — within FRESH_AUTH_GRACE_MS of a successful
+      // login or /api/auth/user response, treat 401s as transient (cold
+      // cookie propagation, Vercel proxy warming, etc.) and don't redirect.
+      if (Date.now() < freshAuthUntilRef.current) {
         return;
       }
 

@@ -9,11 +9,17 @@ export const API_BASE =
 // before we know whether the user has a session. Excluding these stops the
 // global listener from redirecting on the very first page load or on a
 // genuine wrong-password login attempt.
+//
+// `/api/store-settings` is included here so a cold-start bootstrap fetch
+// (App.js:bootstrapApp) returning 401 for an unauthenticated visitor
+// doesn't arm the session-expired redirect. The bootstrap is explicitly
+// designed to handle "no auth" gracefully via `.catch(() => null)`.
 const NON_SESSION_401_PATHS = [
   "/api/login",
   "/api/register",
   "/api/register/available",
   "/api/auth/user",
+  "/api/store-settings",
   "/api/password-reset/request",
   "/api/password-reset/confirm",
 ];
