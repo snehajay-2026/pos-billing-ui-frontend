@@ -179,6 +179,13 @@ export const resetStoreSettingsCache = () => {
 // Synchronously reseed the in-memory cache + theme for a newly-selected store, so callers
 // like getStoreSettings() return the new store's values without waiting for the network.
 // Used by the header when switching stores to avoid a "Restoring store" flicker.
+//
+// When the caller passes a fully populated `store` payload (the public
+// invoice viewer does — it has the live values from the
+// `/api/public/invoices/:no` response), the new payload wins over any
+// stale localStorage value. Otherwise the public viewer would show
+// whichever store the browser happened to be scoped to last time it was
+// signed in — completely unrelated to the store that owns the invoice.
 export const seedStoreSettingsForScope = (store) => {
   const scope = {
     storeType: String(store?.storeType || "").trim(),
@@ -190,17 +197,39 @@ export const seedStoreSettingsForScope = (store) => {
   }
   const scopeKey = getScopeKey(scope);
   const fallback = getFallbackSettings(scope);
-  let fromStorage = {};
-  try {
-    const raw = window.localStorage.getItem(scopeKey);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") fromStorage = parsed;
+  // Heuristic: if the payload carries identifying fields the authed
+  // store-settings response carries (`name`, `gstNo`, or `address`),
+  // treat it as a full payload that should overwrite both the in-memory
+  // cache and localStorage. Otherwise fall back to the previous merge
+  // behaviour (cache + localStorage layered over fallback) so the
+  // header's switch-store flow keeps its no-flicker behaviour.
+  const looksLikeFullPayload =
+    !!store &&
+    (Object.prototype.hasOwnProperty.call(store, "name") ||
+      Object.prototype.hasOwnProperty.call(store, "gstNo") ||
+      Object.prototype.hasOwnProperty.call(store, "address"));
+  let merged;
+  if (looksLikeFullPayload) {
+    merged = { ...fallback, ...store };
+    try {
+      window.localStorage.setItem(scopeKey, JSON.stringify(merged));
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
+  } else {
+    let fromStorage = {};
+    try {
+      const raw = window.localStorage.getItem(scopeKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") fromStorage = parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+    merged = { ...fallback, ...store, ...fromStorage };
   }
-  storeSettingsCache = { ...fallback, ...fromStorage };
+  storeSettingsCache = merged;
   storeSettingsCacheKey = scopeKey;
   return storeSettingsCache;
 };
