@@ -24,12 +24,37 @@ const NON_SESSION_401_PATHS = [
   "/api/password-reset/confirm",
 ];
 
+// Fresh-auth grace window. Right after a successful login the very first
+// protected fetch can race with the new sessionId cookie being persisted
+// (the browser has just parsed a Set-Cookie header from the login
+// response). A single 401 in that window is not a real session-expiry
+// signal — it's cookie propagation, Vercel proxy warming, or the CSRF
+// token hand-off. Suppressing the redirect during this window stops
+// transient post-login 401s from kicking a freshly signed-in user out.
+//
+// `App.js:SessionExpiredListener` opens this window whenever the
+// `authChanged` window event fires with a non-null user detail (see
+// setCurrentUser in authService.js). We expose a getter here so callers
+// don't have to import App.js internals.
+const FRESH_AUTH_GRACE_MS = 15000;
+let freshAuthUntil = 0;
+const setFreshAuthUntil = (ts) => {
+  freshAuthUntil = Number(ts) || 0;
+};
+const getFreshAuthUntil = () => freshAuthUntil;
+
 const isSessionExpiry401 = (url, status) => {
   if (status !== 401) return false;
+  // Suppress all 401s during the fresh-auth grace window. See the
+  // FRESH_AUTH_GRACE_MS comment above for why a single 401 right after
+  // login isn't a real session-expiry.
+  if (Date.now() < freshAuthUntil) return false;
   return !NON_SESSION_401_PATHS.some(
     (p) => url === p || url.startsWith(p + "/") || url.startsWith(p + "?")
   );
 };
+
+export { FRESH_AUTH_GRACE_MS, setFreshAuthUntil, getFreshAuthUntil };
 
 // CSRF: read the XSRF-TOKEN cookie (set by the backend on login, NOT
 // HttpOnly so JS can read it) and echo it as the X-CSRF-Token header on

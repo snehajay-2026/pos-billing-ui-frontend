@@ -2,7 +2,12 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { loadCurrentUser } from "./services/authService";
 import { getUser, getActiveStoreContext } from "./utils/auth";
-import { API_BASE } from "./services/api";
+import {
+  API_BASE,
+  FRESH_AUTH_GRACE_MS,
+  setFreshAuthUntil,
+  getFreshAuthUntil,
+} from "./services/api";
 import { connectRealtimeSync, disconnectRealtimeSync } from "./services/realtimeSync";
 import Login from "./pages/Login";
 import PasswordReset from "./pages/PasswordReset";
@@ -110,10 +115,13 @@ const AppErrorBoundaryWithLocation = ({ children }) => {
 // would otherwise tick the "session expired" counter toward redirect.
 // The grace window closes the worst-case race without disabling the
 // listener for genuine dead sessions.
+//
+// The same `FRESH_AUTH_GRACE_MS` constant is re-used by api.js
+// (isSessionExpiry401) so the listener and the 401-dispatch logic
+// always agree on whether a 401 counts as a session expiry.
 const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/password-reset", "/invoice"];
 const SESSION_EXPIRY_DEBOUNCE_MS = 6000;
 const SESSION_EXPIRY_THRESHOLD = 2;
-const FRESH_AUTH_GRACE_MS = 15000;
 
 const SessionExpiredListener = () => {
   const navigate = useNavigate();
@@ -121,19 +129,20 @@ const SessionExpiredListener = () => {
   const expiryCountRef = useRef(0);
   const firstExpiryAtRef = useRef(0);
   const redirectTimerRef = useRef(null);
-  const freshAuthUntilRef = useRef(0);
 
   // Listen for sign-in / sign-out events so the fresh-auth grace window
   // opens the moment a user is successfully authenticated. authService
   // dispatches `authChanged` with the user object as detail whenever
-  // `setCurrentUser` is called.
+  // `setCurrentUser` is called. We push the timestamp into the api.js
+  // module so the request() function (which runs before this listener)
+  // sees the same window.
   useEffect(() => {
     const onAuthChanged = (event) => {
       const user = event && event.detail;
       if (user && user.email) {
-        freshAuthUntilRef.current = Date.now() + FRESH_AUTH_GRACE_MS;
+        setFreshAuthUntil(Date.now() + FRESH_AUTH_GRACE_MS);
       } else {
-        freshAuthUntilRef.current = 0;
+        setFreshAuthUntil(0);
       }
     };
     window.addEventListener("authChanged", onAuthChanged);
@@ -156,7 +165,9 @@ const SessionExpiredListener = () => {
       // Fresh-auth grace window — within FRESH_AUTH_GRACE_MS of a successful
       // login or /api/auth/user response, treat 401s as transient (cold
       // cookie propagation, Vercel proxy warming, etc.) and don't redirect.
-      if (Date.now() < freshAuthUntilRef.current) {
+      // api.js already drops sessionExpired events inside this window, so
+      // this branch is defense-in-depth for direct dispatches.
+      if (Date.now() < getFreshAuthUntil()) {
         return;
       }
 
