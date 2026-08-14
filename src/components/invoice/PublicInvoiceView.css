@@ -112,3 +112,83 @@
     width: 100% !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Laundry-only thermal public layout.
+
+   The cashier preview renders an 80mm thermal canvas (see
+   LaundryThermalReceipt.jsx — the wrapper sets `width: 80mm` on the inner
+   thermal-* div, font-family: monospace, fontSize: 12px). When a customer
+   opens the WhatsApp/Email share link, they should see exactly that same
+   thermal content — no 720px white card chrome, no 24px gutter padding,
+   no extra dashboard frame. The page below gives a calm neutral surface,
+   centers the thermal canvas at its natural width, and keeps the print
+   output identical to what the cashier's thermal printer produces.
+
+   Scope: this selector set applies ONLY to `.public-invoice-thermal`,
+   which is rendered exclusively for storeType === "laundry" (see
+   PublicInvoiceView.jsx). Retail / Hotel / Service / MSME continue to
+   use `.public-invoice-page > .public-invoice-card`.
+--------------------------------------------------------------------------- */
+.public-invoice-thermal {
+  min-height: 100vh;
+  background: #f3f5f7;
+  padding: 24px 12px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.public-invoice-thermal-frame {
+  /* No card chrome, no border-radius, no shadow, no padding. The thermal
+     component paints its own 80mm canvas with its own dividers and 8px
+     inner padding; any extra wrapper styling would misalign that canvas
+     against a real thermal printer. */
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  max-width: none;
+  display: inline-block;
+}
+
+/* The thermal component already sets width: 80mm on its inner .thermal-*
+   container. We center it inside the frame; on viewports narrower than
+   80mm + horizontal padding, we let it scroll horizontally so the
+   receipt itself is never truncated. */
+.public-invoice-thermal-frame > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 360px) {
+  /* On very small phones the 80mm canvas overflows; allow horizontal
+     scroll inside the page rather than squeezing the receipt. */
+  .public-invoice-thermal {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  /* Print fidelity: the cashier prints exactly this thermal canvas, so
+     the public-link print should produce the same receipt — no page
+     background, no frame, no padding. */
+  .public-invoice-thermal {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    display: block !important;
+  }
+  .public-invoice-thermal-frame {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+  }
+}

@@ -134,8 +134,18 @@ const PublicInvoiceView = () => {
   let body;
   switch (invoiceStoreType) {
     case "laundry":
+      // Laundry ships the same thermal component the cashier prints, so
+      // there is no desktop "page" frame to render — the customer should
+      // see only the 80mm thermal content, centered, with no card chrome
+      // or extra padding. The `.public-invoice-thermal` selector below
+      // provides just enough surface to center the thermal canvas and
+      // give it a subtle page background.
       body = <LaundryThermalReceipt invoice={invoice} isDuplicate />;
-      break;
+      return (
+        <div className="public-invoice-thermal">
+          <div className="public-invoice-thermal-frame">{body}</div>
+        </div>
+      );
     case "service":
       body = <ServiceInvoice invoice={invoice} isDuplicate />;
       break;
