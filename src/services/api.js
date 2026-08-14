@@ -4,6 +4,29 @@ export const API_BASE =
   process.env.REACT_APP_API_BASE?.trim() ||
   (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "");
 
+// Production guard: in prod the bundle MUST use the Vercel proxy (empty
+// API_BASE → same-origin /api/*) so the session cookie is host-only on the
+// frontend origin. If a stray REACT_APP_API_BASE env var is set on Vercel
+// pointing at the Render backend, every fetch goes cross-origin, Chrome
+// drops the sessionId cookie, and the user sees an endless stream of 401s.
+// Surface this loudly in the browser console so misconfiguration is visible
+// without DevTools Network inspection.
+if (
+  typeof window !== "undefined" &&
+  process.env.NODE_ENV === "production" &&
+  API_BASE &&
+  !window.location.origin.includes("localhost") &&
+  !API_BASE.startsWith(window.location.origin)
+) {
+  console.warn(
+    "[pos-billing-ui] REACT_APP_API_BASE is set to a cross-origin URL in production " +
+      `(${API_BASE}). Expected empty string so requests go through the Vercel /api/* proxy. ` +
+      "Clear the REACT_APP_API_BASE env var in the Vercel project settings to restore same-origin " +
+      "session cookies (Lax/HostOnly). Cross-origin requests will 401 because Chrome blocks the " +
+      "sessionId cookie on cross-site /api/* calls."
+  );
+}
+
 // Endpoints where a 401 is *not* a session-expiry signal. They're either
 // public (login/register/password-reset) or called during the App bootstrap
 // before we know whether the user has a session. Excluding these stops the
