@@ -973,6 +973,55 @@
   font-weight: 700;
 }
 
+/* Bill-level GST input — sits as the first row of the totals block, above
+   Subtotal, so the cashier enters the rate once and it applies to every
+   line on the bill. The label uses a stacked layout (title + hint) so the
+   row reads naturally even though it carries a number input on the right. */
+.sv-total-gst-input {
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  margin: 0 0 6px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px dashed rgba(99, 102, 241, 0.25);
+}
+
+.sv-total-gst-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 600;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.sv-total-gst-input-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.sv-total-gst-input-hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+body.theme-dark .sv-total-gst-input {
+  background: rgba(129, 140, 248, 0.1);
+  border-color: rgba(129, 140, 248, 0.3);
+}
+
+body.theme-dark .sv-total-gst-input-label {
+  color: #a5b4fc;
+}
+
+body.theme-dark .sv-total-gst-input-hint {
+  color: #94a3b8;
+}
+
 /* ---------- PAYMENT + ACTIONS ---------- */
 
 .sv-bill-payment label {

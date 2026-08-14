@@ -135,12 +135,26 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
 
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
+  // PRIMARY: bill-level rate the cashier entered at billing time. ServiceBilling
+  // always stamps this onto every saved invoice.
+  // FALLBACK (legacy rows saved before this field existed): derive the rate
+  // from the saved gstTotal/subTotal ratio. We deliberately do NOT read
+  // settings.serviceTaxRate — that field is no longer a source for the
+  // Service Store, and reading it would silently leak a configured store
+  // default onto legacy rows that were originally generated without it.
+  const explicitRate = Number(invoice.gstRate);
+  const hasExplicitRate = Number.isFinite(explicitRate) && explicitRate >= 0;
+  const subTotalForRate = Number(invoice.subTotal) || 0;
+  const legacyRate =
+    !hasExplicitRate && subTotalForRate > 0 && Number(invoice.gstTotal) > 0
+      ? Math.round((Number(invoice.gstTotal) / subTotalForRate) * 10000) / 100
+      : 0;
+  const billGstRate = hasExplicitRate ? explicitRate : legacyRate;
+
   const mappedItems = items.map((item, idx) => {
     const units = item.hours ?? item.qty ?? item.qtyKg ?? item.units ?? 1;
     const rate = item.rate ?? item.price ?? 0;
-    const gstRate = Number(item.gst || 0);
     const lineTotal = (Number(units) || 0) * (Number(rate) || 0);
-    const lineTax = (lineTotal * gstRate) / 100;
 
     return {
       key: item.id ?? `${idx}`,
@@ -148,40 +162,34 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
       hsn: item.hsn || item.hsnSac || item.sac || "",
       units: Number(units) || 0,
       rate: Number(rate) || 0,
-      gst: gstRate,
+      // Every line carries the same bill-level rate so the table column
+      // reads identically across rows. legacy rows fall through to
+      // Number(item.gst || 0) when neither path produced a usable rate.
+      gst: billGstRate > 0 ? billGstRate : Number(item.gst || 0),
       total: lineTotal,
-      tax: lineTax,
+      tax: (lineTotal * (billGstRate > 0 ? billGstRate : Number(item.gst || 0))) / 100,
     };
   });
 
   const subTotal = Number(invoice.subTotal) || mappedItems.reduce((sum, row) => sum + row.total, 0);
 
-  // Per-line GST totals drive the invoice tax lines so the cashier's manual
-  // overrides (or default from product catalog) are reflected verbatim.
-  // Fall back to settings.serviceTaxRate only if the bill was zero-rated
-  // across every line — that path lets legacy bills without gstTotal still
-  // compute a tax figure from the configured rate.
-  const lineTaxTotal = mappedItems.reduce((sum, row) => sum + (Number(row.tax) || 0), 0);
+  // Tax amount uses the bill-level rate directly. The cashier's input
+  // (invoice.gstRate) is the only source; the saved gstTotal is accepted
+  // as a fallback only when the legacy recovery above produced a usable
+  // rate. settings.serviceTaxRate is never consulted.
+  const lineTaxTotal = (subTotal * billGstRate) / 100;
   const taxAmountFromInvoice = Number(invoice.gstTotal);
   const taxAmount =
-    lineTaxTotal > 0
+    billGstRate > 0
       ? lineTaxTotal
       : Number.isFinite(taxAmountFromInvoice) && taxAmountFromInvoice > 0
         ? taxAmountFromInvoice
-        : (() => {
-            const configuredTaxRate = Number(settings.serviceTaxRate);
-            return Number.isFinite(configuredTaxRate) && configuredTaxRate > 0
-              ? (subTotal * configuredTaxRate) / 100
-              : 0;
-          })();
+        : 0;
 
-  // Average tax rate across the bill — used in the CGST / SGST row labels
-  // even when individual lines vary. Falls back to the configured rate when
-  // no line carries a GST value.
-  const effectiveRate =
-    lineTaxTotal > 0 && subTotal > 0
-      ? Math.round((lineTaxTotal / subTotal) * 10000) / 100
-      : Number(settings.serviceTaxRate) || 0;
+  // The effective rate is always the bill-level rate (or its legacy
+  // recovery). It is no longer an average — there is no per-line input
+  // to average from.
+  const effectiveRate = billGstRate;
 
   // CGST / SGST / IGST split. Intra-state (customer state === settings state)
   // splits the rate into two equal halves; inter-state shows IGST at the full rate.

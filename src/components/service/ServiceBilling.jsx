@@ -77,6 +77,11 @@ const ServiceBilling = () => {
     serviceTo: "",
     remarks: "",
     discountPct: "",
+    // Bill-level manual GST percentage. The cashier types this in once
+    // and it drives every line on the bill. There is intentionally no
+    // default here — leaving it blank means 0% (cashier may generate
+    // exempt / non-tax bills without typing anything).
+    gstRate: "",
   };
   const [bills, setBills] = useState({
     "Bill-101": { ...newBillShape },
@@ -133,7 +138,9 @@ const ServiceBilling = () => {
             {
               ...product,
               price: Number(product.price || product.rate || 0),
-              gst: Number(product.gst || 0),
+              // gst intentionally omitted — the bill-level gstRate is the
+              // single source of truth for the Service Store. The product
+              // catalog's default GST must never seed the bill.
             },
           ];
       return { ...prev, [activeBillId]: { ...cur, items } };
@@ -154,26 +161,6 @@ const ServiceBilling = () => {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoItem(item);
     undoTimerRef.current = setTimeout(() => setUndoItem(null), 5000);
-  };
-
-  // Manual GST override: the product's stored `gst` is a sensible default,
-  // but the cashier can override per line (e.g. mixed-rate invoices, seasonal
-  // GST changes, or 0% / exempt items). Empty string is treated as 0 so the
-  // math still works without forcing a number in the field.
-  const updateLineItemGst = (itemId, rawValue) => {
-    const cleaned = String(rawValue).replace(/[^0-9.]/g, "");
-    setBills((prev) => {
-      const cur = prev[activeBillId];
-      return {
-        ...prev,
-        [activeBillId]: {
-          ...cur,
-          items: cur.items.map((i) =>
-            i.id === itemId ? { ...i, gst: cleaned === "" ? 0 : Number(cleaned) || 0 } : i
-          ),
-        },
-      };
-    });
   };
 
   const handleUndo = () => {
@@ -238,14 +225,18 @@ const ServiceBilling = () => {
     [activeBill.items]
   );
 
-  const gstTotal = useMemo(
-    () =>
-      activeBill.items.reduce(
-        (s, i) => s + ((Number(i.price) || 0) * (Number(i.gst) || 0)) / 100,
-        0
-      ),
-    [activeBill.items]
-  );
+  // Single source of truth for the bill-level GST%. The cashier enters this
+  // once and it applies to every line on the bill. Empty / non-numeric /
+  // negative input is treated as 0% so the math is always well-defined
+  // (cashier can generate an exempt / non-tax bill without typing anything).
+  const billGstRate = (() => {
+    const raw = String(activeBill.gstRate ?? "").trim();
+    if (raw === "") return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  })();
+
+  const gstTotal = useMemo(() => (subTotal * billGstRate) / 100, [subTotal, billGstRate]);
 
   // Indian GST default: split the combined rate into two equal halves for
   // intra-state invoices (CGST + SGST). When the customer's billing state
@@ -306,12 +297,27 @@ const ServiceBilling = () => {
       idx === 0 ? { ...item, meta: { ...(item.meta || {}), ...customerMeta } } : item
     );
 
+    // Stamp the bill-level rate onto every line item so saved / reprinted /
+    // public-share invoices all read the same GST. ServiceInvoice.jsx
+    // prefers the top-level `invoice.gstRate` first and falls back to the
+    // stamped per-line `gst`, so reprints stay consistent even if a future
+    // change ever re-introduces per-line input.
+    const itemsWithGst = itemsWithCustomerMeta.map((item) => ({
+      ...item,
+      gst: billGstRate,
+    }));
+
     const invoice = {
       invoiceNo,
       date: new Date().toISOString().split("T")[0],
-      items: itemsWithCustomerMeta,
+      items: itemsWithGst,
       subTotal,
       gstTotal,
+      // Bill-level GST rate is the single source of truth for service
+      // invoices. ServiceInvoice reads this first; if absent (legacy row),
+      // it derives the rate from gstTotal / subTotal so reprints stay
+      // numerically consistent.
+      gstRate: billGstRate,
       discountPct,
       discountAmt,
       grandTotal,
@@ -720,35 +726,18 @@ const ServiceBilling = () => {
             <div className="sv-line-items">
               {activeBill.items.map((i) => {
                 const lineTotal = Number(i.price) || 0;
-                const gstRate = Number(i.gst) || 0;
-                const lineGst = (lineTotal * gstRate) / 100;
+                const lineGst = (lineTotal * billGstRate) / 100;
                 return (
                   <div className="sv-line-item" key={i.id}>
                     <div className="sv-line-item-main">
                       <strong>{i.name}</strong>
                       <span>{formatCurrency(lineTotal)}</span>
                     </div>
-                    <div className="sv-line-item-gst">
-                      <label className="sv-line-item-gst-label" htmlFor={`gst-${i.id}`}>
-                        GST %
-                      </label>
-                      <input
-                        id={`gst-${i.id}`}
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.5"
-                        inputMode="decimal"
-                        className="sv-input sv-line-item-gst-input"
-                        value={gstRate === 0 ? "" : gstRate}
-                        placeholder="0"
-                        onChange={(e) => updateLineItemGst(i.id, e.target.value)}
-                        aria-label={`GST % for ${i.name}`}
-                      />
-                    </div>
                     <div className="sv-line-item-amount">
                       <strong>{formatCurrency(lineTotal + lineGst)}</strong>
-                      <span>+ GST {formatCurrency(lineGst)}</span>
+                      <span>
+                        + GST {formatCurrency(lineGst)} @ {billGstRate}%
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -767,6 +756,32 @@ const ServiceBilling = () => {
 
           {/* TOTALS */}
           <div className="sv-totals">
+            <div className="sv-total-row sv-total-gst-input">
+              <label htmlFor="sb-bill-gst" className="sv-total-gst-input-label">
+                <span className="sv-total-gst-input-title">
+                  <FaPercent /> GST %
+                </span>
+                <span className="sv-total-gst-input-hint">
+                  Enter manually — applies to the whole bill
+                </span>
+              </label>
+              <div className="sv-discount-input">
+                <input
+                  id="sb-bill-gst"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="sv-input"
+                  value={activeBill.gstRate ?? ""}
+                  placeholder="0"
+                  onChange={(e) => updateActiveBill({ gstRate: e.target.value })}
+                  aria-label="Bill-level GST percentage"
+                />
+                <span>%</span>
+              </div>
+            </div>
             <div className="sv-total-row">
               <span>Subtotal</span>
               <strong>{formatCurrency(subTotal)}</strong>

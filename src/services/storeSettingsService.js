@@ -4,6 +4,18 @@ import { getUser, getActiveStoreContext } from "../utils/auth";
 let storeSettingsCache = null;
 let storeSettingsCacheKey = null;
 
+// Drop the legacy `serviceTaxRate` key from any settings payload. The
+// Service Store no longer auto-populates GST from this field — the cashier
+// enters the rate manually on each bill. We strip it on read so any old
+// localStorage / DB row that still carries the key stops surfacing it to
+// any future renderer that might otherwise leak it back onto the invoice.
+const stripLegacyServiceTaxRate = (settings) => {
+  if (!settings || typeof settings !== "object") return settings;
+  if (!("serviceTaxRate" in settings)) return settings;
+  const { serviceTaxRate: _ignored, ...rest } = settings;
+  return rest;
+};
+
 const defaultSettings = {
   name: "Ajay Merchant",
   address: "Main Road, India",
@@ -25,7 +37,8 @@ const defaultSettings = {
   pincode: "400001",
   serviceInvoiceTitle: "Invoice Service",
   serviceInvoicePrefix: "SI",
-  serviceTaxRate: 8,
+  // serviceTaxRate removed — the Service Store requires the cashier to
+  // enter the GST% per bill. Store-level rate is no longer a source.
   serviceDueDays: 0,
   serviceBankAccount: "",
   serviceTerms:
@@ -123,7 +136,10 @@ export const getStoreSettings = () => {
   const raw = localStorage.getItem(scopeKey);
   const localSettings = parseLocalSettings(raw);
   if (localSettings) {
-    storeSettingsCache = { ...getFallbackSettings(scope), ...localSettings };
+    storeSettingsCache = stripLegacyServiceTaxRate({
+      ...getFallbackSettings(scope),
+      ...localSettings,
+    });
     storeSettingsCacheKey = scopeKey;
     return storeSettingsCache;
   }
@@ -139,7 +155,10 @@ export const loadStoreSettings = async () => {
   try {
     const response = await apiGet("/api/store-settings", getScopeQuery(scope));
     const settingsFromApi = resolveStoreSettingsPayload(response, scope);
-    const settings = { ...getFallbackSettings(scope), ...(settingsFromApi || {}) };
+    const settings = stripLegacyServiceTaxRate({
+      ...getFallbackSettings(scope),
+      ...(settingsFromApi || {}),
+    });
     storeSettingsCache = settings;
     storeSettingsCacheKey = scopeKey;
     saveLocalStoreSettings(scopeKey, settings);
@@ -147,9 +166,11 @@ export const loadStoreSettings = async () => {
   } catch (err) {
     const raw = localStorage.getItem(scopeKey);
     const localSettings = parseLocalSettings(raw);
-    const settings = localSettings
-      ? { ...getFallbackSettings(scope), ...localSettings }
-      : getFallbackSettings(scope);
+    const settings = stripLegacyServiceTaxRate(
+      localSettings
+        ? { ...getFallbackSettings(scope), ...localSettings }
+        : getFallbackSettings(scope)
+    );
     storeSettingsCache = settings;
     storeSettingsCacheKey = scopeKey;
     return settings;

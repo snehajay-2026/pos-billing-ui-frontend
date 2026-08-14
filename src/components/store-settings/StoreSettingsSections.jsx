@@ -559,15 +559,6 @@ export const ServiceBusinessDetailsSection = ({ settings, handleChange }) => (
       </div>
 
       <div className="ss-grid-2">
-        <Field icon={<FaPercent />} label="Sales Tax %">
-          <Input
-            name="serviceTaxRate"
-            type="number"
-            value={settings.serviceTaxRate ?? ""}
-            onChange={handleChange}
-            placeholder="8"
-          />
-        </Field>
         <Field
           icon={<FaCalendarAlt />}
           label="Due Days"
@@ -581,6 +572,14 @@ export const ServiceBusinessDetailsSection = ({ settings, handleChange }) => (
             placeholder="0"
           />
         </Field>
+      </div>
+
+      <div className="ss-info-box" role="note">
+        <FaPercent />
+        <span>
+          GST % is now entered per bill in Service Billing → Bill Summary. Store-level defaults are
+          intentionally not used — every invoice carries the rate the cashier typed at billing time.
+        </span>
       </div>
 
       <Field icon={<FaKey />} label="Bank Account (display)">
