@@ -1,283 +1,126 @@
+/* ---------------------------------------------------------------------------
+   Service Store Invoice — modern, professional, polished
+
+   Scope: this stylesheet applies ONLY to .service-invoice (used by the
+   Service Store authed preview AND the public WhatsApp/Email share link,
+   since both render through <ServiceInvoice>). Retail / Hotel / Laundry /
+   MSME invoices each have their own renderer + stylesheet and are
+   untouched by any change in this file.
+
+   Visual system:
+     - A4 portrait canvas, generous padding, soft slate typography.
+     - Indigo accent for the brand; the rest of the page is neutral.
+     - Consistent 8/12/16/24 spacing rhythm; 12px radius on cards.
+     - Two-column From / Bill-To that collapses below 720px.
+     - Items table with right-aligned numerics + zebra striping.
+     - Totals card with a highlighted grand-total strip and amount in words.
+     - Mobile-responsive via media queries; print fidelity preserved.
+--------------------------------------------------------------------------- */
+
 .service-invoice {
   display: block;
+  color: #0f172a;
+  background: transparent;
 }
 
-/* A4 canvas */
+/* -------- Page canvas (A4) ---------------------------------------------- */
 .si-page {
   width: 210mm;
   min-height: 297mm;
-  background: #fff;
-  color: #111827;
-  font-family: Arial, sans-serif;
-  padding: 18mm 16mm;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 16mm 14mm 14mm;
   box-sizing: border-box;
-}
-
-.si-top {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-}
-
-.si-title {
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.si-topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.si-inv-meta {
-  background: #0b2a4a;
-  color: #fff;
-  padding: 10px 12px;
-  min-width: 260px;
-  border-radius: 2px;
-}
-
-.si-meta-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.si-meta-label {
-  font-weight: 700;
-}
-
-.si-meta-value {
-  opacity: 0.95;
-}
-
-.si-brand {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.si-logo {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-.si-company-name {
-  font-size: 20px;
-  font-weight: 800;
-  color: #0b2a4a;
-}
-
-.si-duplicate {
-  display: inline-block;
-  margin: 6px 0 10px 0;
-  padding: 6px 10px;
-  border: 2px solid #dc2626;
-  color: #dc2626;
-  font-weight: 800;
-  border-radius: 6px;
-}
-
-.si-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin: 10px 0 14px;
-}
-
-.si-bottom-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 14px;
-}
-
-.si-box {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 10px;
-}
-
-.si-box-title {
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: #111827;
-}
-
-.si-kv {
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.si-section-title {
-  font-weight: 800;
-  margin: 10px 0 6px;
-}
-
-.si-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.si-table thead th {
-  background: #2ab0ac;
-  color: #fff;
-  text-align: left;
-  padding: 8px;
-  font-weight: 800;
-}
-
-.si-table tbody td {
-  padding: 8px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.si-table tbody tr.is-alt td {
-  background: #f3f4f6;
-}
-
-.si-col-no {
-  width: 42px;
-}
-
-.si-col-small {
-  width: 120px;
-}
-
-.si-center {
-  text-align: center;
-}
-
-.si-right {
-  text-align: right;
-}
-
-.si-empty {
-  padding: 14px;
-  text-align: center;
-  color: #6b7280;
-}
-
-.si-totals {
-  margin-top: 10px;
-  background: #0b2a4a;
-  color: #fff;
-  padding: 10px 12px;
-}
-
-.si-totals-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  padding: 3px 0;
-}
-
-.si-totals-row.strong {
-  font-weight: 900;
-  margin-top: 4px;
-}
-
-.si-terms {
-  margin: 0;
-  padding-left: 16px;
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   font-size: 12px;
   line-height: 1.5;
+  color: #0f172a;
+  box-shadow: 0 18px 48px -24px rgba(15, 23, 42, 0.25);
+  border-radius: 8px;
 }
 
-.si-sign {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.si-sign-date {
-  font-size: 12px;
-}
-
-.si-sign-line {
-  width: 160px;
-  height: 1px;
-  background: #9ca3af;
-}
-
-.si-sign-name {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.si-footer {
-  margin-top: 18px;
-  background: #0b2a4a;
-  color: #fff;
-  display: flex;
-  gap: 18px;
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
-.si-footer-item {
-  flex: 1;
-}
-
-@media print {
-  #service-invoice {
-    width: 210mm;
-    min-height: 297mm;
-  }
-
-  .si-page {
-    padding: 18mm 16mm;
-  }
-}
-
-/* ---------- Enhancements: title block + status pill ---------- */
-.si-top {
+/* -------- Hero header ---------------------------------------------------- */
+.si-hero {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  align-items: flex-start;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 18px;
 }
 
-.si-title-block {
+.si-hero-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .si-title {
   font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  line-height: 1.15;
 }
 
 .si-subtitle {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: #6366f1;
 }
 
+.si-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: right;
+}
+
+.si-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 4px;
+}
+
+.si-brand-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.si-company-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.si-company-gst {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* -------- Status pill (kept — already used by InvoiceView) ------------- */
 .si-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -314,80 +157,391 @@
   text-decoration: line-through;
 }
 
-.si-company-gst {
-  font-size: 11px;
-  color: #4b5563;
-  margin-top: 2px;
-  font-weight: 600;
+/* -------- Invoice meta card (number / date / due / job) ---------------- */
+.si-inv-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: #e2e8f0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
 }
 
-/* ---------- Service period strip ---------- */
+.si-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: #f8fafc;
+}
+
+.si-meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.si-meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------- From / Bill-To two-column cards ------------------------------ */
+.si-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.si-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.si-box-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6366f1;
+  margin-bottom: 8px;
+}
+
+.si-kv {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.si-kv b,
+.si-kv-strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.si-kv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+/* -------- Service period strip ----------------------------------------- */
 .si-period-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 10px 12px;
-  margin: 12px 0 18px;
-  border-radius: 4px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  gap: 1px;
+  background: #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 18px;
 }
 
 .si-period-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 10px 14px;
+  background: #f8fafc;
 }
 
 .si-period-label {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .si-period-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-/* ---------- Table tweaks (HSN/SAC col) ---------- */
-.si-col-small {
-  width: 80px;
+/* -------- Items table --------------------------------------------------- */
+.si-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #475569;
+  margin: 4px 0 8px;
+}
+
+.si-section-title::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  background: #6366f1;
+  border-radius: 2px;
+}
+
+.si-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11.5px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.si-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.si-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+.si-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.si-table tbody tr.is-alt td {
+  background: #fbfbfd;
+}
+
+.si-col-no {
+  width: 38px;
   text-align: center;
 }
 
-/* ---------- Totals rows: paid, balance, words ---------- */
+.si-col-small {
+  width: 88px;
+  text-align: center;
+}
+
+.si-center {
+  text-align: center;
+}
+
+.si-right {
+  text-align: right;
+}
+
+.si-empty {
+  padding: 18px;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* -------- Totals card --------------------------------------------------- */
+.si-totals {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.si-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.si-totals-row.strong {
+  font-weight: 700;
+  font-size: 13px;
+  color: #f8fafc;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  margin-top: 6px;
+}
+
+.si-totals-grand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #6366f1;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.si-totals-grand-amount {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .si-totals-row.paid {
-  color: #047857;
+  color: #6ee7b7;
 }
 
 .si-totals-row.balance {
-  color: #b91c1c;
+  color: #fca5a5;
 }
 
 .si-totals-words {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #e5e7eb;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.3);
   font-size: 11px;
-  color: #4b5563;
-  font-style: italic;
+  color: #cbd5e1;
   line-height: 1.5;
+  font-style: italic;
 }
 
 .si-totals-words b {
-  color: #111827;
+  color: #f8fafc;
   font-style: normal;
+  margin-right: 4px;
 }
 
-/* ---------- UPI block ---------- */
-.si-upi {
-  margin-top: 12px;
+/* -------- Bottom grid: Billing info + Terms + Signature ---------------- */
+.si-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.si-bottom-grid .si-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.si-terms {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.si-terms li {
+  margin-bottom: 2px;
+}
+
+.si-remarks {
+  margin-top: 6px;
   padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+}
+
+.si-remarks p {
+  margin: 0;
+  font-size: 11.5px;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.si-sign {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.si-sign-date {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.si-sign-line {
+  width: 180px;
+  height: 1px;
+  background: #cbd5e1;
+}
+
+.si-sign-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+/* -------- Footer -------------------------------------------------------- */
+.si-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 12px 16px;
+  font-size: 11px;
+  border-radius: 12px;
+}
+
+.si-footer-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.si-footer-item:last-child {
+  justify-content: flex-end;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.si-footer-item strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+/* -------- Duplicate banner (kept) -------------------------------------- */
+.si-duplicate {
+  display: inline-block;
+  margin: 0 0 14px 0;
+  padding: 6px 12px;
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+  font-weight: 700;
   border-radius: 6px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  background: #fef2f2;
+}
+
+/* -------- UPI block (kept) --------------------------------------------- */
+.si-upi {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
   border: 1px solid #bbf7d0;
   font-size: 12px;
@@ -395,9 +549,9 @@
 }
 
 .si-upi-title {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #047857;
   margin-bottom: 6px;
@@ -421,7 +575,7 @@
   padding: 6px 12px;
   background: #047857;
   color: #ffffff;
-  border-radius: 4px;
+  border-radius: 6px;
   text-decoration: none;
   font-weight: 700;
   font-size: 12px;
@@ -432,37 +586,118 @@
   color: #ffffff;
 }
 
-/* ---------- Remarks ---------- */
-.si-remarks {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed #e5e7eb;
+/* -------- Responsive collapse ------------------------------------------ */
+@media (max-width: 720px) {
+  .si-page {
+    width: 100%;
+    min-height: 0;
+    padding: 14px 12px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .si-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .si-brand {
+    text-align: left;
+    align-self: stretch;
+    justify-content: flex-start;
+  }
+
+  .si-brand-meta {
+    align-items: flex-start;
+  }
+
+  .si-inv-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .si-grid,
+  .si-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .si-period-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .si-table {
+    font-size: 11px;
+  }
+
+  .si-table thead th,
+  .si-table tbody td {
+    padding: 8px 8px;
+  }
+
+  .si-footer {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .si-footer-item:last-child {
+    justify-content: flex-start;
+  }
 }
 
-.si-remarks p {
-  margin: 0;
-  font-size: 12px;
-  color: #374151;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
+/* -------- Print fidelity ------------------------------------------------ */
+@media print {
+  body {
+    background: #ffffff;
+  }
 
-/* ---------- Footer: three columns now ---------- */
-.si-footer {
-  display: flex;
-  gap: 18px;
-  background: #0b2a4a;
-  color: #fff;
-  padding: 8px 12px;
-  font-size: 12px;
-}
+  .si-page {
+    box-shadow: none;
+    border-radius: 0;
+    padding: 14mm 12mm;
+  }
 
-.si-footer-item {
-  flex: 1;
-}
+  /* Keep the highlighted grand-total strip and the dark totals card vivid
+     even on a black-and-white printer — fall back to high-contrast
+     outlines so the totals block remains legible. */
+  .si-totals {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #0f172a;
+  }
 
-.si-footer-item:last-child {
-  text-align: right;
-  font-style: italic;
-  opacity: 0.85;
+  .si-totals-row.strong {
+    color: #0f172a;
+    border-top: 1px solid #0f172a;
+  }
+
+  .si-totals-grand {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1.5px solid #0f172a;
+  }
+
+  .si-totals-row.paid,
+  .si-totals-row.balance {
+    color: #0f172a;
+  }
+
+  .si-totals-words {
+    color: #0f172a;
+    border-top: 1px dashed #0f172a;
+  }
+
+  .si-totals-words b {
+    color: #0f172a;
+  }
+
+  .si-footer {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #0f172a;
+  }
+
+  .si-footer-item,
+  .si-footer-item strong {
+    color: #0f172a;
+  }
 }

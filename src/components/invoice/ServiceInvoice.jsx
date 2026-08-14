@@ -280,64 +280,67 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
   return (
     <div id="service-invoice" className="service-invoice">
       <div className="si-page">
-        {/* Top Header */}
-        <div className="si-top">
-          <div className="si-title-block">
-            <div className="si-title">{invoiceTitle}</div>
+        {/* Hero header: title + status pill on the left, brand on the right */}
+        <div className="si-hero">
+          <div className="si-hero-left">
             <div className="si-subtitle">{invoiceSubtitle}</div>
-          </div>
-          {status && <span className={`si-status-pill ${status.tone}`}>{status.label}</span>}
-        </div>
-
-        <div className="si-topbar">
-          <div className="si-inv-meta">
-            <div className="si-meta-row">
-              <span className="si-meta-label">Invoice Number:</span>
-              <span className="si-meta-value">{invoice.invoiceNo}</span>
-            </div>
-            <div className="si-meta-row">
-              <span className="si-meta-label">Invoice Date:</span>
-              <span className="si-meta-value">{invoice.date}</span>
-            </div>
-            <div className="si-meta-row">
-              <span className="si-meta-label">Due Date:</span>
-              <span className="si-meta-value">{dueDate}</span>
-            </div>
-            {jobRef && (
-              <div className="si-meta-row">
-                <span className="si-meta-label">Job / Ref:</span>
-                <span className="si-meta-value">{jobRef}</span>
-              </div>
-            )}
+            <div className="si-title">{invoiceTitle}</div>
+            {status && <span className={`si-status-pill ${status.tone}`}>{status.label}</span>}
           </div>
 
           <div className="si-brand">
             {settings.logo && <img className="si-logo" src={settings.logo} alt="Company Logo" />}
-            <div className="si-company-name">{settings.name || "Company"}</div>
-            {settings.gstNo && <div className="si-company-gst">GSTIN: {settings.gstNo}</div>}
+            <div className="si-brand-meta">
+              <div className="si-company-name">{settings.name || "Company"}</div>
+              {settings.gstNo && <div className="si-company-gst">GSTIN {settings.gstNo}</div>}
+            </div>
           </div>
         </div>
 
         {isDuplicate && <div className="si-duplicate">DUPLICATE COPY</div>}
 
-        {/* Main Columns */}
+        {/* Invoice meta card: number, date, due, job ref */}
+        <div className="si-inv-meta">
+          <div className="si-meta-row">
+            <span className="si-meta-label">Invoice Number</span>
+            <span className="si-meta-value">{invoice.invoiceNo}</span>
+          </div>
+          <div className="si-meta-row">
+            <span className="si-meta-label">Invoice Date</span>
+            <span className="si-meta-value">{invoice.date}</span>
+          </div>
+          <div className="si-meta-row">
+            <span className="si-meta-label">Due Date</span>
+            <span className="si-meta-value">{dueDate}</span>
+          </div>
+          {jobRef && (
+            <div className="si-meta-row">
+              <span className="si-meta-label">Job / Ref</span>
+              <span className="si-meta-value">{jobRef}</span>
+            </div>
+          )}
+        </div>
+
+        {/* From / Bill-To two-column cards */}
         <div className="si-grid">
           <div className="si-box">
-            <div className="si-box-title">From:</div>
+            <div className="si-box-title">From</div>
             <div className="si-kv">
               <b>{settings.name || "Company"}</b>
             </div>
-            <div className="si-kv">{settings.address || ""}</div>
-            <div className="si-kv">
-              {[settings.city, settings.state, settings.pincode].filter(Boolean).join(", ")}
-            </div>
-            <div className="si-kv">{settings.phone ? `Phone: ${settings.phone}` : ""}</div>
-            <div className="si-kv">{settings.email ? `Email: ${settings.email}` : ""}</div>
+            {settings.address && <div className="si-kv">{settings.address}</div>}
+            {(settings.city || settings.state || settings.pincode) && (
+              <div className="si-kv">
+                {[settings.city, settings.state, settings.pincode].filter(Boolean).join(", ")}
+              </div>
+            )}
+            {settings.phone && <div className="si-kv">Phone: {settings.phone}</div>}
+            {settings.email && <div className="si-kv">Email: {settings.email}</div>}
             {settings.panNo && <div className="si-kv">PAN: {settings.panNo}</div>}
           </div>
 
           <div className="si-box">
-            <div className="si-box-title">Bill To:</div>
+            <div className="si-box-title">Bill To</div>
             <div className="si-kv">
               <b>{billToName || "Walk-in Customer"}</b>
             </div>
@@ -372,12 +375,12 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="si-section-title">Service Details:</div>
+        {/* Items table */}
+        <div className="si-section-title">Service Details</div>
         <table className="si-table">
           <thead>
             <tr>
-              <th className="si-col-no">No</th>
+              <th className="si-col-no">#</th>
               <th>Item Description</th>
               <th className="si-col-small">HSN/SAC</th>
               <th className="si-col-small">Hours/Units</th>
@@ -409,7 +412,7 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
           </tbody>
         </table>
 
-        {/* Totals Bar */}
+        {/* Totals — dark card with a highlighted grand-total strip */}
         <div className="si-totals">
           <div className="si-totals-row">
             <span>Subtotal</span>
@@ -423,56 +426,63 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
               <span>₹{fmt2(t.amount)}</span>
             </div>
           ))}
-          <div className="si-totals-row strong">
-            <span>Total Amount Due</span>
-            <span>₹{fmt2(totalDue)}</span>
-          </div>
           {paidAmount > 0 && (
-            <>
-              <div className="si-totals-row paid">
-                <span>Paid ({paymentMode})</span>
-                <span>− ₹{fmt2(paidAmount)}</span>
-              </div>
-              <div className="si-totals-row strong balance">
-                <span>Balance Due</span>
-                <span>₹{fmt2(balanceDue)}</span>
-              </div>
-            </>
+            <div className="si-totals-row paid">
+              <span>Paid ({paymentMode})</span>
+              <span>− ₹{fmt2(paidAmount)}</span>
+            </div>
           )}
           <div className="si-totals-words">
             <b>Amount in words:</b> {amountInWords}
           </div>
+          <div className="si-totals-grand">
+            <span>{paidAmount > 0 ? "Balance Due" : "Total Amount Due"}</span>
+            <span className="si-totals-grand-amount">
+              ₹{fmt2(paidAmount > 0 ? balanceDue : totalDue)}
+            </span>
+          </div>
         </div>
 
-        {/* Bottom Columns */}
+        {/* Bottom 2-column: Billing info + Terms + Signature */}
         <div className="si-bottom-grid">
           <div className="si-box">
-            <div className="si-box-title">Billing Information:</div>
-            <div className="si-kv">
-              <b>Payment Method:</b> {paymentMode}
+            <div className="si-box-title">Billing Information</div>
+            <div className="si-kv-row">
+              <span className="si-kv-strong">Payment Method</span>
+              <span>{paymentMode}</span>
             </div>
-            <div className="si-kv">
-              <b>Due Date:</b> {dueDate}
+            <div className="si-kv-row">
+              <span className="si-kv-strong">Due Date</span>
+              <span>{dueDate}</span>
             </div>
-            {bankAccount && (
-              <div className="si-kv">
-                <b>Bank A/c:</b> {bankAccount}
+            {invoice.billedBy && (
+              <div className="si-kv-row">
+                <span className="si-kv-strong">Billed By</span>
+                <span>{invoice.billedBy}</span>
               </div>
             )}
-            {settings.ifscCode && (
-              <div className="si-kv">
-                <b>IFSC:</b> {settings.ifscCode}
+            {bankAccount && (
+              <div className="si-kv-row">
+                <span className="si-kv-strong">Bank A/c</span>
+                <span>{bankAccount}</span>
               </div>
             )}
             {settings.bankName && (
-              <div className="si-kv">
-                <b>Bank:</b> {settings.bankName}
+              <div className="si-kv-row">
+                <span className="si-kv-strong">Bank</span>
+                <span>{settings.bankName}</span>
+              </div>
+            )}
+            {settings.ifscCode && (
+              <div className="si-kv-row">
+                <span className="si-kv-strong">IFSC</span>
+                <span>{settings.ifscCode}</span>
               </div>
             )}
           </div>
 
           <div className="si-box">
-            <div className="si-box-title">Terms and Conditions:</div>
+            <div className="si-box-title">Terms & Conditions</div>
             {terms.length === 0 ? (
               <ul className="si-terms">
                 <li>Payment is due upon receipt of this invoice.</li>
@@ -489,13 +499,13 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
 
             {remarks && (
               <div className="si-remarks">
-                <div className="si-box-title">Remarks:</div>
+                <div className="si-box-title">Remarks</div>
                 <p>{remarks}</p>
               </div>
             )}
 
             <div className="si-sign">
-              <div className="si-sign-date">Date : {invoice.date}</div>
+              <div className="si-sign-date">Date: {invoice.date}</div>
               <div className="si-sign-line" />
               <div className="si-sign-name">{signatureName}</div>
             </div>
@@ -504,8 +514,12 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
 
         {/* Footer */}
         <div className="si-footer">
-          <div className="si-footer-item">{footerPhone}</div>
-          <div className="si-footer-item">{footerEmail}</div>
+          <div className="si-footer-item">
+            <strong>Phone:</strong> {footerPhone}
+          </div>
+          <div className="si-footer-item">
+            <strong>Email:</strong> {footerEmail}
+          </div>
           <div className="si-footer-item">Thank you for your business</div>
         </div>
       </div>
