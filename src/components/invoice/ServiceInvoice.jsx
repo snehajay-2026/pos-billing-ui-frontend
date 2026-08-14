@@ -215,15 +215,25 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
   const footerPhone = settings.serviceFooterPhone || settings.phone || "";
   const footerEmail = settings.serviceFooterEmail || settings.email || "";
 
-  const billToName =
-    invoice.customerName || invoice.customer || settings.customerName || "Walk-in Customer";
-  const billToAddress = invoice.customerAddress || settings.customerAddress || "";
-  const billToPhone =
-    invoice.customerPhone || settings.customerMobile
-      ? `+91${invoice.customerPhone || settings.customerMobile}`
-      : "";
-  const billToEmail = invoice.customerEmail || settings.customerEmail || "";
-  const billToGst = invoice.customerGst || settings.customerGst || "";
+  // Bill-to values MUST come from the cashier's input in the Service Billing
+  // "Bill summary → Customer details" section, never from store settings.
+  // Store settings hold *business* info (store name, store address, GSTIN,
+  // bank account, footer phone/email) — leaking store-level customerName /
+  // customerAddress / customerMobile / customerEmail / customerGst onto the
+  // printed invoice replaces the customer's actual contact with the store's
+  // own, which is the bug this commit fixes.
+  //
+  // Accept both camelCase and the legacy flat keys (older payloads saved
+  // before the camelCase pass) so older invoices still render correctly.
+  const billToName = invoice.customerName || invoice.customer || "";
+  const billToAddress = invoice.customerAddress || invoice.address || "";
+  // Prefix "+91" only when the cashier typed a bare 10-digit Indian mobile.
+  // If they explicitly typed a "+" prefix we keep what they entered verbatim.
+  const rawPhone = String(invoice.customerPhone || invoice.phone || "").trim();
+  const billToPhone = rawPhone ? (rawPhone.startsWith("+") ? rawPhone : `+91${rawPhone}`) : "";
+  const billToEmail = invoice.customerEmail || invoice.email || "";
+  const billToGst = invoice.customerGst || invoice.gst || "";
+  const billToState = invoice.customerState || invoice.state || "";
 
   const terms = splitTerms(settings.serviceTerms);
   const signatureName = settings.serviceSignatureName || settings.name || "";
@@ -298,11 +308,12 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
           <div className="si-box">
             <div className="si-box-title">Bill To:</div>
             <div className="si-kv">
-              <b>{billToName}</b>
+              <b>{billToName || "Walk-in Customer"}</b>
             </div>
             {billToAddress && <div className="si-kv">{billToAddress}</div>}
             {billToPhone && <div className="si-kv">Phone: {billToPhone}</div>}
             {billToEmail && <div className="si-kv">Email: {billToEmail}</div>}
+            {billToState && <div className="si-kv">State: {billToState}</div>}
             {billToGst && <div className="si-kv">GSTIN: {billToGst}</div>}
           </div>
         </div>
