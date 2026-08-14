@@ -284,10 +284,32 @@ const ServiceBilling = () => {
     const year = new Date().getFullYear();
     const invoiceNo = `${prefix}${year}-${String(Date.now()).slice(-6)}`;
 
+    // Customer identity captured at billing time. The `items[0].meta`
+    // mirror is intentional: the DB's `invoices` table only persists
+    // customer_name + customer_mobile as top-level columns today, so every
+    // other customer field (email, address, GSTIN, state) is round-tripped
+    // through the JSON `items` column on the first line's meta block. The
+    // ServiceInvoice renderer reads the top-level camelCase keys first and
+    // falls back to items[0].meta so a row saved before the schema gains
+    // extra columns still renders correctly when reprinted / shared via the
+    // public link.
+    const customerMeta = {
+      guest: activeBill.customer || "",
+      customerPhone: activeBill.phone || "",
+      customerMobile: activeBill.phone || "",
+      customerEmail: activeBill.email || "",
+      customerAddress: activeBill.address || "",
+      customerGst: activeBill.gst || "",
+      customerState: activeBill.state || "",
+    };
+    const itemsWithCustomerMeta = activeBill.items.map((item, idx) =>
+      idx === 0 ? { ...item, meta: { ...(item.meta || {}), ...customerMeta } } : item
+    );
+
     const invoice = {
       invoiceNo,
       date: new Date().toISOString().split("T")[0],
-      items: activeBill.items,
+      items: itemsWithCustomerMeta,
       subTotal,
       gstTotal,
       discountPct,
@@ -300,6 +322,7 @@ const ServiceBilling = () => {
       customer: activeBill.customer,
       customerName: activeBill.customer,
       customerPhone: activeBill.phone,
+      customerMobile: activeBill.phone,
       customerEmail: activeBill.email,
       customerAddress: activeBill.address,
       customerGst: activeBill.gst,

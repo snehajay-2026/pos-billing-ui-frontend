@@ -4,7 +4,6 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaQrcode,
-  FaUser,
   FaBuilding,
   FaUniversity,
   FaRegAddressCard,
@@ -634,77 +633,4 @@ export const ServiceBusinessDetailsSection = ({ settings, handleChange }) => (
       </Field>
     </div>
   </>
-);
-
-/* ---------------- Customer Details (for billing) ---------------- */
-export const CustomerBillingSection = ({ settings, handleChange, isServiceBusiness }) => (
-  <div className="ss-section">
-    <SectionTitle
-      icon={<FaUser />}
-      title="Customer Details (defaults for billing)"
-      subtitle="Pre-fills customer info on service / hotel invoices when the bill has no customer attached."
-    />
-
-    <div className="ss-grid-2">
-      <Field icon={<FaUser />} label="Customer Name">
-        <Input
-          name="customerName"
-          value={settings.customerName || ""}
-          onChange={handleChange}
-          placeholder="Customer name"
-        />
-      </Field>
-      <Field icon={<FaPhone />} label="Customer Mobile" hint="10-digit Indian mobile.">
-        <div className="ss-prefixed-input">
-          <span className="ss-prefix">+91</span>
-          <Input
-            name="customerMobile"
-            type="tel"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={settings.customerMobile || ""}
-            onChange={handleChange}
-            placeholder="9876543210"
-            maxLength={10}
-          />
-        </div>
-      </Field>
-    </div>
-
-    <div className="ss-grid-2">
-      <Field icon={<FaMapMarkerAlt />} label="Customer Address">
-        <Textarea
-          name="customerAddress"
-          rows={2}
-          value={settings.customerAddress || ""}
-          onChange={handleChange}
-          placeholder="Customer billing address"
-        />
-      </Field>
-      <Field icon={<FaEnvelope />} label="Customer Email">
-        <Input
-          name="customerEmail"
-          type="email"
-          value={settings.customerEmail || ""}
-          onChange={handleChange}
-          placeholder="customer@email.com"
-        />
-      </Field>
-    </div>
-
-    {isServiceBusiness && (
-      <Field
-        icon={<FaIdCard />}
-        label="Customer GST (if applicable)"
-        hint="Used on tax invoices where the buyer is GST-registered."
-      >
-        <Input
-          name="customerGst"
-          value={settings.customerGst || ""}
-          onChange={handleChange}
-          placeholder="Customer GST number"
-        />
-      </Field>
-    )}
-  </div>
 );

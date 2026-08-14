@@ -6,7 +6,6 @@ import {
   ServiceBusinessDetailsSection,
   LaundryBusinessSettingsSection,
   HotelBusinessSettingsSection,
-  CustomerBillingSection,
 } from "./StoreSettingsSections";
 
 const settingsViewMap = {
@@ -80,11 +79,6 @@ const RetailStoreSettings = (props) => (
   <>
     <SettingsHeader {...settingsViewMap.retail} />
     <CommonSettingsSections {...props} />
-    <CustomerBillingSection
-      settings={props.settings}
-      handleChange={props.handleChange}
-      isServiceBusiness={false}
-    />
   </>
 );
 
@@ -93,11 +87,6 @@ const LaundryStoreSettings = (props) => (
     <SettingsHeader {...settingsViewMap.laundry} />
     <CommonSettingsSections {...props} />
     <LaundryBusinessSettingsSection settings={props.settings} handleChange={props.handleChange} />
-    <CustomerBillingSection
-      settings={props.settings}
-      handleChange={props.handleChange}
-      isServiceBusiness={false}
-    />
   </>
 );
 
@@ -105,11 +94,6 @@ const InventoryStoreSettings = (props) => (
   <>
     <SettingsHeader {...settingsViewMap.inventory} />
     <CommonSettingsSections {...props} />
-    <CustomerBillingSection
-      settings={props.settings}
-      handleChange={props.handleChange}
-      isServiceBusiness={false}
-    />
   </>
 );
 
@@ -118,11 +102,6 @@ const HotelStoreSettings = (props) => (
     <SettingsHeader {...settingsViewMap.hotel} />
     <CommonSettingsSections {...props} />
     <HotelBusinessSettingsSection settings={props.settings} handleChange={props.handleChange} />
-    <CustomerBillingSection
-      settings={props.settings}
-      handleChange={props.handleChange}
-      isServiceBusiness={false}
-    />
   </>
 );
 
@@ -131,11 +110,6 @@ const ServiceStoreSettings = (props) => (
     <SettingsHeader {...settingsViewMap.service} />
     <CommonSettingsSections {...props} />
     <ServiceBusinessDetailsSection settings={props.settings} handleChange={props.handleChange} />
-    <CustomerBillingSection
-      settings={props.settings}
-      handleChange={props.handleChange}
-      isServiceBusiness
-    />
   </>
 );
 

@@ -31,7 +31,6 @@ const StoreSettings = () => {
     return {
       ...initial,
       phone: normalizeMobile(initial.phone),
-      customerMobile: normalizeMobile(initial.customerMobile),
     };
   });
   const [formError, setFormError] = useState("");
@@ -97,7 +96,6 @@ const StoreSettings = () => {
         setSettings({
           ...next,
           phone: normalizeMobile(next.phone),
-          customerMobile: normalizeMobile(next.customerMobile),
         });
         setLogoPreview(next.logo || "");
       } catch (err) {
@@ -122,7 +120,7 @@ const StoreSettings = () => {
   }, []);
 
   const handleChange = (e) => {
-    if (e.target.name === "phone" || e.target.name === "customerMobile") {
+    if (e.target.name === "phone") {
       const value = normalizeMobile(e.target.value);
       setSettings({ ...settings, [e.target.name]: value });
     } else {
@@ -174,12 +172,6 @@ const StoreSettings = () => {
     if (!isValidIndianMobile(settings.phone)) {
       setFormError("Store phone must be a valid 10-digit Indian mobile number.");
       showToast("error", "Enter a valid 10-digit store phone");
-      return;
-    }
-
-    if (settings.customerMobile && !isValidIndianMobile(settings.customerMobile)) {
-      setFormError("Customer mobile must be a valid 10-digit Indian mobile number.");
-      showToast("error", "Customer mobile is invalid");
       return;
     }
 

@@ -223,17 +223,40 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
   // printed invoice replaces the customer's actual contact with the store's
   // own, which is the bug this commit fixes.
   //
-  // Accept both camelCase and the legacy flat keys (older payloads saved
-  // before the camelCase pass) so older invoices still render correctly.
-  const billToName = invoice.customerName || invoice.customer || "";
-  const billToAddress = invoice.customerAddress || invoice.address || "";
+  // Two source layers, both populated by ServiceBilling at save time:
+  //   1. Top-level invoice camelCase keys (customerName, customerPhone,
+  //      customerEmail, customerAddress, customerGst, customerState).
+  //   2. items[0].meta — the JSON `items` column on the `invoices` table
+  //      round-trips every customer field through this even for legacy
+  //      rows where the dedicated DB columns are not yet populated.
+  //
+  // Precedence: top-level first, then items[0].meta, then the legacy flat
+  // aliases (older payloads saved before the camelCase pass).
+  const itemMeta = (items[0] && items[0].meta) || {};
+  const pick = (...candidates) => {
+    for (const c of candidates) {
+      if (c == null) continue;
+      const trimmed = String(c).trim();
+      if (trimmed) return trimmed;
+    }
+    return "";
+  };
+  const billToName = pick(invoice.customerName, invoice.customer, itemMeta.guest);
+  const billToAddress = pick(invoice.customerAddress, invoice.address, itemMeta.customerAddress);
   // Prefix "+91" only when the cashier typed a bare 10-digit Indian mobile.
   // If they explicitly typed a "+" prefix we keep what they entered verbatim.
-  const rawPhone = String(invoice.customerPhone || invoice.phone || "").trim();
+  const rawPhone = pick(
+    invoice.customerPhone,
+    invoice.phone,
+    invoice.customerMobile,
+    invoice.mobile,
+    itemMeta.customerPhone,
+    itemMeta.customerMobile
+  );
   const billToPhone = rawPhone ? (rawPhone.startsWith("+") ? rawPhone : `+91${rawPhone}`) : "";
-  const billToEmail = invoice.customerEmail || invoice.email || "";
-  const billToGst = invoice.customerGst || invoice.gst || "";
-  const billToState = invoice.customerState || invoice.state || "";
+  const billToEmail = pick(invoice.customerEmail, invoice.email, itemMeta.customerEmail);
+  const billToGst = pick(invoice.customerGst, invoice.gst, itemMeta.customerGst);
+  const billToState = pick(invoice.customerState, invoice.state, itemMeta.customerState);
 
   const terms = splitTerms(settings.serviceTerms);
   const signatureName = settings.serviceSignatureName || settings.name || "";
