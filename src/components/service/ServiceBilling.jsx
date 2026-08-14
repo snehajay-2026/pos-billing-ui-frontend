@@ -262,7 +262,22 @@ const ServiceBilling = () => {
     // cashier must have an open shift. If the user lands here without one,
     // show the OpenShiftDialog first; once they open a shift, the success
     // handler re-runs the save. Same flow as Retail POSBilling.
-    if (activeBill.paymentMode === "Cash" && currentStoreNeedsShift()) {
+    //
+    // Service-Store exception: the Service Store does not operate a cash
+    // drawer — it bills professional services (consulting, repairs,
+    // AMC, etc.) and the cashier is not expected to reconcile cash at
+    // end-of-shift. Enforcing the shift gate here means a single Cash
+    // click on a service bill silently opens the OpenShiftDialog and
+    // skips the save, so Online-mode users see invoices generated while
+    // Cash-mode users see nothing. The user explicitly requires Cash to
+    // work the same as Online for the Service Store, so we skip the
+    // gate whenever the active store is `service` or `msme-service`.
+    // Retail / Hotel / Laundry / Inventory keep the existing behaviour.
+    const shiftGateApplies =
+      activeBill.paymentMode === "Cash" &&
+      currentStoreNeedsShift() &&
+      !["service", "msme-service"].includes(String(getUser()?.storeType || "").toLowerCase());
+    if (shiftGateApplies) {
       const shift = await refreshActiveShift();
       if (!shift) {
         pendingInvoiceRef.current = { kind: "service" };
@@ -346,7 +361,13 @@ const ServiceBilling = () => {
     // For cash sales in a cash-vertical store, record the sale against
     // the cashier's currently-open shift so the variance at end-of-shift
     // is accurate. Fire-and-forget — the invoice is already saved.
-    if (invoice.paymentMode === "Cash" && currentStoreNeedsShift()) {
+    // Service Store is excluded for the same reason the pre-save gate is
+    // skipped above: no cash drawer, no shift to record against.
+    if (
+      invoice.paymentMode === "Cash" &&
+      currentStoreNeedsShift() &&
+      !["service", "msme-service"].includes(String(getUser()?.storeType || "").toLowerCase())
+    ) {
       recordCashSaleForShift({
         invoiceNo: invoice.invoiceNo,
         amount: invoice.grandTotal,
