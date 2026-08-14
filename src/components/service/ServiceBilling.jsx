@@ -156,6 +156,26 @@ const ServiceBilling = () => {
     undoTimerRef.current = setTimeout(() => setUndoItem(null), 5000);
   };
 
+  // Manual GST override: the product's stored `gst` is a sensible default,
+  // but the cashier can override per line (e.g. mixed-rate invoices, seasonal
+  // GST changes, or 0% / exempt items). Empty string is treated as 0 so the
+  // math still works without forcing a number in the field.
+  const updateLineItemGst = (itemId, rawValue) => {
+    const cleaned = String(rawValue).replace(/[^0-9.]/g, "");
+    setBills((prev) => {
+      const cur = prev[activeBillId];
+      return {
+        ...prev,
+        [activeBillId]: {
+          ...cur,
+          items: cur.items.map((i) =>
+            i.id === itemId ? { ...i, gst: cleaned === "" ? 0 : Number(cleaned) || 0 } : i
+          ),
+        },
+      };
+    });
+  };
+
   const handleUndo = () => {
     if (!undoItem) return;
     setBills((prev) => {
@@ -226,6 +246,13 @@ const ServiceBilling = () => {
       ),
     [activeBill.items]
   );
+
+  // Indian GST default: split the combined rate into two equal halves for
+  // intra-state invoices (CGST + SGST). When the customer's billing state
+  // differs from the store's state, the total still flows through the same
+  // grand total — ServiceInvoice re-renders the split as IGST in that case.
+  const cgstAmount = gstTotal / 2;
+  const sgstAmount = gstTotal / 2;
 
   const discountPct = Number(activeBill.discountPct) || 0;
   const discountAmt = ((subTotal + gstTotal) * discountPct) / 100;
@@ -670,17 +697,34 @@ const ServiceBilling = () => {
             <div className="sv-line-items">
               {activeBill.items.map((i) => {
                 const lineTotal = Number(i.price) || 0;
-                const lineGst = (lineTotal * (Number(i.gst) || 0)) / 100;
+                const gstRate = Number(i.gst) || 0;
+                const lineGst = (lineTotal * gstRate) / 100;
                 return (
                   <div className="sv-line-item" key={i.id}>
                     <div className="sv-line-item-main">
                       <strong>{i.name}</strong>
-                      <span>
-                        {formatCurrency(i.price)} · GST {Number(i.gst || 0)}%
-                      </span>
+                      <span>{formatCurrency(lineTotal)}</span>
+                    </div>
+                    <div className="sv-line-item-gst">
+                      <label className="sv-line-item-gst-label" htmlFor={`gst-${i.id}`}>
+                        GST %
+                      </label>
+                      <input
+                        id={`gst-${i.id}`}
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        inputMode="decimal"
+                        className="sv-input sv-line-item-gst-input"
+                        value={gstRate === 0 ? "" : gstRate}
+                        placeholder="0"
+                        onChange={(e) => updateLineItemGst(i.id, e.target.value)}
+                        aria-label={`GST % for ${i.name}`}
+                      />
                     </div>
                     <div className="sv-line-item-amount">
-                      <strong>{formatCurrency(lineTotal)}</strong>
+                      <strong>{formatCurrency(lineTotal + lineGst)}</strong>
                       <span>+ GST {formatCurrency(lineGst)}</span>
                     </div>
                     <button
@@ -705,7 +749,15 @@ const ServiceBilling = () => {
               <strong>{formatCurrency(subTotal)}</strong>
             </div>
             <div className="sv-total-row">
-              <span>GST</span>
+              <span>CGST</span>
+              <strong>{formatCurrency(cgstAmount)}</strong>
+            </div>
+            <div className="sv-total-row">
+              <span>SGST</span>
+              <strong>{formatCurrency(sgstAmount)}</strong>
+            </div>
+            <div className="sv-total-row sv-total-gst-combined">
+              <span>Total GST</span>
               <strong>{formatCurrency(gstTotal)}</strong>
             </div>
             <div className="sv-total-row sv-total-discount">

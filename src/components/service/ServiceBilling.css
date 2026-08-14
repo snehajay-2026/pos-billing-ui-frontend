@@ -796,7 +796,7 @@
 
 .sv-line-item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -824,6 +824,41 @@
 .sv-line-item-main span {
   font-size: 0.78rem;
   color: #64748b;
+}
+
+.sv-line-item-gst {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 78px;
+}
+
+.sv-line-item-gst-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  text-align: center;
+}
+
+.sv-line-item-gst-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  /* Hide the spinner arrows to keep the row compact. The storey is short
+     and the +/- buttons make the row jiggle on focus. */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sv-line-item-gst-input::-webkit-outer-spin-button,
+.sv-line-item-gst-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .sv-line-item-amount {
@@ -922,6 +957,20 @@
 
 .sv-total-grand strong {
   color: #0c4a6e;
+}
+
+.sv-total-gst-combined {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  font-style: italic;
+  padding-top: 2px;
+  margin-top: 0;
+  border-top: none;
+}
+
+.sv-total-gst-combined strong {
+  color: #94a3b8;
+  font-weight: 700;
 }
 
 /* ---------- PAYMENT + ACTIONS ---------- */

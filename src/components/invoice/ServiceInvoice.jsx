@@ -156,27 +156,44 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
 
   const subTotal = Number(invoice.subTotal) || mappedItems.reduce((sum, row) => sum + row.total, 0);
 
-  const configuredTaxRate = Number(settings.serviceTaxRate);
+  // Per-line GST totals drive the invoice tax lines so the cashier's manual
+  // overrides (or default from product catalog) are reflected verbatim.
+  // Fall back to settings.serviceTaxRate only if the bill was zero-rated
+  // across every line — that path lets legacy bills without gstTotal still
+  // compute a tax figure from the configured rate.
+  const lineTaxTotal = mappedItems.reduce((sum, row) => sum + (Number(row.tax) || 0), 0);
   const taxAmountFromInvoice = Number(invoice.gstTotal);
-
   const taxAmount =
-    Number.isFinite(taxAmountFromInvoice) && taxAmountFromInvoice > 0
-      ? taxAmountFromInvoice
-      : Number.isFinite(configuredTaxRate) && configuredTaxRate > 0
-        ? (subTotal * configuredTaxRate) / 100
-        : 0;
+    lineTaxTotal > 0
+      ? lineTaxTotal
+      : Number.isFinite(taxAmountFromInvoice) && taxAmountFromInvoice > 0
+        ? taxAmountFromInvoice
+        : (() => {
+            const configuredTaxRate = Number(settings.serviceTaxRate);
+            return Number.isFinite(configuredTaxRate) && configuredTaxRate > 0
+              ? (subTotal * configuredTaxRate) / 100
+              : 0;
+          })();
+
+  // Average tax rate across the bill — used in the CGST / SGST row labels
+  // even when individual lines vary. Falls back to the configured rate when
+  // no line carries a GST value.
+  const effectiveRate =
+    lineTaxTotal > 0 && subTotal > 0
+      ? Math.round((lineTaxTotal / subTotal) * 10000) / 100
+      : Number(settings.serviceTaxRate) || 0;
 
   // CGST / SGST / IGST split. Intra-state (customer state === settings state)
   // splits the rate into two equal halves; inter-state shows IGST at the full rate.
   const taxState = normalizeState(invoice.customerState);
   const settingsState = normalizeState(settings.state);
   const isInterState = taxState && settingsState && taxState !== settingsState;
-  const halfRate = taxAmount / 2;
+  const halfAmount = taxAmount / 2;
   const taxSplit = isInterState
-    ? [{ label: "IGST", rate: configuredTaxRate || 0, amount: taxAmount }]
+    ? [{ label: "IGST", rate: effectiveRate, amount: taxAmount }]
     : [
-        { label: "CGST", rate: (configuredTaxRate || 0) / 2, amount: halfRate },
-        { label: "SGST", rate: (configuredTaxRate || 0) / 2, amount: halfRate },
+        { label: "CGST", rate: effectiveRate / 2, amount: halfAmount },
+        { label: "SGST", rate: effectiveRate / 2, amount: halfAmount },
       ];
 
   const totalDue = Number(invoice.grandTotal) || subTotal + taxAmount;
