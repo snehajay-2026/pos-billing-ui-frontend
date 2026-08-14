@@ -939,7 +939,9 @@ const Header = ({ toggleSidebar }) => {
                   >
                     <FaStoreAlt className="header-chip-icon" />
                     <span className="header-chip-text">
-                      <span className="header-chip-eyebrow">Active store</span>
+                      <span className="header-chip-eyebrow">
+                        {activeStore ? "Active store" : "Pick a store"}
+                      </span>
                       <span className="header-chip-value">{activeStoreLabel}</span>
                     </span>
                     <FaChevronDown className="header-chip-chevron" />
