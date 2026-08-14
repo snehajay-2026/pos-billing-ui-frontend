@@ -273,7 +273,9 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
         { to: "/cashflow", icon: <FaWallet />, label: locale.cashFlow },
         { to: "/users", icon: <FaUserShield />, label: locale.userManagement },
         { to: "/reports", icon: <FaChartPie />, label: "Reports" },
-        ...(String(role || "").toUpperCase() === "SUPER_OWNER"
+        ...(String(role || "").toUpperCase() === "SUPER_OWNER" &&
+        String(storeType || "").toLowerCase() !== "service" &&
+        String(storeType || "").toLowerCase() !== "msme-service"
           ? [
               {
                 to: "/super/hotel-modules",
