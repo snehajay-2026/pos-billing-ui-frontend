@@ -84,14 +84,22 @@ export { FRESH_AUTH_GRACE_MS, setFreshAuthUntil, getFreshAuthUntil };
 // every non-GET request. The server compares header to cookie and rejects
 // mismatches with 403. A cross-site attacker can't read the cookie, so
 // they can't produce the header.
-// In-memory CSRF token store. Login (and register, when used) echo the
-// freshly-minted XSRF token in the JSON response body; authService stores
-// it here. When the frontend lives on a different origin than the
-// backend (Vercel -> Render), document.cookie can't see the XSRF-TOKEN
-// cookie (cross-origin), so we must source it from the JSON response
-// instead. On same-origin setups, the cookie path below also works.
 //
-// Persisted to sessionStorage so a hard page reload keeps it.
+// We ALWAYS read the live cookie at request time, with the in-memory /
+// sessionStorage copy as a fallback when the cookie is unavailable
+// (cross-origin setup where document.cookie can't see the backend's
+// Set-Cookie). Reading the live cookie on every POST is what keeps the
+// header in lock-step with whatever the server most recently set — the
+// backend rotates the XSRF token on every /api/auth/user response, so any
+// header cached from an earlier login would mismatch the next cookie
+// and the request would 403 with "CSRF token mismatch". This previously
+// broke the Laundry Add Order flow (token-counter + /api/orders POSTs
+// both 403'd) whenever a tab had been kept open across an
+// /api/auth/user refresh.
+//
+// The in-memory / sessionStorage mirror is kept for cross-origin
+// deployments (Vercel → Render) where document.cookie can't see the
+// backend's Set-Cookie. Login + /api/auth/user still populate it.
 const CSRF_STORAGE_KEY = "pos_billing_csrf_token";
 
 let csrfTokenMemory = null;
@@ -102,6 +110,17 @@ try {
 } catch {
   /* SSR or storage disabled — fall through */
 }
+
+const readXsrfCookie = () => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+};
 
 export const setCsrfToken = (token) => {
   csrfTokenMemory = token || null;
@@ -117,15 +136,12 @@ export const setCsrfToken = (token) => {
 export const clearCsrfToken = () => setCsrfToken(null);
 
 const getCsrfToken = () => {
-  if (csrfTokenMemory) return csrfTokenMemory;
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
+  // Prefer the live cookie — guarantees the header we send matches the
+  // cookie the backend will compare against. Fall back to the in-memory
+  // mirror only when the cookie isn't visible (cross-origin setups).
+  const fromCookie = readXsrfCookie();
+  if (fromCookie) return fromCookie;
+  return csrfTokenMemory;
 };
 
 const getScopedParams = (params = {}) => {
