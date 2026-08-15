@@ -24,6 +24,47 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
 
   if (!invoice) return null;
 
+  // Customer identity: three sources, in priority order.
+  //   1. `invoice.customer` / `invoice.customerPhone` — the field names
+  //      LaundryBilling's bill-meta input uses (and what the cashier's
+  //      "in-flight" LaundryThermalReceipt receives via `lastInvoice`).
+  //   2. `invoice.customerName` / `invoice.customerMobile` — the row
+  //      shape returned by `invoicesQueries.findByInvoiceNo()` via
+  //      `rowToInvoice` (snake_case columns mapped to camelCase). The
+  //      Invoice Preview fetches via `getInvoiceByNo` and the Public
+  //      Invoice fetches via the public sanitizer; both end up here.
+  //   3. items[].meta.guest / meta.customerMobile / meta.customerPhone —
+  //      legacy line-level identity for older saved invoices that had no
+  //      dedicated columns.
+  //
+  // Trimming the strings and falling through on empty values means a
+  // partially-typed bill (only name, no phone) still shows the name and
+  // never leaks a stray `+91` line.
+  const cleanStr = (v) => {
+    if (v == null) return "";
+    const s = String(v).trim();
+    return s ? s : "";
+  };
+  const legacyMeta = Array.isArray(invoice.items)
+    ? invoice.items.find((it) => it && it.meta)
+    : null;
+  const customerName =
+    cleanStr(invoice.customer) ||
+    cleanStr(invoice.customerName) ||
+    cleanStr(legacyMeta?.meta?.guest) ||
+    "";
+  const customerPhone =
+    cleanStr(invoice.customerPhone) ||
+    cleanStr(invoice.customerMobile) ||
+    cleanStr(invoice.phone) ||
+    cleanStr(legacyMeta?.meta?.customerMobile) ||
+    cleanStr(legacyMeta?.meta?.customerPhone) ||
+    "";
+  // Render-time aliases so the JSX below stays readable; the receipt
+  // already gates on truthiness so an empty string hides the line.
+  const displayCustomer = customerName;
+  const displayPhone = customerPhone;
+
   return (
     <div id="thermal-receipt-print">
       <div
@@ -77,8 +118,8 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
         {(invoice.token ||
           invoice.expectedReturn ||
           invoice.orderId ||
-          invoice.customer ||
-          invoice.customerPhone) && (
+          displayCustomer ||
+          displayPhone) && (
           <>
             <div className="divider"></div>
             <div>
@@ -98,12 +139,10 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
                 </div>
               )}
               {invoice.orderId && <div style={{ fontSize: "11px" }}>Order: {invoice.orderId}</div>}
-              {invoice.customer && (
-                <div style={{ fontSize: "11px" }}>Customer: {invoice.customer}</div>
+              {displayCustomer && (
+                <div style={{ fontSize: "11px" }}>Customer: {displayCustomer}</div>
               )}
-              {invoice.customerPhone && (
-                <div style={{ fontSize: "11px" }}>Phone: +91{invoice.customerPhone}</div>
-              )}
+              {displayPhone && <div style={{ fontSize: "11px" }}>Phone: +91{displayPhone}</div>}
               {invoice.expectedReturn && (
                 <div style={{ fontSize: "11px" }}>Expected Return: {invoice.expectedReturn}</div>
               )}
@@ -113,7 +152,7 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
 
         {/* CUSTOMER INFO (settings defaults — kept for backwards compatibility) */}
         {(settings.customerName || settings.customerMobile) &&
-          (invoice.customer || invoice.customerPhone) && (
+          (displayCustomer || displayPhone) && (
             <div style={{ display: "none" }}>
               {settings.customerName && <div>Customer: {settings.customerName}</div>}
               {settings.customerMobile && <div>Mobile: +91{settings.customerMobile}</div>}
@@ -121,7 +160,7 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
           )}
 
         {(settings.customerName || settings.customerMobile) &&
-          !(invoice.customer || invoice.customerPhone) && (
+          !(displayCustomer || displayPhone) && (
             <div>
               {settings.customerName && <div>Customer: {settings.customerName}</div>}
               {settings.customerMobile && <div>Mobile: +91{settings.customerMobile}</div>}
@@ -129,7 +168,7 @@ const LaundryThermalReceipt = ({ invoice, isDuplicate }) => {
           )}
 
         {(settings.customerName || settings.customerMobile) &&
-          !(invoice.customer || invoice.customerPhone) && <div className="divider"></div>}
+          !(displayCustomer || displayPhone) && <div className="divider"></div>}
 
         {/* SERVICE TABLE */}
         <table style={{ width: "100%", fontSize: "12px" }}>
