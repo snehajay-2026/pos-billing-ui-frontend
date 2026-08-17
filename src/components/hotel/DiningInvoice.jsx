@@ -21,6 +21,46 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   const fmt2 = (n) => (Number(n) || 0).toFixed(2);
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
+  // ---- time formatting ----
+  // Render every date / time field on the Dining invoice in 12-hour
+  // AM/PM format (e.g. "12:30 PM"). `toLocaleString()` defaults to 24h
+  // on the en-IN locale (and most server-locales), so we pass explicit
+  // options. ISO strings from MySQL ("YYYY-MM-DD HH:mm:ss") and from
+  // HTML5 <input type="time"> (HH:mm) both go through `new Date()` so
+  // the same parser handles both shapes.
+  const fmtTime12 = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  // Some HotelBilling writes `checkInTime` / `seatedAt` / `checkOutTime`
+  // as plain HH:mm strings (from <input type="time">) — those don't parse
+  // with `new Date()` so we special-case them.
+  const fmtClock12 = (value) => {
+    if (!value) return "";
+    const s = String(value).trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+    if (!m) return s;
+    let h = Number(m[1]);
+    const min = m[2];
+    const explicit = m[3] ? m[3].toUpperCase() : null;
+    if (!explicit) {
+      const period = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${String(h).padStart(2, "0")}:${min} ${period}`;
+    }
+    const period = explicit;
+    return `${String(h).padStart(2, "0")}:${min} ${period}`;
+  };
+
   // ---- helpers ----
   const getQty = (item) => Number(item?.qty ?? item?.quantity ?? 1);
   const getRate = (item) => Number(item?.rate ?? item?.price ?? 0);
@@ -129,9 +169,7 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
         <div className="hinv-hero-side">
           <span className="hinv-hero-label">Invoice</span>
           <div className="hinv-hero-no">#{invoice.invoiceNo || "—"}</div>
-          <div className="hinv-hero-date">
-            {invoice.date ? new Date(invoice.date).toLocaleString() : ""}
-          </div>
+          <div className="hinv-hero-date">{invoice.date ? fmtTime12(invoice.date) : ""}</div>
           <div className={`hinv-hero-status is-${statusKey}`}>
             {STATUS_LABEL[statusKey]}
             {isDuplicate ? " · Duplicate" : ""}
@@ -176,8 +214,10 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
             <div className="hinv-summary-meta">
               <span className="hinv-summary-label">Timing</span>
               <span className="hinv-summary-value">{seatedAt || clearedAt ? "Recorded" : "—"}</span>
-              <span className="hinv-summary-sub">In · {seatedAt || "—"}</span>
-              <span className="hinv-summary-sub">Out · {clearedAt || "—"}</span>
+              <span className="hinv-summary-sub">In · {seatedAt ? fmtClock12(seatedAt) : "—"}</span>
+              <span className="hinv-summary-sub">
+                Out · {clearedAt ? fmtClock12(clearedAt) : "—"}
+              </span>
             </div>
           </div>
         </div>

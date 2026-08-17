@@ -38,6 +38,41 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
 
   const fmt2 = (n) => (Number(n) || 0).toFixed(2);
 
+  // ---- time formatting (12-hour AM/PM) ----
+  // Mirrors the formatter in DiningInvoice.jsx so the cashier's preview
+  // and the thermal receipt show the same time format. ISO date strings
+  // go through `new Date()`; HH:mm strings (from <input type="time">)
+  // are reformatted directly. `toLocaleString()` defaults to 24h, so
+  // explicit options are required for 12-hour AM/PM output.
+  const fmtTime12 = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  const fmtClock12 = (value) => {
+    if (!value) return "";
+    const s = String(value).trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+    if (!m) return s;
+    let h = Number(m[1]);
+    const min = m[2];
+    const explicit = m[3] ? m[3].toUpperCase() : null;
+    if (!explicit) {
+      const period = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${String(h).padStart(2, "0")}:${min} ${period}`;
+    }
+    return `${String(h).padStart(2, "0")}:${min} ${explicit}`;
+  };
+
   // ---- shared helpers ----
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
@@ -122,7 +157,7 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
             <strong>Invoice:</strong> {invoice.invoiceNo || "—"}
           </div>
           <div>
-            <strong>Date:</strong> {invoice.date ? new Date(invoice.date).toLocaleString() : ""}
+            <strong>Date:</strong> {invoice.date ? fmtTime12(invoice.date) : ""}
           </div>
           <div>
             <strong>Type:</strong> {branchShort}
@@ -292,6 +327,24 @@ function DiningMeta({ invoice, items }) {
   const partySize = Number(invoice?.hotelDetails?.partySize) || 0;
   const seatedAt = invoice?.hotelDetails?.checkInTime || invoice?.hotelDetails?.seatedAt || "";
   const clearedAt = invoice?.hotelDetails?.checkOutTime || "";
+  // `checkInTime` / `seatedAt` arrive as HH:mm strings (from <input
+  // type="time">); route them through the 12h formatter so the printed
+  // receipt matches the A4 preview's "12:30 PM" style.
+  const fmtClock12 = (value) => {
+    if (!value) return "";
+    const s = String(value).trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+    if (!m) return s;
+    let h = Number(m[1]);
+    const min = m[2];
+    const explicit = m[3] ? m[3].toUpperCase() : null;
+    if (!explicit) {
+      const period = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${String(h).padStart(2, "0")}:${min} ${period}`;
+    }
+    return `${String(h).padStart(2, "0")}:${min} ${explicit}`;
+  };
   return (
     <>
       <div>
@@ -304,12 +357,12 @@ function DiningMeta({ invoice, items }) {
       ) : null}
       {seatedAt ? (
         <div>
-          <strong>Seated:</strong> {seatedAt}
+          <strong>Seated:</strong> {fmtClock12(seatedAt)}
         </div>
       ) : null}
       {clearedAt ? (
         <div>
-          <strong>Cleared:</strong> {clearedAt}
+          <strong>Cleared:</strong> {fmtClock12(clearedAt)}
         </div>
       ) : null}
       {/* Render an items-line hint for multi-item bills so the cashier
