@@ -2776,7 +2776,7 @@ const HotelBilling = () => {
       invoiceDateTime,
       generatedAt: generatedAt.toISOString(),
       paymentMode: paymentMode,
-      items: filteredItems.map((i) => ({
+      items: filteredItems.map((i, idx) => ({
         name: i.name,
         qty: i.qty || 1,
         rate: i.rate,
@@ -2784,7 +2784,23 @@ const HotelBilling = () => {
         gst: lineGst(i),
         category: i.category,
         type: i.type,
-        meta: i.meta,
+        // Stow the cashier's exact click moment on the first line's meta
+        // so the Public Invoice round-trip can recover it. The cashier's
+        // top-level `invoiceDateTime` lives only on the in-memory payload
+        // and the persisted `invoices.date` is a DATE-only column — so
+        // without this stow, the Public Invoice falls through to the
+        // server `created_at` (UTC, off by a few hundred ms) or, worse,
+        // to `date` parsed as UTC midnight (renders as 05:30 AM IST).
+        // The public sanitizer hoists `meta.invoiceDateTime` back to a
+        // top-level field so the renderer chain
+        // `invoiceDateTime → generatedAt → createdAt → date` picks it
+        // up first. Only the first line carries it — every other line
+        // has the same dining meta (mirroring how tableName/guest/etc.
+        // already ride on items[0].meta via persistDiningBill).
+        meta: {
+          ...(i.meta || {}),
+          ...(idx === 0 ? { invoiceDateTime: generatedAt.toISOString() } : {}),
+        },
       })),
       notes,
       subTotal: subtotal,
