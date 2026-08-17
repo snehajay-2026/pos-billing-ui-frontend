@@ -39,8 +39,36 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: "Asia/Kolkata",
     });
   };
+  // The Dining invoice now stamps the live moment of generation into
+  // `invoice.invoiceDateTime` (HotelBilling.jsx). Render the invoice's
+  // date + time as two separate fields (per the user's example:
+  // "Date: 17-08-2026" / "Time: 03:15 PM") and pin the timezone to
+  // "Asia/Kolkata" so a viewer in any other timezone sees the same
+  // IST-shifted time as the cashier did. Fallback chain survives
+  // legacy rows that only carry `invoice.date` (MySQL DATE) or
+  // `createdAt` (server NOW(3) UTC).
+  const generatedAtRaw = invoice?.invoiceDateTime || invoice?.createdAt || invoice?.date || "";
+  const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
+  const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
+  const dateLabel = isValidGen
+    ? generatedAtDate.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      })
+    : "";
+  const timeLabel = isValidGen
+    ? generatedAtDate.toLocaleString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      })
+    : "";
   // Some HotelBilling writes `checkInTime` / `seatedAt` / `checkOutTime`
   // as plain HH:mm strings (from <input type="time">) — those don't parse
   // with `new Date()` so we special-case them.
@@ -169,7 +197,16 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
         <div className="hinv-hero-side">
           <span className="hinv-hero-label">Invoice</span>
           <div className="hinv-hero-no">#{invoice.invoiceNo || "—"}</div>
-          <div className="hinv-hero-date">{invoice.date ? fmtTime12(invoice.date) : ""}</div>
+          <div className="hinv-hero-date">
+            <div className="hinv-hero-date-row">
+              <span className="hinv-hero-date-label">Date</span>
+              <span className="hinv-hero-date-value">{dateLabel || "—"}</span>
+            </div>
+            <div className="hinv-hero-date-row">
+              <span className="hinv-hero-date-label">Time</span>
+              <span className="hinv-hero-date-value">{timeLabel || "—"}</span>
+            </div>
+          </div>
           <div className={`hinv-hero-status is-${statusKey}`}>
             {STATUS_LABEL[statusKey]}
             {isDuplicate ? " · Duplicate" : ""}

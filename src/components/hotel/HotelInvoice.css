@@ -185,6 +185,26 @@
   margin-top: 2px;
 }
 
+.hinv-hero-date-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.hinv-hero-date-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  min-width: 32px;
+}
+
+.hinv-hero-date-value {
+  font-weight: 600;
+  color: #ffffff;
+}
+
 .hinv-hero-status {
   display: inline-flex;
   align-items: center;

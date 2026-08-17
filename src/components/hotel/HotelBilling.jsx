@@ -2732,7 +2732,16 @@ const HotelBilling = () => {
     const idProof = roomItem?.meta?.idProof || roomObj?.idProof || null;
 
     const diningTableForInvoice = activeTab === "dining" ? activeDiningTable : null;
-    const invoiceDate = new Date().toISOString().split("T")[0];
+    // Live "moment of invoice generation" stamp. The schema's `date`
+    // column is a MySQL DATE (no time-of-day), and `created_at` is the
+    // server's NOW(3) — but we also need a cashier-perceived moment
+    // here-and-now to display on the printed receipt. Three fields all
+    // derived from a single `generatedAt` capture so the preview,
+    // saved row, and rendered date stay perfectly aligned.
+    const generatedAt = new Date();
+    const invoiceDate = generatedAt.toISOString().split("T")[0];
+    const invoiceTime = `${String(generatedAt.getHours()).padStart(2, "0")}:${String(generatedAt.getMinutes()).padStart(2, "0")}`;
+    const invoiceDateTime = generatedAt.toISOString();
     // Resolve the per-line GST rate the same way the bill summary does, so
     // the saved invoice (and the printed LodgingInvoice / DiningInvoice)
     // shows the correct per-line GST. Previously we hard-coded 0 here and
@@ -2755,6 +2764,14 @@ const HotelBilling = () => {
     const invoicePayload = {
       invoiceNo: `HINV-${Date.now()}`,
       date: invoiceDate,
+      // Live capture of the moment Generate Invoice was clicked. The
+      // Dining renderer reads `invoiceDateTime` first and falls back to
+      // `createdAt` (server-stamped NOW(3) UTC) on legacy rows where
+      // `invoiceDateTime` was never set. `invoiceTime` is the cashier's
+      // local-clock HH:mm — a stable backup if both ISO-shaped sources
+      // are missing.
+      invoiceTime,
+      invoiceDateTime,
       paymentMode: paymentMode,
       items: filteredItems.map((i) => ({
         name: i.name,
