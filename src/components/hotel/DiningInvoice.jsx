@@ -45,34 +45,52 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   };
   // The Dining invoice now stamps the live moment of generation into
   // `invoice.invoiceDateTime` (HotelBilling.jsx). Render the invoice's
-  // date + time as two separate fields (per the user's example:
-  // "Date: 17-08-2026" / "Time: 03:27:45 PM") and pin the timezone to
-  // "Asia/Kolkata" so a viewer in any other timezone sees the same
-  // IST-shifted time as the cashier did. Fallback chain (in priority
-  // order):
-  //   1. `invoiceDateTime` — cashier-perceived ISO at click time
-  //      (present on the live preview and any payload re-fetched
-  //      through /api/invoices/:no with the round-trip preserved).
+  // date + time as two separate fields matching the user's example:
+  //   Date: 17-08-2026
+  //   Time: 05:42:18 PM
+  // `en-GB` produces 17/08/2026 (slashes) by default; we manually join
+  // the en-GB day/month/year parts with `-` to match the user's
+  // requested `DD-MM-YYYY` dash format. The time formatter uses
+  // `hour: "2-digit"` (not `"numeric"`) so the hour carries a leading
+  // zero (`05:42:18 PM`, not `5:42:18 PM`). All formats pin
+  // `timeZone: "Asia/Kolkata"` so a viewer in any other timezone sees
+  // the same IST-shifted moment as the cashier did. Fallback chain
+  // (priority order):
+  //   1. `invoiceDateTime` — cashier-perceived ISO at click time,
+  //      survives the Public Invoice round-trip via
+  //      `pickInvoiceDateTimeFromItems` (sanitizePublicInvoice).
   //   2. `generatedAt` — persisted into `invoices.generated_at`
-  //      DATETIME(3); survives the Public Invoice round-trip because
-  //      the public sanitizer doesn't strip it.
+  //      DATETIME(3) once migration `009_invoice_generated_at.sql`
+  //      has run.
   //   3. `createdAt` — server NOW(3) UTC at INSERT (audit trail).
   //   4. `date` — pre-fix legacy MySQL DATE column (date-only string).
   const generatedAtRaw =
     invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
   const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
+  // `formatToParts` returns the day/month/year in en-GB's preferred
+  // order (day, month, year) and as `2-digit` strings — so we can
+  // re-join with `-` to get `17-08-2026` per the user's example,
+  // independent of locale-driven separator characters.
   const dateLabel = isValidGen
-    ? generatedAtDate.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        timeZone: "Asia/Kolkata",
-      })
+    ? (() => {
+        const parts = generatedAtDate.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        });
+        // `parts` is already "17/08/2026"; swap the separators to "-".
+        return parts.replace(/\//g, "-");
+      })()
     : "";
+  // `hour: "2-digit"` (not `"numeric"`) so the hour is zero-padded
+  // when < 10. Combined with the explicit en-US locale and
+  // `hour12: true`, this yields `05:42:18 PM` — matching the user's
+  // example to the second.
   const timeLabel = isValidGen
     ? generatedAtDate.toLocaleString("en-US", {
-        hour: "numeric",
+        hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         hour12: true,
@@ -209,11 +227,11 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
           <div className="hinv-hero-no">#{invoice.invoiceNo || "—"}</div>
           <div className="hinv-hero-date">
             <div className="hinv-hero-date-row">
-              <span className="hinv-hero-date-label">Date</span>
+              <span className="hinv-hero-date-label">Date:</span>
               <span className="hinv-hero-date-value">{dateLabel || "—"}</span>
             </div>
             <div className="hinv-hero-date-row">
-              <span className="hinv-hero-date-label">Time</span>
+              <span className="hinv-hero-date-label">Time:</span>
               <span className="hinv-hero-date-value">{timeLabel || "—"}</span>
             </div>
           </div>

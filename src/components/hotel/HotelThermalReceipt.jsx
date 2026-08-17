@@ -67,22 +67,31 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
   // — date-only string) for legacy / pre-fix rows. Both date and time
   // labels are formatted with `timeZone: Asia/Kolkata` so a viewer in
   // any other timezone sees the same IST-shifted time as the cashier
-  // did.
+  // did. Date is joined with `-` (not en-GB's `/` separator) and the
+  // time uses `hour: "2-digit"` so the hour is zero-padded — matching
+  // the user's example "Date: 17-08-2026" / "Time: 05:42:18 PM".
   const generatedAtRaw =
     invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
   const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
+  // Swap the en-GB locale's `/` separator for `-` so the printed date
+  // matches the user's DD-MM-YYYY example regardless of the host's
+  // locale defaults.
   const thermalDateLabel = isValidGen
-    ? generatedAtDate.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        timeZone: "Asia/Kolkata",
-      })
+    ? generatedAtDate
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        })
+        .replace(/\//g, "-")
     : "";
+  // `hour: "2-digit"` (not `"numeric"`) so the hour carries a leading
+  // zero — yields `05:42:18 PM` rather than `5:42:18 PM`.
   const thermalTimeLabel = isValidGen
     ? generatedAtDate.toLocaleString("en-US", {
-        hour: "numeric",
+        hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         hour12: true,
