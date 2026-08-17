@@ -38,6 +38,7 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
       day: "2-digit",
       hour: "numeric",
       minute: "2-digit",
+      second: "2-digit",
       hour12: true,
       timeZone: "Asia/Kolkata",
     });
@@ -45,12 +46,20 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   // The Dining invoice now stamps the live moment of generation into
   // `invoice.invoiceDateTime` (HotelBilling.jsx). Render the invoice's
   // date + time as two separate fields (per the user's example:
-  // "Date: 17-08-2026" / "Time: 03:15 PM") and pin the timezone to
+  // "Date: 17-08-2026" / "Time: 03:27:45 PM") and pin the timezone to
   // "Asia/Kolkata" so a viewer in any other timezone sees the same
-  // IST-shifted time as the cashier did. Fallback chain survives
-  // legacy rows that only carry `invoice.date` (MySQL DATE) or
-  // `createdAt` (server NOW(3) UTC).
-  const generatedAtRaw = invoice?.invoiceDateTime || invoice?.createdAt || invoice?.date || "";
+  // IST-shifted time as the cashier did. Fallback chain (in priority
+  // order):
+  //   1. `invoiceDateTime` — cashier-perceived ISO at click time
+  //      (present on the live preview and any payload re-fetched
+  //      through /api/invoices/:no with the round-trip preserved).
+  //   2. `generatedAt` — persisted into `invoices.generated_at`
+  //      DATETIME(3); survives the Public Invoice round-trip because
+  //      the public sanitizer doesn't strip it.
+  //   3. `createdAt` — server NOW(3) UTC at INSERT (audit trail).
+  //   4. `date` — pre-fix legacy MySQL DATE column (date-only string).
+  const generatedAtRaw =
+    invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
   const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
   const dateLabel = isValidGen
@@ -65,6 +74,7 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
     ? generatedAtDate.toLocaleString("en-US", {
         hour: "numeric",
         minute: "2-digit",
+        second: "2-digit",
         hour12: true,
         timeZone: "Asia/Kolkata",
       })

@@ -2766,12 +2766,15 @@ const HotelBilling = () => {
       date: invoiceDate,
       // Live capture of the moment Generate Invoice was clicked. The
       // Dining renderer reads `invoiceDateTime` first and falls back to
-      // `createdAt` (server-stamped NOW(3) UTC) on legacy rows where
-      // `invoiceDateTime` was never set. `invoiceTime` is the cashier's
+      // `generatedAt` (persisted into the `invoices.generated_at`
+      // DATETIME(3) column on save) on the Public Invoice, where the
+      // cashier-side field isn't shipped — and finally to `createdAt`
+      // (server NOW(3)) for legacy rows. `invoiceTime` is the cashier's
       // local-clock HH:mm — a stable backup if both ISO-shaped sources
       // are missing.
       invoiceTime,
       invoiceDateTime,
+      generatedAt: generatedAt.toISOString(),
       paymentMode: paymentMode,
       items: filteredItems.map((i) => ({
         name: i.name,

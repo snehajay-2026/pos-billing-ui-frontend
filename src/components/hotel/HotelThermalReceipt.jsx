@@ -54,18 +54,22 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
       day: "2-digit",
       hour: "numeric",
       minute: "2-digit",
+      second: "2-digit",
       hour12: true,
       timeZone: "Asia/Kolkata",
     });
   };
   // The cashier-side `generateAndPreview()` now stamps the live
   // moment into `invoice.invoiceDateTime`. We prefer it and fall
-  // back to `createdAt` (server NOW(3) UTC) and finally `invoice.date`
-  // (MySQL DATE — date-only string) for legacy / pre-fix rows. Both
-  // date and time labels are formatted with `timeZone: Asia/Kolkata`
-  // so a viewer in any other timezone sees the same IST-shifted time
-  // as the cashier did.
-  const generatedAtRaw = invoice?.invoiceDateTime || invoice?.createdAt || invoice?.date || "";
+  // back to `generatedAt` (persisted into `invoices.generated_at`
+  // DATETIME(3); survives the Public Invoice round-trip), then
+  // `createdAt` (server NOW(3) UTC), then `invoice.date` (MySQL DATE
+  // — date-only string) for legacy / pre-fix rows. Both date and time
+  // labels are formatted with `timeZone: Asia/Kolkata` so a viewer in
+  // any other timezone sees the same IST-shifted time as the cashier
+  // did.
+  const generatedAtRaw =
+    invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
   const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
   const thermalDateLabel = isValidGen
@@ -80,6 +84,7 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
     ? generatedAtDate.toLocaleString("en-US", {
         hour: "numeric",
         minute: "2-digit",
+        second: "2-digit",
         hour12: true,
         timeZone: "Asia/Kolkata",
       })
