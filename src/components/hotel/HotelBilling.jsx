@@ -2877,7 +2877,22 @@ const HotelBilling = () => {
       });
     }
 
-    const invoiceToPreview = savedInvoice || invoicePayload;
+    // The server response (`savedInvoice`) is the persisted row read
+    // back via `findByInvoiceNo` — it does NOT carry the cashier's
+    // top-level `invoiceDateTime` (that field is not in any DB column).
+    // On a pre-migration prod DB it also lacks `generatedAt`, so the
+    // renderer would otherwise fall through to `createdAt` (server
+    // NOW(3) UTC, off by a few hundred ms) or `date` (DATE-only,
+    // renders as 05:30 AM IST). To keep the cashier-side Invoice
+    // Preview showing the same Time as the Public Invoice — and to
+    // match what the cashier actually clicked Generate Invoice at —
+    // prefer the cashier's `invoicePayload` (which carries the live
+    // `new Date()` moment) and overlay the server response on top so
+    // any server-stamped fields (id, generatedAt once the migration
+    // runs, etc.) still win.
+    const invoiceToPreview = savedInvoice
+      ? { ...invoicePayload, ...savedInvoice, invoiceDateTime: invoicePayload.invoiceDateTime }
+      : invoicePayload;
 
     // open popup and render preview
     try {
