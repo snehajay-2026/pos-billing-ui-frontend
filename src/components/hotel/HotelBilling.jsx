@@ -2939,7 +2939,20 @@ const HotelBilling = () => {
       } catch (e) {
         /* ignore */
       }
-      reactRoot.render(<InvoiceComponent invoice={invoiceToPreview} isDuplicate={false} />);
+      reactRoot.render(
+        <InvoiceComponent
+          invoice={invoiceToPreview}
+          isDuplicate={false}
+          // Cashier-side popup preview — show the live current time so
+          // the printed Time block reflects "now" each time the
+          // cashier opens / re-prints the preview. The Public Invoice
+          // (rendered via PublicInvoiceView, which does NOT pass
+          // showLiveTime) keeps the captured generation moment so the
+          // share link still shows the exact moment the cashier
+          // clicked Generate Invoice.
+          showLiveTime
+        />
+      );
       setTimeout(() => {
         try {
           w.print();

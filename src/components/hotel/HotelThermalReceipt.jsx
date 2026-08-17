@@ -11,7 +11,7 @@ import { isHotelDiningInvoice } from "../../utils/invoiceType";
 // LodgingInvoice / DiningInvoice (booking card → hotelDetails.guestName
 // → meta.guest → Walking Guest fallback) so it stays in sync with the
 // A4 layout and re-prints alike.
-const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
+const HotelThermalReceipt = ({ invoice, isDuplicate, showLiveTime = false }) => {
   const settings = getStoreSettings();
   const barcodeRef = useRef();
 
@@ -59,20 +59,34 @@ const HotelThermalReceipt = ({ invoice, isDuplicate }) => {
       timeZone: "Asia/Kolkata",
     });
   };
-  // The cashier-side `generateAndPreview()` now stamps the live
-  // moment into `invoice.invoiceDateTime`. We prefer it and fall
-  // back to `generatedAt` (persisted into `invoices.generated_at`
-  // DATETIME(3); survives the Public Invoice round-trip), then
-  // `createdAt` (server NOW(3) UTC), then `invoice.date` (MySQL DATE
-  // — date-only string) for legacy / pre-fix rows. Both date and time
-  // labels are formatted with `timeZone: Asia/Kolkata` so a viewer in
-  // any other timezone sees the same IST-shifted time as the cashier
-  // did. Date is joined with `-` (not en-GB's `/` separator) and the
-  // time uses `hour: "2-digit"` so the hour is zero-padded — matching
-  // the user's example "Date: 17-08-2026" / "Time: 05:42:18 PM".
-  const generatedAtRaw =
-    invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
-  const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
+  // The Date / Time block on the 80mm thermal receipt. Same shape as
+  // the A4 DiningInvoice:
+  //   Date: 17-08-2026
+  //   Time: 05:42:18 PM
+  // Pinned to `timeZone: Asia/Kolkata` so every viewer sees the same
+  // IST-shifted value. Two display modes:
+  //   * `showLiveTime === true` — render the live current time so the
+  //     cashier's Invoice Preview shows the moment they're looking at
+  //     it (Date and Time both refresh).
+  //   * default — render the captured generation moment:
+  //     1. `invoiceDateTime` (cashier-perceived, survives Public Invoice
+  //        via `pickInvoiceDateTimeFromItems`)
+  //     2. `generatedAt` (invoices.generated_at DATETIME(3), once the
+  //        009 migration has run)
+  //     3. `createdAt` (server NOW(3) UTC)
+  //     4. `date` (legacy MySQL DATE column)
+  const generatedAtDate = showLiveTime
+    ? new Date()
+    : (() => {
+        const raw =
+          invoice?.invoiceDateTime ||
+          invoice?.generatedAt ||
+          invoice?.createdAt ||
+          invoice?.date ||
+          "";
+        const d = raw ? new Date(raw) : null;
+        return d && !Number.isNaN(d.getTime()) ? d : null;
+      })();
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
   // Swap the en-GB locale's `/` separator for `-` so the printed date
   // matches the user's DD-MM-YYYY example regardless of the host's

@@ -13,7 +13,7 @@ import {
 } from "react-icons/fa";
 import "./HotelInvoice.css";
 
-const DiningInvoice = ({ invoice, isDuplicate }) => {
+const DiningInvoice = ({ invoice, isDuplicate, showLiveTime = false }) => {
   const settings = getStoreSettings();
 
   if (!invoice) return null;
@@ -43,9 +43,7 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
       timeZone: "Asia/Kolkata",
     });
   };
-  // The Dining invoice now stamps the live moment of generation into
-  // `invoice.invoiceDateTime` (HotelBilling.jsx). Render the invoice's
-  // date + time as two separate fields matching the user's example:
+  // The Date / Time block on the Dining invoice:
   //   Date: 17-08-2026
   //   Time: 05:42:18 PM
   // `en-GB` produces 17/08/2026 (slashes) by default; we manually join
@@ -54,19 +52,39 @@ const DiningInvoice = ({ invoice, isDuplicate }) => {
   // `hour: "2-digit"` (not `"numeric"`) so the hour carries a leading
   // zero (`05:42:18 PM`, not `5:42:18 PM`). All formats pin
   // `timeZone: "Asia/Kolkata"` so a viewer in any other timezone sees
-  // the same IST-shifted moment as the cashier did. Fallback chain
-  // (priority order):
-  //   1. `invoiceDateTime` — cashier-perceived ISO at click time,
-  //      survives the Public Invoice round-trip via
-  //      `pickInvoiceDateTimeFromItems` (sanitizePublicInvoice).
-  //   2. `generatedAt` — persisted into `invoices.generated_at`
-  //      DATETIME(3) once migration `009_invoice_generated_at.sql`
-  //      has run.
-  //   3. `createdAt` — server NOW(3) UTC at INSERT (audit trail).
-  //   4. `date` — pre-fix legacy MySQL DATE column (date-only string).
-  const generatedAtRaw =
-    invoice?.invoiceDateTime || invoice?.generatedAt || invoice?.createdAt || invoice?.date || "";
-  const generatedAtDate = generatedAtRaw ? new Date(generatedAtRaw) : null;
+  // the same IST-shifted moment as the cashier did.
+  //
+  // Two display modes:
+  //   * `showLiveTime === true`  — render the live current time
+  //     (`new Date()`). Used by the cashier's `Invoice Preview` modal
+  //     so the printed Time shows the actual moment the cashier is
+  //     looking at the receipt. The Date follows the same live clock,
+  //     so the Date and Time always agree (the user explicitly asked
+  //     for this in the Invoice Preview).
+  //   * default (`showLiveTime === false`) — fall back to the
+  //     captured generation moment so the Public Invoice (and any
+  //     shared / re-fetched view) shows the exact moment the cashier
+  //     clicked Generate Invoice, in priority order:
+  //       1. `invoiceDateTime` — cashier-perceived ISO at click time,
+  //          survives the Public Invoice round-trip via
+  //          `pickInvoiceDateTimeFromItems` (sanitizePublicInvoice).
+  //       2. `generatedAt` — persisted into `invoices.generated_at`
+  //          DATETIME(3) once migration `009_invoice_generated_at.sql`
+  //          has run.
+  //       3. `createdAt` — server NOW(3) UTC at INSERT (audit trail).
+  //       4. `date` — pre-fix legacy MySQL DATE column.
+  const generatedAtDate = showLiveTime
+    ? new Date()
+    : (() => {
+        const raw =
+          invoice?.invoiceDateTime ||
+          invoice?.generatedAt ||
+          invoice?.createdAt ||
+          invoice?.date ||
+          "";
+        const d = raw ? new Date(raw) : null;
+        return d && !Number.isNaN(d.getTime()) ? d : null;
+      })();
   const isValidGen = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
   // `formatToParts` returns the day/month/year in en-GB's preferred
   // order (day, month, year) and as `2-digit` strings — so we can

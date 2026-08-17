@@ -478,10 +478,17 @@ const InvoiceView = () => {
           );
         }
         if (hotelLayout === "thermal") {
-          return <HotelThermalReceipt invoice={invoice} isDuplicate={isDuplicate} />;
+          // Cashier's Invoice Preview — show the live current time so the
+          // Time block reflects "now" each time the preview is opened,
+          // per the user's request. The Public Invoice (rendered via
+          // PublicInvoiceView, which does NOT pass showLiveTime) keeps
+          // the captured generation moment so the customer-facing share
+          // link still shows the exact moment the cashier clicked
+          // Generate Invoice.
+          return <HotelThermalReceipt invoice={invoice} isDuplicate={isDuplicate} showLiveTime />;
         }
         return isHotelDiningInvoice(invoice) ? (
-          <DiningInvoice invoice={invoice} isDuplicate={isDuplicate} />
+          <DiningInvoice invoice={invoice} isDuplicate={isDuplicate} showLiveTime />
         ) : (
           <LodgingInvoice invoice={invoice} isDuplicate={isDuplicate} />
         );
