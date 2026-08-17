@@ -46,19 +46,30 @@ const InvoiceView = () => {
   // the header.
   const [zoomMode, setZoomMode] = useState("fit");
   const [fitScale, setFitScale] = useState(1);
-  // Hotel store layout: "a4" (modern A4 invoice) or "thermal" (80mm thermal
+  // Hotel store layout: "a4" (modern A4 invoice) or "thermal" (80mm Thermal
   // pillar). The A4 layout is the default — cashiers who want a narrower
   // receipt for a thermal printer can flip this from the header. The toggle
   // is only rendered for hotel invoices; other store types ignore it.
   // The choice is persisted per-store in localStorage so the same cashier
-  // gets the same receipt size on every re-open. The query string
+  // gets the same receipt size on every re-open. The query strings
   // `?preview=thermal` (added by HotelBilling when forcing a thermal open)
-  // takes priority over the stored value.
+  // and `?layout=80mm` (added by the share link round-trip) take priority
+  // over the stored value, so the cashier's selection survives a deep
+  // link / page reload / share-link click-through.
   const HOTEL_LAYOUT_STORAGE_KEY = "hotel_invoice_layout";
   const readInitialHotelLayout = () => {
     if (typeof window === "undefined") return "a4";
-    const fromQuery = new URLSearchParams(window.location.search).get("preview");
-    if (fromQuery === "thermal") return "thermal";
+    const params = new URLSearchParams(window.location.search);
+    const previewFlag = params.get("preview");
+    const layoutFlag = params.get("layout");
+    if (
+      previewFlag === "thermal" ||
+      layoutFlag === "80mm" ||
+      layoutFlag === "thermal" ||
+      layoutFlag === "80mm-thermal"
+    ) {
+      return "thermal";
+    }
     try {
       const stored = window.localStorage.getItem(HOTEL_LAYOUT_STORAGE_KEY);
       if (stored === "thermal" || stored === "a4") return stored;
@@ -80,8 +91,25 @@ const InvoiceView = () => {
   const fitShellRef = useRef(null);
   const invoiceStoreType = invoice?.storeType || invoice?._storeType || settings.businessType;
   const isServiceInvoice = invoiceStoreType === "service" || invoiceStoreType === "msme-service";
+  // The selected invoice format is the single source of truth for both
+  // this preview session and every downstream touchpoint (PDF download,
+  // WhatsApp share, email share, public link). For Hotel invoices the
+  // user picks between A4 (full-page modern invoice) and 80mm Thermal
+  // (narrow thermal printer column). For non-Hotel invoices the format
+  // is implicitly A4 — other store types have exactly one renderer.
+  //
+  // We propagate the choice to the share link as `?layout=thermal|80mm`
+  // (the `80mm` spelling is what the cashier sees on screen and what the
+  // PublicInvoiceView accepts) so a customer opening the WhatsApp link
+  // from a phone that has no session sees the exact same rendering the
+  // cashier did. A4 is the default — we omit the query string in that
+  // case so the public URL stays clean for the common path.
+  const hotelLayoutParam =
+    invoiceStoreType === "hotel" && hotelLayout === "thermal" ? "?layout=80mm" : "";
   const invoiceLink =
-    typeof window !== "undefined" ? `${window.location.origin}/invoice/${invoiceNo}` : "";
+    typeof window !== "undefined"
+      ? `${window.location.origin}/invoice/${invoiceNo}${hotelLayoutParam}`
+      : "";
   const hotelGuestName = invoice?.hotelDetails?.guestName?.trim() || "";
   const customerNameForMessage =
     hotelGuestName ||
@@ -151,15 +179,26 @@ const InvoiceView = () => {
         height: canvas.height,
       };
 
-      // A4 portrait with 10mm side margins → 190mm printable width.
-      // Total page height (297mm) minus 10mm top + 10mm bottom = 277mm of
-      // printable height per page.
-      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-      const pageWidthMm = 210;
-      const pageHeightMm = 297;
-      const marginMm = 10;
-      const printableWidthMm = pageWidthMm - marginMm * 2; // 190mm
-      const printableHeightMm = pageHeightMm - marginMm * 2; // 277mm
+      // Page size is driven by the cashier's selected layout (the single
+      // source of truth). For Hotel invoices the user can toggle between
+      // A4 (default modern full-page invoice) and 80mm Thermal (narrow
+      // thermal printer column). Every other store type is implicitly A4
+      // — there is no other renderer to pick, so the toggle isn't shown.
+      //
+      // A4 portrait: 210mm x 297mm, 10mm side margins → 190mm printable.
+      // 80mm Thermal: 80mm wide pillar, dynamic length (we use a generous
+      // 5000mm so the captured image fits on a single page; jsPDF scales
+      // the addImage call to the printable area so the output is a real
+      // 80mm-wide receipt, not a stretched A4 sheet).
+      const useThermalPage = invoiceStoreType === "hotel" && hotelLayout === "thermal";
+      const pdf = useThermalPage
+        ? new jsPDF({ unit: "mm", format: [80, 5000], orientation: "portrait" })
+        : new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageWidthMm = useThermalPage ? 80 : 210;
+      const pageHeightMm = useThermalPage ? 5000 : 297;
+      const marginMm = useThermalPage ? 4 : 10;
+      const printableWidthMm = pageWidthMm - marginMm * 2;
+      const printableHeightMm = pageHeightMm - marginMm * 2;
 
       // Scale the captured image so it spans the full printable width. The
       // image's height in PDF mm becomes (imgHeight / imgWidth) * printableWidth.
@@ -494,7 +533,7 @@ const InvoiceView = () => {
                 onClick={() => setHotelLayout("a4")}
                 title="A4 / full-page invoice layout"
               >
-                A4
+                A4 Size
               </button>
               <button
                 type="button"
@@ -504,7 +543,7 @@ const InvoiceView = () => {
                 onClick={() => setHotelLayout("thermal")}
                 title="80 mm thermal-pillar layout"
               >
-                Thermal (80mm)
+                80mm Thermal
               </button>
             </div>
           ) : null}

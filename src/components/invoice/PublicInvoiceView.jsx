@@ -20,7 +20,7 @@
 // `/api/public/invoices/:invoiceNo` endpoint.
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { getPublicInvoiceByNo } from "../../services/invoiceService";
 import { seedStoreSettingsForScope } from "../../services/storeSettingsService";
 import LaundryThermalReceipt from "../laundry/LaundryThermalReceipt";
@@ -35,6 +35,21 @@ import "./PublicInvoiceView.css";
 
 const PublicInvoiceView = () => {
   const { invoiceNo } = useParams();
+  // Read the cashier's selected layout from the URL query string.
+  // InvoiceView.jsx appends `?layout=80mm` to WhatsApp / Email links when
+  // the 80mm Thermal option was selected, so the customer opening the
+  // link from their phone sees the same renderer the cashier chose. A4
+  // (the default) is signalled by absence of the query — no need to
+  // surface a confusing `?layout=a4` on the public URL.
+  const location = useLocation();
+  const layoutParam =
+    typeof window !== "undefined" ? new URLSearchParams(location.search || "").get("layout") : null;
+  // Accept both `?layout=80mm` (what we mint from InvoiceView) and the
+  // legacy `?layout=thermal` / `?preview=thermal` spellings, so older
+  // shared links and any URL constructed by other entry points still
+  // resolve to the thermal renderer.
+  const prefersThermal =
+    layoutParam === "80mm" || layoutParam === "thermal" || layoutParam === "80mm-thermal";
   const [state, setState] = useState({ status: "loading" });
 
   useEffect(() => {
@@ -153,11 +168,23 @@ const PublicInvoiceView = () => {
       body = <MSMEInvoice invoice={invoice} isDuplicate />;
       break;
     case "hotel":
-      body = isHotelDiningInvoice(invoice) ? (
-        <DiningInvoice invoice={invoice} isDuplicate />
-      ) : (
-        <LodgingInvoice invoice={invoice} isDuplicate />
-      );
+      // The cashier's layout selection (InvoiceView toggle) is the
+      // single source of truth for the rendering the customer sees on
+      // the share link. When the cashier chose "80mm Thermal", the URL
+      // carries `?layout=80mm`; render the SAME thermal component the
+      // cashier's preview used so the shared link matches the printed
+      // receipt byte-for-byte. Otherwise the cashier picked A4 (the
+      // default) and we render the modern DiningInvoice / LodgingInvoice
+      // A4 layout — same as the cashier's preview.
+      if (prefersThermal) {
+        body = <HotelThermalReceipt invoice={invoice} isDuplicate />;
+      } else {
+        body = isHotelDiningInvoice(invoice) ? (
+          <DiningInvoice invoice={invoice} isDuplicate />
+        ) : (
+          <LodgingInvoice invoice={invoice} isDuplicate />
+        );
+      }
       break;
     case "retail":
     default:
