@@ -6,12 +6,17 @@
 // re-share, no status-edit, no Login redirect.
 //
 // The renderers below (RetailPrintInvoice, LaundryThermalReceipt,
-// LodgingInvoice, DiningInvoice, HotelThermalReceipt, MSMEInvoice,
-// ServiceInvoice) are the same presentational components the cashier
-// preview uses, so the visual output matches. The difference is that
-// this page seeds the in-memory store-settings cache from the public
-// API response (`response.store`) via `seedStoreSettingsForScope()` so
-// the renderers read the real store name/address/GSTIN/logo instead of
+// HotelThermalReceipt, MSMEInvoice, ServiceInvoice) are the same
+// presentational components the cashier preview uses, so the visual
+// output matches. The Hotel Public Invoice (Dining + Lodging) is
+// intentionally narrower than the cashier's preview — it always
+// renders the 80mm Thermal receipt regardless of the cashier's
+// A4/80mm toggle, so the customer-facing share link looks like a
+// digital version of the actual thermal print rather than a
+// full-page web invoice. The difference is that this page seeds the
+// in-memory store-settings cache from the public API response
+// (`response.store`) via `seedStoreSettingsForScope()` so the
+// renderers read the real store name/address/GSTIN/logo instead of
 // the "Ajay Merchant" fallback.
 //
 // IMPORTANT: This component is rendered WITHOUT <RequireAuth>. It must
@@ -20,36 +25,25 @@
 // `/api/public/invoices/:invoiceNo` endpoint.
 
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getPublicInvoiceByNo } from "../../services/invoiceService";
 import { seedStoreSettingsForScope } from "../../services/storeSettingsService";
 import LaundryThermalReceipt from "../laundry/LaundryThermalReceipt";
-import LodgingInvoice from "../hotel/LodgingInvoice";
-import DiningInvoice from "../hotel/DiningInvoice";
 import HotelThermalReceipt from "../hotel/HotelThermalReceipt";
 import MSMEInvoice from "./MSMEInvoice";
 import RetailPrintInvoice from "./RetailPrintInvoice";
 import ServiceInvoice from "./ServiceInvoice";
-import { isHotelDiningInvoice } from "../../utils/invoiceType";
 import "./PublicInvoiceView.css";
 
 const PublicInvoiceView = () => {
   const { invoiceNo } = useParams();
-  // Read the cashier's selected layout from the URL query string.
-  // InvoiceView.jsx appends `?layout=80mm` to WhatsApp / Email links when
-  // the 80mm Thermal option was selected, so the customer opening the
-  // link from their phone sees the same renderer the cashier chose. A4
-  // (the default) is signalled by absence of the query — no need to
-  // surface a confusing `?layout=a4` on the public URL.
-  const location = useLocation();
-  const layoutParam =
-    typeof window !== "undefined" ? new URLSearchParams(location.search || "").get("layout") : null;
-  // Accept both `?layout=80mm` (what we mint from InvoiceView) and the
-  // legacy `?layout=thermal` / `?preview=thermal` spellings, so older
-  // shared links and any URL constructed by other entry points still
-  // resolve to the thermal renderer.
-  const prefersThermal =
-    layoutParam === "80mm" || layoutParam === "thermal" || layoutParam === "80mm-thermal";
+  // Hotel Public Invoice always renders the 80mm Thermal receipt (see
+  // the `case "hotel"` branch below) — for both Dining and Lodging,
+  // regardless of the cashier's chosen A4/80mm preview layout. The
+  // cashier's InvoiceView continues to honor its A4/80mm toggle via
+  // the `?layout=80mm` URL hint, but the public share link is
+  // intentionally narrower than the cashier's preview so the
+  // customer-facing path is consistent and thermal-only.
   const [state, setState] = useState({ status: "loading" });
 
   useEffect(() => {
@@ -168,24 +162,27 @@ const PublicInvoiceView = () => {
       body = <MSMEInvoice invoice={invoice} isDuplicate />;
       break;
     case "hotel":
-      // The cashier's layout selection (InvoiceView toggle) is the
-      // single source of truth for the rendering the customer sees on
-      // the share link. When the cashier chose "80mm Thermal", the URL
-      // carries `?layout=80mm`; render the SAME thermal component the
-      // cashier's preview used so the shared link matches the printed
-      // receipt byte-for-byte. Otherwise the cashier picked A4 (the
-      // default) and we render the modern DiningInvoice / LodgingInvoice
-      // A4 layout — same as the cashier's preview.
-      if (prefersThermal) {
-        body = <HotelThermalReceipt invoice={invoice} isDuplicate />;
-      } else {
-        body = isHotelDiningInvoice(invoice) ? (
-          <DiningInvoice invoice={invoice} isDuplicate />
-        ) : (
-          <LodgingInvoice invoice={invoice} isDuplicate />
-        );
-      }
-      break;
+      // The Hotel Public Invoice always shows the 80mm Thermal receipt
+      // — for both Dining and Lodging, regardless of the cashier's
+      // chosen A4/80mm preview layout. The user explicitly wants the
+      // public share link to look like a digital version of the actual
+      // 80mm thermal print, not a full-page web invoice. The cashier's
+      // Invoice Preview continues to honor its A4/80mm toggle; this
+      // public branch is intentionally narrower than the cashier's
+      // preview so the customer-facing share link is consistent.
+      //
+      // We use the same `.public-invoice-thermal` wrapper as the
+      // Laundry branch: a calm neutral surface, no 720px white card
+      // chrome, no dashboard / sidebar / navigation — only the thermal
+      // canvas, centered, responsive on mobile / tablet / desktop, with
+      // print rules that strip the wrapper so the printed page matches
+      // a real thermal printer output.
+      body = <HotelThermalReceipt invoice={invoice} isDuplicate />;
+      return (
+        <div className="public-invoice-thermal">
+          <div className="public-invoice-thermal-frame">{body}</div>
+        </div>
+      );
     case "retail":
     default:
       body = (
