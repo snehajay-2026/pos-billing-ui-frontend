@@ -2454,14 +2454,28 @@
    ============================================================ */
 
 .pos-payment-pills {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* ROOT-CAUSE FIX: previously a rigid `repeat(3, 1fr)` grid forced
+     a 4-pill set (Cash / UPI / Card / Split) onto two rows at narrow
+     widths, and worse, the third column stretched to fill the side
+     rail even when only 2 pills needed it. Switch to flex so pills
+     share the available width evenly AND wrap cleanly when there's
+     not enough room for all four on one row. */
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
   padding: 4px;
   background: var(--pos-surface-2);
   border: 1px solid var(--pos-border);
   border-radius: var(--pos-radius);
+}
+.pos-payment-pills > .pos-payment-pill {
+  /* Each pill claims an equal share of the available width with a
+     sensible minimum, so 3 pills line up exactly as before and the
+     4th pill wraps onto its own row when needed. */
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 64px;
+  min-height: 0;
 }
 
 .pos-payment-pill {
@@ -2932,11 +2946,30 @@
 }
 
 /* Bill-level discount row */
-.bill-discount-row .bill-total-label {
+.bill-total-row.bill-discount-row {
+  /* ROOT-CAUSE FIX: when the side rail is 220px wide the discount
+     controls row (2 chips + 70px flat input + saved badge = ~210px)
+     has no room to share a row with the "Bill discount" label. Allow
+     the row to wrap so the controls drop onto their own line and the
+     label sits above them, instead of being squeezed. Override the
+     parent's `flex-wrap: nowrap` (implicit default) with this
+     higher-specificity selector. */
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.bill-total-row.bill-discount-row .bill-total-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--pos-text-soft, #5b6471);
+}
+.bill-total-row.bill-discount-row .bill-total-value {
+  /* Allow the controls (chips + flat input + saved badge) to shrink
+     and wrap onto the next line instead of forcing the parent row
+     wider than the side rail. */
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
 }
 .bill-discount-controls {
   display: inline-flex;
@@ -3245,9 +3278,15 @@
   font-size: 1.05rem;
   line-height: 1.25;
   color: var(--pos-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* ROOT-CAUSE FIX for the 1280px horizontal scrollbar: the previous
+     rule used `white-space: nowrap`, which forced the 65-character
+     placeholder ("Add a customer name (e.g. 'Walk-in' or actual name)")
+     to lay out on a single line and push the banner wider than its
+     parent card. Allow wrapping so long names/placeholders stay
+     inside the bill card on laptop viewports. The body block has
+     `min-width: 0` so wrapping is safe. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .bill-customer-banner-value strong {
   font-weight: 800;
@@ -3266,13 +3305,19 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  /* ROOT-CAUSE FIX: previously `min-width: 200px; max-width: 260px`
+     forced the edit pill to a fixed 200-260px even on narrow rails
+     (the side rail itself is 220px wide at 1280px), which combined
+     with the icon + body produced a row that overflowed the card.
+     Let the edit pill shrink to fit, and only request its preferred
+     width when there's actual room. */
+  flex: 1 1 180px;
+  min-width: 0;
+  max-width: 260px;
   background: var(--pos-surface-2, #fff);
   border: 1px solid var(--pos-border, #e0e7ef);
   border-radius: var(--pos-radius-pill, 999px);
   padding: 6px 12px;
-  min-width: 200px;
-  max-width: 260px;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -3284,18 +3329,36 @@
 .bill-customer-banner-edit-ico {
   color: var(--pos-text-muted);
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 .bill-customer-banner-input {
   border: 0;
   background: transparent;
   outline: none;
   width: 100%;
+  min-width: 0;
   font-size: 0.92rem;
   color: var(--pos-text);
   padding: 4px 0;
 }
 .bill-customer-banner-input::placeholder {
   color: var(--pos-text-muted);
+}
+/* Stack the banner earlier than 720px so the icon+body row sits on
+   the top and the edit input sits on its own row when the bill card
+   is narrow (this is what the side rail becomes once the layout is
+   constrained on a 1280px laptop). */
+@media (max-width: 1100px) {
+  .bill-customer-banner {
+    flex-wrap: wrap;
+  }
+  .bill-customer-banner-body {
+    flex: 1 1 220px;
+  }
+  .bill-customer-banner-edit {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
 @media (max-width: 720px) {
   .bill-customer-banner {
