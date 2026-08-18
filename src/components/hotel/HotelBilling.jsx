@@ -162,6 +162,13 @@ export const pruneStaleDiningItems = (items, tables, diningBillsByTable) => {
     if (!it || it.type !== "dining") return true;
     const tableId = String(it.meta?.tableId || "");
     if (!tableId) return true;
+    // Items promoted into the Live Bill by Clear Table (or replicated
+    // via SSE) are tagged with `meta.source === "clear-table-booking-menu"`
+    // and must NEVER be pruned by this effect — Clear Table flips
+    // the table status to "empty" and removes the bill, so without
+    // this guard every freshly-promoted Live Bill row would vanish
+    // on the next render. The cashier needs to bill those items.
+    if (it.meta?.source === "clear-table-booking-menu") return true;
     return allowedTableIds.has(tableId);
   });
   return next.length === items.length ? items : next;
@@ -628,11 +635,15 @@ const HotelBilling = () => {
       try {
         const bills = await hotelService.getDiningBills();
         if (Array.isArray(bills)) {
+          // Only seed `diningBillsByTable` — the mirror the dashboard
+          // "Table Billing" tile and the bookkeeping on Book / Edit
+          // read from. We deliberately do NOT push these bills into
+          // the Live Bill cart (`items`) on mount; the previous
+          // behaviour leaked every persisted booking into the Live
+          // Bill on every page load. Only the cashier's explicit
+          // "Clear Table" (or a remote SSE `live_bill_cleared`
+          // carrying the bill) promotes items into `items`.
           setDiningBillsByTable(buildDiningBillsMap(bills));
-          setItems((prev) => [
-            ...prev.filter((item) => item.type !== "dining"),
-            ...flattenDiningBills(bills),
-          ]);
         }
       } catch (err) {
         console.warn("Failed to load dining bills", err);
@@ -797,7 +808,12 @@ const HotelBilling = () => {
         }
       }
 
-      // Live bill updated — mark the table as having an active bill.
+      // Live bill updated — mark the table as having an active bill
+      // and refresh the local `diningBillsByTable` mirror so the
+      // dashboard "Table Billing" tile and the cashier's view stay
+      // consistent across devices. `items` (the Live Bill cart) is
+      // NOT touched by `live_bill_updated` — a remote Book / Add /
+      // Edit must not leak items into this device's cart.
       if (event.kind === "live_bill") {
         const d = event.data;
         if (event.action === "live_bill_updated" && d?.tableId) {
@@ -806,6 +822,12 @@ const HotelBilling = () => {
               String(t.id) === String(d.tableId) ? { ...t, bill: d.bill, hasLiveBill: true } : t
             )
           );
+          if (d.bill) {
+            setDiningBillsByTable((prev) => ({
+              ...prev,
+              [String(d.tableId)]: d.bill,
+            }));
+          }
         }
         if (event.action === "live_bill_cleared" && d?.tableId) {
           setTables((prev) =>
@@ -813,6 +835,53 @@ const HotelBilling = () => {
               String(t.id) === String(d.tableId) ? { ...t, bill: null, hasLiveBill: false } : t
             )
           );
+          // Replicate the local Clear-Table promotion so the
+          // cashier on this device sees the items in their Live Bill
+          // too. Guard against double-promotion: if our cart already
+          // has dining rows for this tableId, leave them alone —
+          // they'll be replaced on the next local Clear Table. The
+          // server carries `d.bill` (the bill object) so we can
+          // flatten + push the same way `handleDiningTableClear`
+          // does locally.
+          const bill = d.bill;
+          const tableId = String(d.tableId);
+          if (bill && Array.isArray(bill.items) && bill.items.length > 0) {
+            setItems((prev) => {
+              const alreadyPromoted = prev.some(
+                (it) =>
+                  it.type === "dining" &&
+                  String(it.meta?.tableId) === tableId &&
+                  it.meta?.source === "clear-table-booking-menu"
+              );
+              if (alreadyPromoted) return prev;
+              return [
+                ...prev.filter(
+                  (it) => !(it.type === "dining" && String(it.meta?.tableId) === tableId)
+                ),
+                ...flattenDiningBills([
+                  {
+                    tableId,
+                    tableName: bill.tableName,
+                    guestName: bill.guestName,
+                    customerMobile: bill.customerMobile,
+                    partySize: bill.partySize,
+                    checkInDate: bill.checkInDate,
+                    checkInTime: bill.checkInTime,
+                    checkOutTime: bill.checkOutTime,
+                    items: bill.items,
+                  },
+                ]),
+              ];
+            });
+            // Mirror the local `diningBillsByTable` clear so the
+            // dashboard tile flips to "empty" on this device.
+            setDiningBillsByTable((prev) => {
+              if (!prev[tableId]) return prev;
+              const next = { ...prev };
+              delete next[tableId];
+              return next;
+            });
+          }
         }
       }
     });
@@ -991,6 +1060,16 @@ const HotelBilling = () => {
     });
   };
 
+  // Persist a dining bill to the server and refresh the local
+  // `diningBillsByTable` mirror. Crucially, this DOES NOT touch
+  // `items` (the Live Bill cart) — items stay associated with the
+  // table until the cashier clicks "Clear Table", at which point
+  // `promoteDiningBillToLiveBill()` (below) is the one and only
+  // entry point that moves them into the cart.
+  //
+  // The old behaviour (which pushed items into `items` on every
+  // call) leaked every booking into the Live Bill. Splitting save
+  // from promote fixes that.
   const persistDiningBill = async (table, nextDiningItems) => {
     if (!table?.id) return false;
     applyDiningBillLocally(table, nextDiningItems);
@@ -1027,12 +1106,11 @@ const HotelBilling = () => {
       });
       if (saved) {
         setDiningBillsByTable((prev) => ({ ...prev, [normalizedTableId]: saved }));
-        setItems((prev) => [
-          ...prev.filter(
-            (item) => !(item.type === "dining" && String(item.meta?.tableId) === normalizedTableId)
-          ),
-          ...flattenDiningBills([saved]),
-        ]);
+        // NOTE: no longer pushes into `items` here. Promotion to the
+        // Live Bill is handled exclusively by
+        // `promoteDiningBillToLiveBill()` — called only when the
+        // cashier clicks Clear Table (or when the SSE live_bill
+        // subscriber is replicating a remote Clear Table).
       }
       return true;
     } catch (err) {
@@ -1040,6 +1118,56 @@ const HotelBilling = () => {
       showToast("error", "Bill Items updated locally. Server sync failed.");
       return true;
     }
+  };
+
+  // Promote a dining bill into the Live Bill cart. Called from:
+  //   - handleDiningTableClear (cashier's "Clear Table" click)
+  //   - the SSE `live_bill_cleared` subscriber (a remote device
+  //     cleared the same table — replicate the promotion locally
+  //     so its items appear here too).
+  //
+  // Idempotent: if the table already has dining rows in `items`,
+  // they are removed first and the freshly-flattened bill replaces
+  // them. No duplicates can be introduced by re-clicks or by the
+  // SSE handler firing twice.
+  const promoteDiningBillToLiveBill = async (table, nextDiningItems) => {
+    if (!table?.id) return false;
+    const normalizedTableId = String(table.id || "");
+    // Persist + mirror (no `items` touch). `persistDiningBill` is
+    // intentionally mute on the Live Bill side, so we explicitly do
+    // the push here.
+    const ok = await persistDiningBill(table, nextDiningItems);
+    if (!ok) return false;
+    if (!nextDiningItems.length) {
+      // Empty bill — Clear Table with no menu items. Nothing to
+      // promote; just remove any leftover dining rows for this table
+      // from the cart so a previous stale promotion doesn't linger.
+      setItems((prev) =>
+        prev.filter(
+          (item) => !(item.type === "dining" && String(item.meta?.tableId) === normalizedTableId)
+        )
+      );
+      return true;
+    }
+    setItems((prev) => [
+      ...prev.filter(
+        (item) => !(item.type === "dining" && String(item.meta?.tableId) === normalizedTableId)
+      ),
+      ...flattenDiningBills([
+        {
+          tableId: normalizedTableId,
+          tableName: table.name,
+          guestName: table.guest || "",
+          customerMobile: table.customerMobile || "",
+          partySize: table.partySize || 0,
+          checkInDate: table.checkInDate || "",
+          checkInTime: table.checkInTime || "",
+          checkOutTime: table.checkOutTime || "",
+          items: nextDiningItems,
+        },
+      ]),
+    ]);
+    return true;
   };
 
   const openDiningTableBooking = (table) => {
@@ -1328,7 +1456,16 @@ const HotelBilling = () => {
     const nextDiningItems = [...existingBillItems, ...generatedBillItems];
     let persisted = true;
     if (nextDiningItems.length) {
-      persisted = await persistDiningBill({ ...sourceTable, checkOutTime }, nextDiningItems);
+      // Clear Table is the ONLY moment dining items should enter the
+      // Live Bill cart (`items`). Use `promoteDiningBillToLiveBill`,
+      // which persists the bill and then explicitly pushes the items
+      // into `items` — replacing any stale dining rows for this
+      // tableId. The old behaviour (calling `persistDiningBill`)
+      // leaked items into the Live Bill on every Book / Add / Edit.
+      persisted = await promoteDiningBillToLiveBill(
+        { ...sourceTable, checkOutTime },
+        nextDiningItems
+      );
       if (!persisted) {
         for (const rollbackEntry of deductedStock.reverse()) {
           await syncProductStock(rollbackEntry.product, rollbackEntry.qty);
