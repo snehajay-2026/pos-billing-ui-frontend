@@ -3313,7 +3313,7 @@
      with the icon + body produced a row that overflowed the card.
      Let the edit pill shrink to fit, and only request its preferred
      width when there's actual room. */
-  flex: 1 1 180px;
+  flex: 0 1 200px;
   min-width: 0;
   max-width: 260px;
   background: var(--pos-surface-2, #fff);
@@ -3348,9 +3348,11 @@
 }
 /* Stack the banner at laptop widths so the icon+body row sits on the
    top and the edit input sits on its own row when the side rail is
-   narrow. At 1280px viewport the side rail is 220px wide, which is
-   too cramped for icon+body+edit on a single row. */
-@media (max-width: 1280px) {
+   narrow. At 1280-1440px viewports the side rail is ~220-260px wide,
+   which is too cramped for icon+body+edit on a single row; stacking
+   the edit input on its own row gives the body room to wrap the
+   placeholder naturally instead of one-word-per-line. */
+@media (max-width: 1440px) {
   .bill-customer-banner {
     flex-wrap: wrap;
   }
