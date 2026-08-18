@@ -166,52 +166,6 @@ export const getLaundryLedger = async () => apiGet("/api/laundry/ledger");
 export const postLaundryLedger = async (entry) => apiPost("/api/laundry/ledger", entry || {});
 export const clearLaundryLedger = async () => apiDelete("/api/laundry/ledger");
 
-export default {
-  getTables,
-  createTable,
-  updateTable,
-  deleteTable,
-  getWaitingList,
-  addWaiting,
-  removeWaiting,
-  getDiningWaitingList,
-  addDiningWaiting,
-  removeDiningWaiting,
-  getLodgingWaitingList,
-  addLodgingWaiting,
-  removeLodgingWaiting,
-  getCheckoutHistory,
-  addCheckoutHistory,
-  clearCheckoutHistory,
-  deleteCheckoutHistoryEntry,
-  getDiningBills,
-  saveDiningBill,
-  clearDiningBill,
-  getRooms,
-  createRoom,
-  updateRoom,
-  deleteRoom,
-  checkoutRoom,
-  getRoomFolio,
-  postRoomCharge,
-  deleteRoomCharge,
-  clearRoomFolio,
-  getReservationCounter,
-  postReservationCounter,
-  getLaundryTokenCounter,
-  postLaundryTokenCounter,
-  getLaundryLedger,
-  postLaundryLedger,
-  clearLaundryLedger,
-  // Hotel Store discount feature — coupon validation + management.
-  // See db/schema/010_hotel_coupons.sql + server/index.js for the API
-  // surface these functions bind to.
-  validateCoupon,
-  listCoupons,
-  createCoupon,
-  updateCoupon,
-};
-
 // === Hotel Coupons (Discount) =================================================
 //
 // Backs the Hotel Store discount feature on the cashier's Live Bill
@@ -228,6 +182,13 @@ export default {
 // lookup, not a write; the cashier can't bypass anything because
 // the only write-side discount validation runs server-side at save
 // time, which IS authed).
+//
+// IMPORTANT: these declarations MUST sit ABOVE the `export default {…}`
+// block below. Webpack hoists the 4 functions referenced in the
+// default-export aggregate into separate `let` bindings; if the
+// functions are declared AFTER the aggregate, the aggregate object is
+// built while the names are still in the temporal dead zone, which
+// throws `Cannot access 'l' before initialization` on app boot.
 
 // Cashier-facing coupon lookup. Returns the normalized
 // `{ valid: true, code, type, value, label, minSubtotal }` payload
@@ -277,4 +238,50 @@ export const updateCoupon = async (id, patch) => {
     storeType,
     storeId,
   });
+};
+
+export default {
+  getTables,
+  createTable,
+  updateTable,
+  deleteTable,
+  getWaitingList,
+  addWaiting,
+  removeWaiting,
+  getDiningWaitingList,
+  addDiningWaiting,
+  removeDiningWaiting,
+  getLodgingWaitingList,
+  addLodgingWaiting,
+  removeLodgingWaiting,
+  getCheckoutHistory,
+  addCheckoutHistory,
+  clearCheckoutHistory,
+  deleteCheckoutHistoryEntry,
+  getDiningBills,
+  saveDiningBill,
+  clearDiningBill,
+  getRooms,
+  createRoom,
+  updateRoom,
+  deleteRoom,
+  checkoutRoom,
+  getRoomFolio,
+  postRoomCharge,
+  deleteRoomCharge,
+  clearRoomFolio,
+  getReservationCounter,
+  postReservationCounter,
+  getLaundryTokenCounter,
+  postLaundryTokenCounter,
+  getLaundryLedger,
+  postLaundryLedger,
+  clearLaundryLedger,
+  // Hotel Store discount feature — coupon validation + management.
+  // See db/schema/010_hotel_coupons.sql + server/index.js for the API
+  // surface these functions bind to.
+  validateCoupon,
+  listCoupons,
+  createCoupon,
+  updateCoupon,
 };
