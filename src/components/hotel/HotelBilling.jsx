@@ -1560,11 +1560,13 @@ const HotelBilling = () => {
     const cleaned = String(raw ?? "")
       .replace(/[^0-9.]/g, "")
       .replace(/(\..*)\./g, "$1");
-    if (cleaned !== raw) {
-      // Reflect the cleaned value back into the input so the user sees
-      // exactly what we accepted.
-      setManualDiscountPct(cleaned);
-    }
+    // CRITICAL: always reflect the cleaned value back into state, even
+    // when `cleaned === raw`. Without this, typing a single digit
+    // (e.g. "1") that needs no sanitization would leave
+    // `manualDiscountPct` at its previous value (often "") and a
+    // subsequent re-render would wipe the keystroke from the input —
+    // making the second digit impossible to type.
+    setManualDiscountPct(cleaned);
     setCouponCodeInput("");
     setCouponError("");
     if (!cleaned) {
@@ -5305,70 +5307,80 @@ const HotelBilling = () => {
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
 
-              {/* Discount — Hotel Store (Manual % OR Coupon). Renders
-                  the editor when nothing is applied, or the active
-                  pill row with a Remove button when one is. */}
-              {!appliedDiscount ? (
-                <div className="hotel-summary-discount-editor">
-                  <div className="hotel-discount-input-row">
-                    <FaPercent aria-hidden="true" />
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      maxLength="6"
-                      pattern="[0-9.]*"
-                      placeholder="Manual %"
-                      value={manualDiscountPct}
-                      onChange={(e) => applyManualDiscount(e.target.value)}
-                      aria-label="Manual discount percentage"
-                    />
-                    <span className="hotel-discount-input-suffix">% off</span>
-                  </div>
-                  <div className="hotel-discount-input-row">
-                    <FaTag aria-hidden="true" />
-                    <input
-                      type="text"
-                      placeholder="Coupon code"
-                      value={couponCodeInput}
-                      onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          applyCoupon(couponCodeInput);
-                        }
-                      }}
-                      aria-label="Coupon code"
-                    />
-                    <button
-                      type="button"
-                      className="hotel-discount-apply-btn"
-                      onClick={() => applyCoupon(couponCodeInput)}
-                      disabled={!couponCodeInput || couponValidating}
-                    >
-                      {couponValidating ? "..." : "Apply"}
-                    </button>
-                  </div>
-                  {couponError && <div className="hotel-discount-error">{couponError}</div>}
+              {/* Discount — Hotel Store (Manual % OR Coupon).
+
+                  The editor is ALWAYS rendered — never replaced by the
+                  active-discount pill — so the cashier can keep typing
+                  into the manual-% field across keystrokes (typing
+                  "1" then "0" must produce "10", not unmount the input
+                  after the first digit). When a discount is applied, we
+                  show a compact pill row directly below the editor with
+                  the active percent / coupon code and a Remove button.
+
+                  The Discount (X%): -Rs.Y line in the Live Bill summary
+                  (below this card) continues to reflect the running
+                  discount amount so the cashier always sees the
+                  bottom-line impact. */}
+              <div className="hotel-summary-discount-editor">
+                <div className="hotel-discount-input-row">
+                  <FaPercent aria-hidden="true" />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    maxLength="6"
+                    pattern="[0-9.]*"
+                    placeholder="Manual %"
+                    value={manualDiscountPct}
+                    onChange={(e) => applyManualDiscount(e.target.value)}
+                    aria-label="Manual discount percentage"
+                  />
+                  <span className="hotel-discount-input-suffix">% off</span>
                 </div>
-              ) : (
-                <div className="hotel-summary-row hotel-summary-discount-row">
-                  <span>
-                    <FaTag aria-hidden="true" /> Discount
-                    {appliedDiscount.source === "coupon" && appliedDiscount.code
-                      ? ` (${appliedDiscount.code} – ${appliedDiscount.value}%)`
-                      : ` (${appliedDiscount.value}%)`}
-                    <button
-                      type="button"
-                      className="hotel-discount-remove-btn"
-                      onClick={clearDiscount}
-                      aria-label="Remove discount"
-                    >
-                      <FaTimes aria-hidden="true" />
-                    </button>
-                  </span>
-                  <span>-₹{discountAmount.toFixed(2)}</span>
+                <div className="hotel-discount-input-row">
+                  <FaTag aria-hidden="true" />
+                  <input
+                    type="text"
+                    placeholder="Coupon code"
+                    value={couponCodeInput}
+                    onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applyCoupon(couponCodeInput);
+                      }
+                    }}
+                    aria-label="Coupon code"
+                  />
+                  <button
+                    type="button"
+                    className="hotel-discount-apply-btn"
+                    onClick={() => applyCoupon(couponCodeInput)}
+                    disabled={!couponCodeInput || couponValidating}
+                  >
+                    {couponValidating ? "..." : "Apply"}
+                  </button>
                 </div>
-              )}
+                {couponError && <div className="hotel-discount-error">{couponError}</div>}
+                {appliedDiscount ? (
+                  <div className="hotel-summary-discount-row">
+                    <span>
+                      <FaTag aria-hidden="true" /> Discount
+                      {appliedDiscount.source === "coupon" && appliedDiscount.code
+                        ? ` (${appliedDiscount.code} – ${appliedDiscount.value}%)`
+                        : ` (${appliedDiscount.value}%)`}
+                      <button
+                        type="button"
+                        className="hotel-discount-remove-btn"
+                        onClick={clearDiscount}
+                        aria-label="Remove discount"
+                      >
+                        <FaTimes aria-hidden="true" />
+                      </button>
+                    </span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                ) : null}
+              </div>
 
               <div className="hotel-summary-row">
                 <span>Taxable Amount</span>

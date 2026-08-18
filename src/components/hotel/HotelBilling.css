@@ -1906,13 +1906,25 @@
 }
 
 /* Active-discount pill row — mirrors `hotel-summary-row` styling with
-   an inline Remove button. */
+   an inline Remove button. Lives INSIDE the discount editor so the
+   manual-% / coupon inputs above it stay mounted while a discount is
+   active (so the cashier can keep typing). */
 .hotel-summary-discount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: #047857;
   background: rgba(16, 185, 129, 0.08);
   padding: 6px 10px;
   border-radius: 10px;
   border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.hotel-summary-discount-row span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .hotel-summary-discount-row span:first-child svg {
