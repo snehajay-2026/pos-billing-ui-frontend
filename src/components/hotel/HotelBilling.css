@@ -1800,6 +1800,141 @@
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
 }
 
+/* === Hotel Store Discount editor (between Subtotal and Taxable Amount) === */
+
+/* Card that hosts the manual-% + coupon-code inputs. Visually distinct
+   from the summary rows so the cashier notices where to apply a discount,
+   and slotted into the existing summary-card gap grid. */
+.hotel-summary-discount-editor {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin: 4px 0;
+  border: 1px dashed rgba(99, 102, 241, 0.35);
+  border-radius: 12px;
+  background: rgba(238, 242, 255, 0.45);
+}
+
+.hotel-discount-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.hotel-discount-input-row svg {
+  color: #6366f1;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.hotel-discount-input-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.hotel-discount-input-row input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.hotel-discount-input-row input[type="number"] {
+  -moz-appearance: textfield;
+}
+.hotel-discount-input-row input[type="number"]::-webkit-outer-spin-button,
+.hotel-discount-input-row input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hotel-discount-input-suffix {
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.hotel-discount-apply-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    transform 80ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.hotel-discount-apply-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+}
+
+.hotel-discount-apply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hotel-discount-error {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Active-discount pill row — mirrors `hotel-summary-row` styling with
+   an inline Remove button. */
+.hotel-summary-discount-row {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.08);
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.hotel-summary-discount-row span:first-child svg {
+  color: #059669;
+}
+
+.hotel-discount-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(5, 150, 105, 0.15);
+  color: #047857;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.hotel-discount-remove-btn:hover {
+  background: rgba(5, 150, 105, 0.3);
+}
+
+.hotel-discount-remove-btn svg {
+  font-size: 0.7rem;
+}
+
 /* Summary actions — payment picker + invoice button */
 .hotel-summary-actions {
   display: flex;

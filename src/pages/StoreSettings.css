@@ -621,6 +621,47 @@
   background: rgba(239, 68, 68, 0.2);
 }
 
+/* ---------------- Tables + badges (coupons panel) ---------------- */
+.ss-table {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ss-table thead {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.ss-table th,
+.ss-table td {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.ss-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ss-badge-on {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.ss-badge-off {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
+
 /* ---------------- Footer ---------------- */
 .ss-footer {
   display: flex;

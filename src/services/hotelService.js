@@ -203,4 +203,78 @@ export default {
   getLaundryLedger,
   postLaundryLedger,
   clearLaundryLedger,
+  // Hotel Store discount feature — coupon validation + management.
+  // See db/schema/010_hotel_coupons.sql + server/index.js for the API
+  // surface these functions bind to.
+  validateCoupon,
+  listCoupons,
+  createCoupon,
+  updateCoupon,
+};
+
+// === Hotel Coupons (Discount) =================================================
+//
+// Backs the Hotel Store discount feature on the cashier's Live Bill
+// (manual % + coupon code, mutually exclusive). Validation runs
+// cashier-side on every keystroke (so the cashier sees immediate
+// feedback), and server-side at `POST /api/invoices` time (so a
+// malicious client can't spoof the percent — `validateHotelDiscount`
+// in `index.js` re-resolves the coupon row and overwrites the value).
+//
+// `validateCoupon` is intentionally NOT `isAuthed()`-guarded so a
+// recently-timed-out session doesn't block the cashier from
+// validating a code on the next page load. The backend endpoint
+// `GET /api/hotel/coupons/:code` is also unauthenticated (it's a
+// lookup, not a write; the cashier can't bypass anything because
+// the only write-side discount validation runs server-side at save
+// time, which IS authed).
+
+// Cashier-facing coupon lookup. Returns the normalized
+// `{ valid: true, code, type, value, label, minSubtotal }` payload
+// from the server, or throws `{ valid: false, message }` if the
+// code can't be resolved in scope. The caller is expected to
+// `try/catch` and surface the error inline.
+export const validateCoupon = async (code) => {
+  if (!code) return { valid: false, message: "Enter a coupon code" };
+  const { storeType, storeId } = getScope();
+  try {
+    const res = await apiGet(`/api/hotel/coupons/${encodeURIComponent(String(code).trim())}`, {
+      storeType,
+      storeId,
+    });
+    return { valid: true, ...(res || {}) };
+  } catch (err) {
+    // The backend returns 404 for unresolved codes — normalize that
+    // to a friendly invalid-coupon message rather than letting the
+    // raw fetch error bubble up.
+    const message =
+      err?.status === 404 || err?.body?.valid === false
+        ? "Invalid coupon code"
+        : err?.message || "Could not validate coupon";
+    return { valid: false, message };
+  }
+};
+
+// Settings UI — owner-only list. Caller must enforce role.
+export const listCoupons = async () => {
+  if (!isAuthed()) return [];
+  const { storeType, storeId } = getScope();
+  return apiGet("/api/hotel/coupons", { storeType, storeId });
+};
+
+// Settings UI — create.
+export const createCoupon = async (payload) => {
+  if (!isAuthed()) throw new Error("Not signed in");
+  const { storeType, storeId } = getScope();
+  return apiPost("/api/hotel/coupons", payload || {}, { storeType, storeId });
+};
+
+// Settings UI — update (soft-delete via `active: false`).
+export const updateCoupon = async (id, patch) => {
+  if (!isAuthed()) throw new Error("Not signed in");
+  const { storeType, storeId } = getScope();
+  return apiPut(`/api/hotel/coupons/${encodeURIComponent(id)}`, patch || {}, {
+    storeType,
+    storeId,
+  });
 };

@@ -7,6 +7,7 @@ import {
   LaundryBusinessSettingsSection,
   HotelBusinessSettingsSection,
 } from "./StoreSettingsSections";
+import HotelCouponsPanel from "../hotel/HotelCouponsPanel";
 
 const settingsViewMap = {
   hotel: {
@@ -102,6 +103,7 @@ const HotelStoreSettings = (props) => (
     <SettingsHeader {...settingsViewMap.hotel} />
     <CommonSettingsSections {...props} />
     <HotelBusinessSettingsSection settings={props.settings} handleChange={props.handleChange} />
+    <HotelCouponsPanel />
   </>
 );
 

@@ -64,6 +64,36 @@ const LodgingInvoice = ({ invoice, isDuplicate }) => {
   const subTotal = Number(
     invoice.subTotal ?? items.reduce((sum, item) => sum + getAmount(item), 0)
   );
+  // === Hotel Store Discount rendering — Lodging A4 ============================
+  // Mirror of `HotelThermalReceipt.jsx`. `invoice.subTotal` is POST-discount
+  // (matches Retail + the cashier's HotelBilling.jsx payload). When
+  // `invoice.discount` is set, render the pre-discount Subtotal +
+  // Discount + Taxable Amount breakdown so the A4 preview matches the
+  // cashier's Live Bill summary and the Public Invoice share link.
+  const discountInfo = invoice.discount || null;
+  const discountBreakdown = invoice.discountBreakdown || null;
+  let preDiscountSubtotalForDisplay = subTotal;
+  if (discountInfo && typeof discountInfo.value === "number" && discountInfo.value >= 0) {
+    preDiscountSubtotalForDisplay = subTotal + (discountBreakdown?.bill ?? 0);
+  }
+  let discountAmount = 0;
+  if (discountBreakdown && typeof discountBreakdown.bill === "number") {
+    discountAmount = discountBreakdown.bill;
+  } else if (
+    discountInfo &&
+    typeof discountInfo.value === "number" &&
+    discountInfo.value >= 0 &&
+    discountInfo.value <= 100 &&
+    discountInfo.type === "percent"
+  ) {
+    discountAmount = Math.min(
+      preDiscountSubtotalForDisplay,
+      Math.round(preDiscountSubtotalForDisplay * Number(discountInfo.value) * 100) / 10000
+    );
+  }
+  const taxableAmount =
+    discountBreakdown?.taxableAmount ?? Math.max(0, preDiscountSubtotalForDisplay - discountAmount);
+
   // Compute GST as a list of {percent, amount} so the totals panel can
   // show each slab cleanly when a hotel mixes 12% rooms + 18% F&B.
   const gstBreakdownMap = new Map();
@@ -77,7 +107,7 @@ const LodgingInvoice = ({ invoice, isDuplicate }) => {
   });
   const gstBreakdown = Array.from(gstBreakdownMap.values());
   const gstTotal = Number(invoice.gstTotal ?? gstBreakdown.reduce((sum, g) => sum + g.amount, 0));
-  const grandTotal = Number(invoice.grandTotal ?? subTotal + gstTotal);
+  const grandTotal = Number(invoice.grandTotal ?? taxableAmount + gstTotal);
 
   // ---- stay summary fields ----
   const guestMobile = String(
@@ -286,8 +316,31 @@ const LodgingInvoice = ({ invoice, isDuplicate }) => {
           <div className="hinv-totals">
             <div className="hinv-totals-row">
               <span>Subtotal</span>
-              <span className="hinv-totals-value">₹{fmt2(subTotal)}</span>
+              <span className="hinv-totals-value">
+                {discountAmount > 0
+                  ? `₹${fmt2(preDiscountSubtotalForDisplay)}`
+                  : `₹${fmt2(subTotal)}`}
+              </span>
             </div>
+            {discountAmount > 0 && (
+              <div className="hinv-totals-row hinv-totals-discount">
+                <span>
+                  Discount
+                  {discountInfo?.source === "coupon" && discountInfo?.code
+                    ? ` (${discountInfo.code} – ${discountInfo.value}%)`
+                    : discountInfo
+                      ? ` (${discountInfo.value}%)`
+                      : ""}
+                </span>
+                <span className="hinv-totals-value">-₹{fmt2(discountAmount)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div className="hinv-totals-row">
+                <span>Taxable Amount</span>
+                <span className="hinv-totals-value">₹{fmt2(taxableAmount)}</span>
+              </div>
+            )}
             {gstBreakdown.length === 0 ? (
               <div className="hinv-totals-row">
                 <span>GST</span>

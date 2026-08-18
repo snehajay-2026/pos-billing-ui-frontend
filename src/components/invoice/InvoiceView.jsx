@@ -118,6 +118,46 @@ const InvoiceView = () => {
     "Walking Customer";
   const storeNameForMessage = settings.name?.trim() || "Your Store";
 
+  // === Discount breakdown for share messages =================================
+  // Mirrors the renderer chain (HotelThermalReceipt / LodgingInvoice /
+  // DiningInvoice). `invoice.subTotal` is POST-discount — when
+  // `invoice.discountBreakdown` is present we trust it; otherwise we
+  // derive. Only fired when discount metadata is on the invoice so
+  // non-Hotel / legacy rows keep their original one-line summary.
+  const fmt2 = (n) => (Number(n) || 0).toFixed(2);
+  const messageDiscountInfo = invoice?.discount || null;
+  const messageDiscountBreakdown = invoice?.discountBreakdown || null;
+  let messageDiscountAmount = 0;
+  let messageTaxableAmount = Number(invoice?.subTotal || 0);
+  if (
+    messageDiscountInfo &&
+    typeof messageDiscountInfo.value === "number" &&
+    messageDiscountInfo.value >= 0
+  ) {
+    const preDiscountSubtotal =
+      Number(invoice?.subTotal || 0) + (messageDiscountBreakdown?.bill ?? 0);
+    if (messageDiscountBreakdown && typeof messageDiscountBreakdown.bill === "number") {
+      messageDiscountAmount = messageDiscountBreakdown.bill;
+    } else if (messageDiscountInfo.type === "percent" && messageDiscountInfo.value <= 100) {
+      messageDiscountAmount = Math.min(
+        preDiscountSubtotal,
+        Math.round(preDiscountSubtotal * messageDiscountInfo.value * 100) / 10000
+      );
+    }
+    messageTaxableAmount =
+      messageDiscountBreakdown?.taxableAmount ??
+      Math.max(0, preDiscountSubtotal - messageDiscountAmount);
+  }
+  const messageGstTotal = Number(invoice?.gstTotal || 0);
+  const breakdownLine =
+    messageDiscountAmount > 0
+      ? `Subtotal ₹${fmt2(
+          Number(invoice?.subTotal || 0) + messageDiscountAmount
+        )} · Discount -₹${fmt2(messageDiscountAmount)} · GST ₹${fmt2(
+          messageGstTotal
+        )} · Total ₹${fmt2(invoice?.grandTotal || 0)}`
+      : `Amount: ₹${invoice?.grandTotal || "0.00"}`;
+
   // Render the entire receipt (everything you'd see if you scrolled to the
   // bottom) into a single tall image, then split it across as many A4 pages
   // as it needs. Without this, the modernized hotel invoice (and any other
@@ -264,7 +304,7 @@ const InvoiceView = () => {
 
   const shareViaWhatsApp = () => {
     const text = encodeURIComponent(
-      `Dear ${customerNameForMessage},\n\nInvoice ${invoiceNo}\nAmount: ₹${invoice?.grandTotal || "0.00"}\nView receipt: ${invoiceLink}`
+      `Dear ${customerNameForMessage},\n\nInvoice ${invoiceNo}\n${breakdownLine}\nView receipt: ${invoiceLink}`
     );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -281,7 +321,7 @@ const InvoiceView = () => {
       emailLines.push(`Guest Name: ${hotelGuestName}`);
     }
 
-    emailLines.push(`Amount: ₹${invoice?.grandTotal || "0.00"}`);
+    emailLines.push(breakdownLine);
     emailLines.push(`View receipt: ${invoiceLink}`);
     emailLines.push("");
     emailLines.push("Thank you.");

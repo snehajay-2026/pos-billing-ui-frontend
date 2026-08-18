@@ -268,6 +268,13 @@
   letter-spacing: 0.06em;
 }
 
+/* Discount row — rendered between Subtotal and the GST block when an
+   applied discount is present. Kept visually quiet (no borders) so it
+   doesn't compete with the bold Grand Total frame. */
+.htr-discount td {
+  font-style: italic;
+}
+
 /* Payment line */
 .htr-payment {
   font-size: 11.5px;

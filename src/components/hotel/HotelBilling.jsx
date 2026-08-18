@@ -35,6 +35,8 @@ import {
   FaCashRegister,
   FaCheck,
   FaLock,
+  FaPercent,
+  FaTag,
 } from "react-icons/fa";
 import "./HotelBilling.css";
 import ReactDOM from "react-dom/client";
@@ -455,6 +457,23 @@ const HotelBilling = () => {
   const [diningZoneFilter, setDiningZoneFilter] = useState("all");
   const [diningBillsByTable, setDiningBillsByTable] = useState({});
   const { showToast, activeStore } = useUi();
+
+  // === Hotel Store discount feature ===========================================
+  // Manual Percentage OR Coupon Code, mutually exclusive. Switching modes
+  // clears the other side; only `appliedDiscount` participates in totals
+  // math. The server re-validates at save time (see
+  // `validateHotelDiscount` in `pos-billing-server-backend/index.js`) and
+  // for `source === "coupon"` overwrites `discount.value` / `discount.type`
+  // with the DB row so a malicious client cannot spoof a coupon's percent.
+  //
+  // `appliedDiscount` shape:
+  //   { type: "percent", value: number, source: "manual" | "coupon",
+  //     code?: string, label?: string, minSubtotal?: number }
+  const [manualDiscountPct, setManualDiscountPct] = useState("");
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponValidating, setCouponValidating] = useState(false);
   const [qbGuestName, setQbGuestName] = useState("");
   const [qbCustomerMobile, setQbCustomerMobile] = useState("");
   const [qbNights, setQbNights] = useState(1);
@@ -1524,6 +1543,70 @@ const HotelBilling = () => {
     } catch (err) {
       showToast("error", "Failed to sync table clear to server.");
     }
+  };
+
+  // === Discount handlers (Hotel Store — Manual % OR Coupon) ==================
+  // Switching modes always clears the other side, so only one of
+  // `manualDiscountPct` / `couponCodeInput` is ever in `appliedDiscount`.
+  // The backend re-resolves coupons at save time and overwrites the
+  // percent from the DB row, so a malicious client cannot redeem a
+  // bogus "HOTEL99" coupon with value 99 against the system.
+
+  const applyManualDiscount = (raw) => {
+    const str = String(raw ?? "");
+    setManualDiscountPct(str);
+    setCouponCodeInput("");
+    setCouponError("");
+    const pct = Number(str);
+    if (!Number.isFinite(pct) || pct <= 0) {
+      setAppliedDiscount(null);
+      return;
+    }
+    if (pct > 100) {
+      setCouponError("Manual discount cannot exceed 100%.");
+      setAppliedDiscount(null);
+      return;
+    }
+    setAppliedDiscount({ type: "percent", value: pct, source: "manual" });
+  };
+
+  const applyCoupon = async (code) => {
+    const trimmed = String(code ?? "")
+      .trim()
+      .toUpperCase();
+    if (!trimmed) return;
+    setCouponValidating(true);
+    setCouponError("");
+    setCouponCodeInput(trimmed);
+    setManualDiscountPct("");
+    try {
+      const res = await hotelService.validateCoupon(trimmed);
+      if (!res || !res.valid) {
+        setAppliedDiscount(null);
+        setCouponError(res?.message || "Invalid coupon code");
+        return;
+      }
+      setAppliedDiscount({
+        type: "percent",
+        value: Number(res.value),
+        source: "coupon",
+        code: res.code,
+        label: res.label,
+        minSubtotal: Number(res.minSubtotal || 0),
+      });
+    } catch (err) {
+      setAppliedDiscount(null);
+      setCouponError(err?.message || "Could not validate coupon");
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  const clearDiscount = () => {
+    setManualDiscountPct("");
+    setCouponCodeInput("");
+    setAppliedDiscount(null);
+    setCouponError("");
   };
 
   const handleDiningTableDelete = async (tableId) => {
@@ -2803,8 +2886,26 @@ const HotelBilling = () => {
   // summary uses, so the Room Booking GST is preserved across checkout.
   const settingsForGst = getStoreSettings();
 
+  // === Discount math (Hotel Store) ===========================================
+  // Mirrors Retail's `applyDiscount` in `src/components/pos/POSBilling.jsx`
+  // (L953-960): caps the resulting amount at `base`, ignores empty/zero
+  // values, rounds to 2dp. Used by the JSX rows below + the invoice payload.
+  // Any applied discount falls onto the pre-discount subtotal; GST base
+  // is reduced proportionally (Indian GST practice, matches Retail).
+  const applyDiscount = (base, discount) => {
+    if (!discount || !discount.value || Number(discount.value) <= 0) return 0;
+    const v = Number(discount.value);
+    if (!Number.isFinite(v)) return 0;
+    const raw = discount.type === "percent" ? (base * v) / 100 : v;
+    return Math.min(base, Math.round(raw * 100) / 100);
+  };
+
   const subtotal = filteredItems.reduce((sum, item) => sum + item.total, 0);
-  const gstAmount = filteredItems.reduce((sum, item) => {
+
+  // Pre-discount GST (sum of per-line GST, rounded per-line so the same
+  // totals the renderer chain sees). Discount then scales this figure
+  // proportionally below — see `gstAmount` for the post-discount version.
+  const preDiscountGst = filteredItems.reduce((sum, item) => {
     try {
       // Extra Hours Charges line — taxed as 0%. Per the checkout rules, GST
       // applies only to the Room Booking amount, not to the late check-out
@@ -2825,7 +2926,21 @@ const HotelBilling = () => {
       return sum;
     }
   }, 0);
-  const grandTotal = subtotal + gstAmount;
+
+  // Discount chain (Manual % OR Coupon, mutually exclusive). When no
+  // discount is applied, all of these collapse to the pre-discount
+  // figures so the existing rendering math stays correct.
+  const discountAmount = applyDiscount(subtotal, appliedDiscount);
+  const discountedSubtotal = subtotal - discountAmount;
+  const taxableAmount = discountedSubtotal;
+  // Indian GST practice: scale the pre-discount GST proportionally to
+  // the post-discount subtotal. Empty cart → ratio 0 → no GST.
+  const discountRatio = subtotal > 0 ? discountedSubtotal / subtotal : 0;
+  // Round once at the end (not per-line) so the displayed figure stays
+  // consistent with the per-line breakdown shown to the cashier.
+  const gstAmount = Math.round(preDiscountGst * discountRatio * 100) / 100;
+  const grandTotal = discountedSubtotal + gstAmount;
+  const totalSavings = discountAmount;
 
   const generateAndPreview = async () => {
     if (!filteredItems.length) {
@@ -2940,11 +3055,38 @@ const HotelBilling = () => {
         },
       })),
       notes,
-      subTotal: subtotal,
+      // `subTotal` ships the POST-discount figure to match the Retail
+      // POS contract (`POSBilling.jsx:976` saves the discounted subtotal
+      // into `invoices.sub_total`). The pre-discount subtotal is
+      // reconstructable as `subTotal + discountBreakdown.bill`. The
+      // backend `validateHotelDiscount` re-resolves coupon codes from
+      // `hotel_coupons` and overwrites the discount value before INSERT
+      // so a spoofed value never reaches the row.
+      subTotal: discountedSubtotal,
       gstTotal: gstAmount,
       grandTotal: grandTotal,
       total: grandTotal,
       storeType: "hotel",
+      // Discount fields. `null` when none is applied so the server's
+      // `validateHotelDiscount` short-circuits without complaint.
+      discount: appliedDiscount
+        ? {
+            type: appliedDiscount.type,
+            value: appliedDiscount.value,
+            source: appliedDiscount.source,
+            ...(appliedDiscount.code ? { code: appliedDiscount.code } : {}),
+            ...(appliedDiscount.label ? { label: appliedDiscount.label } : {}),
+          }
+        : null,
+      discountBreakdown: appliedDiscount
+        ? {
+            bill: discountAmount,
+            totalSavings: totalSavings,
+            taxableAmount: taxableAmount,
+            discountRatio: discountRatio,
+            preDiscountSubtotal: subtotal,
+          }
+        : null,
       hotelDetails:
         activeTab === "dining"
           ? {
@@ -3350,8 +3492,9 @@ const HotelBilling = () => {
                 </strong>
                 <span>
                   {filteredItems.length} item{filteredItems.length === 1 ? "" : "s"} · Subtotal Rs{" "}
-                  {subtotal.toFixed(0)} · GST Rs {gstAmount.toFixed(0)} · Total Rs{" "}
-                  {grandTotal.toFixed(0)}
+                  {subtotal.toFixed(0)}
+                  {appliedDiscount ? ` · Discount -Rs ${discountAmount.toFixed(0)}` : ""} · GST Rs{" "}
+                  {gstAmount.toFixed(0)} · Total Rs {grandTotal.toFixed(0)}
                 </span>
               </div>
               {otherTabHasItems && (
@@ -5146,6 +5289,77 @@ const HotelBilling = () => {
                   <FaReceipt aria-hidden="true" /> Subtotal
                 </span>
                 <span>₹{subtotal.toFixed(2)}</span>
+              </div>
+
+              {/* Discount — Hotel Store (Manual % OR Coupon). Renders
+                  the editor when nothing is applied, or the active
+                  pill row with a Remove button when one is. */}
+              {!appliedDiscount ? (
+                <div className="hotel-summary-discount-editor">
+                  <div className="hotel-discount-input-row">
+                    <FaPercent aria-hidden="true" />
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      placeholder="Manual %"
+                      value={manualDiscountPct}
+                      onChange={(e) => applyManualDiscount(e.target.value)}
+                      aria-label="Manual discount percentage"
+                    />
+                    <span className="hotel-discount-input-suffix">% off</span>
+                  </div>
+                  <div className="hotel-discount-input-row">
+                    <FaTag aria-hidden="true" />
+                    <input
+                      type="text"
+                      placeholder="Coupon code"
+                      value={couponCodeInput}
+                      onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyCoupon(couponCodeInput);
+                        }
+                      }}
+                      aria-label="Coupon code"
+                    />
+                    <button
+                      type="button"
+                      className="hotel-discount-apply-btn"
+                      onClick={() => applyCoupon(couponCodeInput)}
+                      disabled={!couponCodeInput || couponValidating}
+                    >
+                      {couponValidating ? "..." : "Apply"}
+                    </button>
+                  </div>
+                  {couponError && <div className="hotel-discount-error">{couponError}</div>}
+                </div>
+              ) : (
+                <div className="hotel-summary-row hotel-summary-discount-row">
+                  <span>
+                    <FaTag aria-hidden="true" /> Discount
+                    {appliedDiscount.source === "coupon" && appliedDiscount.code
+                      ? ` (${appliedDiscount.code} – ${appliedDiscount.value}%)`
+                      : ` (${appliedDiscount.value}%)`}
+                    <button
+                      type="button"
+                      className="hotel-discount-remove-btn"
+                      onClick={clearDiscount}
+                      aria-label="Remove discount"
+                    >
+                      <FaTimes aria-hidden="true" />
+                    </button>
+                  </span>
+                  <span>-₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="hotel-summary-row">
+                <span>Taxable Amount</span>
+                <span>₹{taxableAmount.toFixed(2)}</span>
               </div>
               <div className="hotel-summary-row">
                 <span>
