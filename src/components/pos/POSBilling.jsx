@@ -1731,7 +1731,7 @@ const POSBilling = () => {
                       <col style={{ width: "auto" }} />
                       <col style={{ width: "120px" }} />
                       <col style={{ width: "110px" }} />
-                      <col style={{ width: "62px" }} />
+                      <col style={{ width: "56px" }} />
                     </colgroup>
                     <thead>
                       <tr>
