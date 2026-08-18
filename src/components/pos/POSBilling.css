@@ -3283,10 +3283,12 @@
      placeholder ("Add a customer name (e.g. 'Walk-in' or actual name)")
      to lay out on a single line and push the banner wider than its
      parent card. Allow wrapping so long names/placeholders stay
-     inside the bill card on laptop viewports. The body block has
-     `min-width: 0` so wrapping is safe. */
-  overflow-wrap: anywhere;
-  word-break: break-word;
+     inside the bill card on laptop viewports. Use `break-word`
+     (not `anywhere`) so words break only when no normal break is
+     available — keeps "Add a customer name" on a few readable
+     lines instead of one character per line. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .bill-customer-banner-value strong {
   font-weight: 800;
@@ -3344,11 +3346,11 @@
 .bill-customer-banner-input::placeholder {
   color: var(--pos-text-muted);
 }
-/* Stack the banner earlier than 720px so the icon+body row sits on
-   the top and the edit input sits on its own row when the bill card
-   is narrow (this is what the side rail becomes once the layout is
-   constrained on a 1280px laptop). */
-@media (max-width: 1100px) {
+/* Stack the banner at laptop widths so the icon+body row sits on the
+   top and the edit input sits on its own row when the side rail is
+   narrow. At 1280px viewport the side rail is 220px wide, which is
+   too cramped for icon+body+edit on a single row. */
+@media (max-width: 1280px) {
   .bill-customer-banner {
     flex-wrap: wrap;
   }
