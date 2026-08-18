@@ -1850,11 +1850,19 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-.hotel-discount-input-row input[type="number"] {
+/* Keep the manual-discount <input> visually like a plain text field
+   even if a future change flips it back to type="number". The text
+   variant is the current choice — type="number" with step="0.5" was
+   rolling back 2-digit values like "10" / "15" / "25" in Chromium
+   because they aren't on the step grid from 0. */
+.hotel-discount-input-row input[type="number"],
+.hotel-discount-input-row input[type="text"] {
   -moz-appearance: textfield;
 }
 .hotel-discount-input-row input[type="number"]::-webkit-outer-spin-button,
-.hotel-discount-input-row input[type="number"]::-webkit-inner-spin-button {
+.hotel-discount-input-row input[type="number"]::-webkit-inner-spin-button,
+.hotel-discount-input-row input[type="text"]::-webkit-outer-spin-button,
+.hotel-discount-input-row input[type="text"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }

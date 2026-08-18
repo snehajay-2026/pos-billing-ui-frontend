@@ -1553,11 +1553,25 @@ const HotelBilling = () => {
   // bogus "HOTEL99" coupon with value 99 against the system.
 
   const applyManualDiscount = (raw) => {
-    const str = String(raw ?? "");
-    setManualDiscountPct(str);
+    // Sanitize: keep digits and a single decimal point so paste of
+    // "15%" or "7.5%" lands as a valid number. Strip any other characters
+    // (commas, percent signs, spaces) that browsers / mobile keyboards
+    // sometimes inject.
+    const cleaned = String(raw ?? "")
+      .replace(/[^0-9.]/g, "")
+      .replace(/(\..*)\./g, "$1");
+    if (cleaned !== raw) {
+      // Reflect the cleaned value back into the input so the user sees
+      // exactly what we accepted.
+      setManualDiscountPct(cleaned);
+    }
     setCouponCodeInput("");
     setCouponError("");
-    const pct = Number(str);
+    if (!cleaned) {
+      setAppliedDiscount(null);
+      return;
+    }
+    const pct = Number(cleaned);
     if (!Number.isFinite(pct) || pct <= 0) {
       setAppliedDiscount(null);
       return;
@@ -5299,11 +5313,10 @@ const HotelBilling = () => {
                   <div className="hotel-discount-input-row">
                     <FaPercent aria-hidden="true" />
                     <input
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      min="0"
-                      max="100"
-                      step="0.5"
+                      maxLength="6"
+                      pattern="[0-9.]*"
                       placeholder="Manual %"
                       value={manualDiscountPct}
                       onChange={(e) => applyManualDiscount(e.target.value)}
