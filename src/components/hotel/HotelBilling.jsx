@@ -432,9 +432,17 @@ const HotelBilling = () => {
   // below the absolute minimum.
   // ---------------------------------------------------------------------
   const SPLIT_STORAGE_KEY = "hotel_billing_split_ratio";
-  const SPLIT_DEFAULT = 0.55;
-  const FORM_MIN_PX = 280; // form card floor — Lodging charge panel reads cleanly down to ~260 px
-  const ITEMS_MIN_PX = 320; // items card floor — Live Bill + Summary + actions must remain visible
+  // COMPACT-LIVE-BILL: was 0.55 → 0.62. With the Live Bill card now
+  // ~12px tighter per row, the items column can shrink ~5% of grid
+  // width and the form (Lodging/Dining) gets the rest. This is the
+  // single biggest lever for "more space for Dining & Lodging".
+  const SPLIT_DEFAULT = 0.62;
+  const FORM_MIN_PX = 360; // form card floor — Lodging charge panel reads cleanly down to ~340 px
+  // COMPACT-LIVE-BILL: was 320 → 280. Live Bill fits in ~280 px
+  // because the summary card now uses 12px padding × 5 rows = ~190 px
+  // and the rest (~90 px) fits 1 row of items. The user's resizable
+  // splitter can still drag smaller if they want.
+  const ITEMS_MIN_PX = 280; // items card floor — Live Bill + Summary + actions must remain visible
   // Convert the persisted/default ratio to a clamped value at read time.
   // We can't apply pixel floors here without knowing the grid width, so
   // we accept any ratio in [0, 1] and re-clamp during render / drag.

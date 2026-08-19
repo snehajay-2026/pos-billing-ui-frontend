@@ -56,7 +56,7 @@
      `minmax(0, ...)` is essential — without the 0 floor the items card's
      intrinsic min-content (e.g. a wide Generate Invoice button) would
      expand the right column past 1fr and push the divider off-screen. */
-  grid-template-columns: minmax(0, var(--hotel-split, 55%)) 12px minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--hotel-split, 62%)) 12px minmax(0, 1fr);
   /* FIT-TO-SCREEN: was gap:20px → 14px → 0 because the divider track
      is the visual separator. The 14 px gap still holds on narrow
      breakpoints via the existing @media (max-width: 992px) override. */
@@ -713,9 +713,9 @@
 .hotel-items-list {
   display: flex;
   flex-direction: column;
-  /* COMPACT: tighter gap between rows lets more items show above
-     the fold on a 1366×768 laptop. */
-  gap: 8px;
+  /* COMPACT: was gap:8px → 6px. Tighter gap between rows lets more
+     items show above the fold on a 1366×768 laptop. */
+  gap: 6px;
 }
 
 .hotel-item-name {
@@ -1628,17 +1628,21 @@
 .hotel-billing-items-head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  /* COMPACT: was 18px → 10px so the head doesn't eat into the items
-     list on laptop viewports. */
-  margin-bottom: 10px;
+  gap: 2px;
+  /* COMPACT: was 18px → 10px → 6px so the head doesn't eat into the
+     items list on laptop viewports. The kicker + title still read
+     cleanly because the kicker carries its own coloured chip. */
+  margin-bottom: 6px;
 }
 
 .hotel-bill-items-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   width: fit-content;
+  /* COMPACT: was 0.72rem → 0.66rem. The kicker is uppercase tracking
+     and reads as a section label at small sizes on laptop DPI. */
+  font-size: 0.66rem;
 }
 
 /* Rich empty state with icon + headline */
@@ -1653,16 +1657,17 @@
 }
 
 .hotel-empty-state-icon {
-  width: 56px;
-  height: 56px;
+  /* COMPACT: was 56×56 → 40×40, font-size 1.4rem → 1.05rem. */
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(59, 130, 246, 0.16));
   color: #1d4ed8;
-  font-size: 1.4rem;
-  margin-bottom: 4px;
+  font-size: 1.05rem;
+  margin-bottom: 2px;
 }
 
 .hotel-empty-state-rich strong {
@@ -1681,9 +1686,12 @@
 .hotel-item-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
+  /* COMPACT: was gap:14px padding:14px 16px → gap:10px padding:10px 12px.
+     Row height drops ~12px (was ~78px → ~64px) without sacrificing
+     readability on laptop viewports. */
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid rgba(148, 163, 184, 0.18);
   position: relative;
@@ -1734,15 +1742,15 @@
 }
 
 .hotel-item-type-pill {
-  /* COMPACT: was 28×28 → 24×24. Still big enough to read the
-     dining/lodging icon at a glance. */
-  width: 24px;
-  height: 24px;
+  /* COMPACT: was 28×28 → 24×24 → 22×22. Still big enough to read
+     the dining/lodging icon at a glance. */
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 7px;
-  font-size: 0.74rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
   flex-shrink: 0;
 }
 
@@ -1759,8 +1767,9 @@
 .hotel-item-name {
   font-weight: 800;
   color: #0f172a;
-  /* COMPACT: was 0.98rem → 0.92rem. Still bold/clear at laptop DPI. */
-  font-size: 0.92rem;
+  /* COMPACT: was 0.98rem → 0.92rem → 0.85rem. Still bold/clear at
+     laptop DPI; the meta-grid carries the small-print detail. */
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1769,13 +1778,14 @@
 .hotel-item-meta-grid {
   display: flex;
   flex-wrap: wrap;
-  /* COMPACT: was 6px 14px → 4px 10px. Tighter horizontal gap so all
-     five meta pills fit on one line; tighter vertical so the lodging
-     row's 5-pill line doesn't wrap onto a 2nd meta line. */
-  gap: 4px 10px;
-  font-size: 0.78rem;
+  /* COMPACT: was 6px 14px → 4px 10px → 3px 8px. Tighter horizontal
+     gap so all five meta pills fit on one line; tighter vertical so
+     the lodging row's 5-pill line doesn't wrap onto a 2nd meta line. */
+  gap: 3px 8px;
+  font-size: 0.72rem;
   color: #64748b;
   margin-top: 0;
+  line-height: 1.35;
 }
 
 .hotel-item-meta-grid span {
@@ -1786,14 +1796,14 @@
 
 .hotel-item-meta-grid svg {
   color: #94a3b8;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .hotel-item-meta-grid .hotel-item-meta-gst {
   background: rgba(99, 102, 241, 0.12);
   color: #4338ca;
-  /* COMPACT: was padding 2px 8px → 1px 7px. */
-  padding: 1px 7px;
+  /* COMPACT: was padding 2px 8px → 1px 7px → 1px 6px. */
+  padding: 1px 6px;
   border-radius: 999px;
   font-weight: 700;
 }
@@ -1802,38 +1812,40 @@
 .hotel-item-actions {
   display: flex;
   align-items: center;
-  /* COMPACT: was 12px → 8px. Tight gap between total pill and trash
-     button frees ~4px per row horizontally. */
-  gap: 8px;
+  /* COMPACT: was 12px → 8px → 6px. Tight gap between total pill and
+     trash button frees ~2px per row horizontally. */
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .hotel-item-total {
   font-weight: 800;
-  /* COMPACT: was 1.05rem → 0.95rem, padding 6px 12px → 4px 10px. */
-  font-size: 0.95rem;
+  /* COMPACT: was 1.05rem → 0.95rem → 0.85rem, padding 6px 12px →
+     4px 10px → 3px 8px. Tabular-nums keeps the rupee figures
+     column-aligned across rows. */
+  font-size: 0.85rem;
   color: #0f172a;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 7px;
   background: linear-gradient(135deg, rgba(238, 242, 255, 0.85), rgba(255, 255, 255, 0.95));
   border: 1px solid rgba(99, 102, 241, 0.18);
   font-variant-numeric: tabular-nums;
 }
 
 .hotel-item-remove {
-  /* COMPACT: was 36×36 → 30×30. Still above the 24px touch-target
-     minimum and well clear of the price pill. */
-  width: 30px;
-  height: 30px;
+  /* COMPACT: was 36×36 → 30×30 → 26×26. Still above the 24px
+     touch-target minimum and well clear of the price pill. */
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(220, 38, 38, 0.18);
   background: #ffffff;
   color: #b91c1c;
-  border-radius: 8px;
+  border-radius: 7px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   transition:
     background 0.18s ease,
     color 0.18s ease,
@@ -1857,13 +1869,17 @@
 
 /* Summary card */
 .hotel-summary-card {
-  border-radius: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(99, 102, 241, 0.18);
-  padding: 18px 20px;
+  /* COMPACT: was padding 18px 20px → 12px 14px. Saves ~12px of
+     vertical space on the summary block on laptop viewports. */
+  padding: 12px 14px;
   display: grid;
-  gap: 10px;
+  /* COMPACT: was gap:10px → 6px so the 5 rows pack tighter. */
+  gap: 6px;
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 60%, #eef2ff 100%);
-  margin-top: 16px;
+  /* COMPACT: was margin-top:16px → 8px. */
+  margin-top: 8px;
 }
 
 .hotel-summary-row {
@@ -1872,18 +1888,20 @@
   align-items: center;
   color: #334155;
   font-weight: 600;
-  font-size: 0.95rem;
+  /* COMPACT: was 0.95rem → 0.85rem. The values stay readable in
+     plain tabular-nums. */
+  font-size: 0.85rem;
 }
 
 .hotel-summary-row span:first-child {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .hotel-summary-row span:first-child svg {
   color: #6366f1;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 
 .hotel-summary-total {
@@ -1891,21 +1909,23 @@
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid rgba(99, 102, 241, 0.22);
-  padding-top: 12px;
-  font-size: 1.1rem;
+  /* COMPACT: was padding 12px 14px → 8px 10px, font-size 1.1rem
+     → 0.95rem. */
+  padding: 8px 10px;
+  font-size: 0.95rem;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.08));
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-top: 4px;
+  border-radius: 10px;
+  margin-top: 2px;
 }
 
 .hotel-summary-total strong {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 800;
   color: #0f172a;
-  font-size: 1rem;
+  /* COMPACT: was 1rem → 0.9rem. */
+  font-size: 0.9rem;
 }
 
 .hotel-summary-total strong svg {
@@ -1915,9 +1935,11 @@
 .hotel-summary-total strong:last-child {
   background: linear-gradient(135deg, #2563eb, #4f46e5);
   color: #ffffff;
-  padding: 6px 14px;
-  border-radius: 10px;
-  font-size: 1.05rem;
+  /* COMPACT: was padding 6px 14px → 5px 10px, font-size 1.05rem
+     → 0.95rem. */
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.95rem;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.28);
 }
 
@@ -1928,36 +1950,40 @@
    and slotted into the existing summary-card gap grid. */
 .hotel-summary-discount-editor {
   display: grid;
-  gap: 8px;
-  padding: 12px;
-  margin: 4px 0;
+  /* COMPACT: was gap:8px → 5px, padding 12px → 8px. */
+  gap: 5px;
+  padding: 8px;
+  margin: 2px 0;
   border: 1px dashed rgba(99, 102, 241, 0.35);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(238, 242, 255, 0.45);
 }
 
 .hotel-discount-input-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #475569;
-  font-size: 0.85rem;
+  /* COMPACT: was 0.85rem → 0.78rem. */
+  font-size: 0.78rem;
 }
 
 .hotel-discount-input-row svg {
   color: #6366f1;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   flex-shrink: 0;
 }
 
 .hotel-discount-input-row input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 6px 10px;
-  border-radius: 8px;
+  /* COMPACT: was padding 6px 10px → 4px 8px, font-size 0.9rem →
+     0.82rem. */
+  padding: 4px 8px;
+  border-radius: 7px;
   border: 1px solid rgba(99, 102, 241, 0.35);
   background: #ffffff;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #1e293b;
   outline: none;
@@ -1995,13 +2021,15 @@
 }
 
 .hotel-discount-apply-btn {
-  padding: 6px 14px;
+  /* COMPACT: was padding 6px 14px → 4px 10px, font-size 0.82rem →
+     0.78rem. */
+  padding: 4px 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   background: linear-gradient(135deg, #4f46e5, #6366f1);
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   cursor: pointer;
   transition:
     transform 80ms ease,
@@ -2082,23 +2110,29 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  /* FIT-TO-SCREEN: was gap:12px margin-top:16px → gap:8px margin-top:10px. */
-  gap: 8px;
-  margin-top: 10px;
+  /* FIT-TO-SCREEN: was gap:12px margin-top:16px → gap:8px margin-top:10px
+     → gap:6px margin-top:6px. The whole row sits ~10px lower than
+     before on laptop viewports. */
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .hotel-payment-picker {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 160px;
+  /* COMPACT: was gap:4px → 2px. */
+  gap: 2px;
+  /* COMPACT: was min-width:160px → 130px. The select only needs
+     room for "Card" / "Cash" / "UPI" labels. */
+  min-width: 130px;
 }
 
 .hotel-payment-picker-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
+  gap: 5px;
+  /* COMPACT: was 0.78rem → 0.7rem. */
+  font-size: 0.7rem;
   font-weight: 700;
   color: #475569;
   text-transform: uppercase;
@@ -2107,14 +2141,16 @@
 
 .hotel-payment-picker-label svg {
   color: #6366f1;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 
 .hotel-payment-picker select {
   border: 1px solid rgba(99, 102, 241, 0.32);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 0.95rem;
+  border-radius: 8px;
+  /* COMPACT: was padding 8px 12px → 5px 10px, font-size 0.95rem
+     → 0.85rem. */
+  padding: 5px 10px;
+  font-size: 0.85rem;
   background: #ffffff;
   color: #0f172a;
   font-weight: 600;
@@ -2127,14 +2163,16 @@
 .hotel-payment-picker select:focus {
   outline: none;
   border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .hotel-print-bill-btn {
-  /* FIT-TO-SCREEN: was min-width:220px padding:14px 22px → min-width:170px padding:10px 18px. */
-  min-width: 170px;
-  padding: 10px 18px;
-  font-size: 0.95rem;
+  /* FIT-TO-SCREEN: was min-width:220px padding:14px 22px →
+     min-width:170px padding:10px 18px → min-width:130px
+     padding:7px 14px font-size:0.85rem. */
+  min-width: 130px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
 }
 
 /* Message banner */
@@ -3098,12 +3136,12 @@
   top: 18px;
   display: flex;
   flex-direction: column;
-  /* COMPACT: tighten card spacing so the Bill Items list fits inside
-     a 768px laptop viewport with room for the sticky summary card. */
-  gap: 12px;
+  /* COMPACT: was gap:12px → 8px, padding 16px 18px → 12px 14px.
+     The Live Bill card itself shrinks ~12px on laptop viewports. */
+  gap: 8px;
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 20px;
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 12px 14px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
   /* FIT-TO-SCREEN: let this card be the scroll container when its
@@ -3994,6 +4032,153 @@
     padding: 5px 12px;
     font-size: 0.78rem;
     border-radius: 8px;
+  }
+}
+
+/* ---------- Live Bill card — laptop-width compact (≤1440px) ----------
+   On real laptop viewports (1366×768, 1440×900, 1536×864) the natural
+   two-column grid has the items card consuming too much horizontal
+   real estate. The base styles above already tightened the card; this
+   block pushes it further on common laptop widths so the items column
+   sits at ~36-40% of the grid (vs ~45% on >1440px screens) and the
+   Dining/Lodging form gets the rest. Activates BEFORE the
+   `@media (max-height: 900px)` block so width-constrained laptops
+   (e.g. 1280×800) also benefit, not just short ones. */
+@media (max-width: 1440px) {
+  /* Bias the splitter toward the form (Lodging/Dining). The user can
+     still drag the divider — this only changes the default ratio. */
+  .hotel-billing-grid {
+    grid-template-columns: minmax(0, var(--hotel-split, 64%)) 12px minmax(0, 1fr);
+  }
+
+  /* Card chrome — squeeze ~6px off each axis. */
+  .hotel-billing-items {
+    padding: 10px 12px;
+    gap: 6px;
+    border-radius: 14px;
+  }
+  .hotel-billing-items-head {
+    margin-bottom: 4px;
+  }
+  .hotel-bill-items-kicker {
+    font-size: 0.62rem;
+  }
+
+  /* Rows — drop another ~4px of vertical chrome per row. */
+  .hotel-item-row {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .hotel-item-row-info {
+    gap: 2px;
+  }
+  .hotel-item-name {
+    font-size: 0.82rem;
+  }
+  .hotel-item-meta-grid {
+    font-size: 0.7rem;
+    gap: 2px 7px;
+  }
+  .hotel-item-meta-grid .hotel-item-meta-gst {
+    padding: 1px 5px;
+  }
+  .hotel-item-type-pill {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    font-size: 0.66rem;
+  }
+  .hotel-item-total {
+    font-size: 0.82rem;
+    padding: 2px 7px;
+  }
+  .hotel-item-remove {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+
+  /* Items list — tighter gap + smaller max-height cap so the items
+     row list + summary card + actions all fit in 280-360 px of
+     vertical space on a 1366×768 laptop. */
+  .hotel-items-list {
+    gap: 5px;
+    min-height: 50px;
+    max-height: 220px;
+  }
+
+  /* Summary card — tighten every dimension. */
+  .hotel-summary-card {
+    padding: 10px 12px;
+    gap: 4px;
+    border-radius: 12px;
+    margin-top: 6px;
+  }
+  .hotel-summary-row {
+    font-size: 0.8rem;
+  }
+  .hotel-summary-row span:first-child svg {
+    font-size: 0.72rem;
+  }
+  .hotel-summary-total {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    margin-top: 2px;
+  }
+  .hotel-summary-total strong {
+    font-size: 0.86rem;
+  }
+  .hotel-summary-total strong:last-child {
+    padding: 4px 9px;
+    font-size: 0.9rem;
+  }
+
+  /* Discount editor — even tighter. */
+  .hotel-summary-discount-editor {
+    padding: 6px;
+    gap: 4px;
+    margin: 2px 0;
+    border-radius: 9px;
+  }
+  .hotel-discount-input-row {
+    font-size: 0.74rem;
+    gap: 5px;
+  }
+  .hotel-discount-input-row svg {
+    font-size: 0.78rem;
+  }
+  .hotel-discount-input-row input {
+    padding: 3px 7px;
+    font-size: 0.78rem;
+  }
+  .hotel-discount-apply-btn {
+    padding: 3px 9px;
+    font-size: 0.74rem;
+  }
+
+  /* Summary actions — Payment + Generate Invoice. */
+  .hotel-summary-actions {
+    gap: 5px;
+    margin-top: 4px;
+  }
+  .hotel-payment-picker {
+    min-width: 110px;
+    gap: 1px;
+  }
+  .hotel-payment-picker-label {
+    font-size: 0.66rem;
+  }
+  .hotel-payment-picker-label svg {
+    font-size: 0.72rem;
+  }
+  .hotel-payment-picker select {
+    padding: 4px 9px;
+    font-size: 0.82rem;
+  }
+  .hotel-print-bill-btn {
+    min-width: 120px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
   }
 }
 
