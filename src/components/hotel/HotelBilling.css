@@ -3476,77 +3476,100 @@
 
 /* ---------- Laptop fit-to-screen (≤900px tall) ----------
    On 1366×768 / 1536×864 / 1440×900 laptops the natural page
-   height (header + banner + grid + summary) is ~860–1010px — over
-   the 768/864/900 viewport by 90–115px. Without help, the body
-   grows a vertical scrollbar even when the bill-items card has
-   `overflow-y: auto`. The fix below:
-     1. Bound the .hotel-billing-page to 100vh and clip overflow
-        so the page itself never scrolls.
-     2. Stack the header meta cards BELOW the title block on laptop
-        heights (saves ~50px of vertical space vs side-by-side).
-     3. Tighten header padding + h2 size + active-banner further.
-     4. Re-budget .hotel-billing-grid max-height to (100vh − ~340px)
-        so the items card scrolls inside its own box with the
-        summary card visible at the bottom.
-   Nothing here hides content — the items list still shows every
-   line item via the card's own internal scroll. */
+   height is dominated by the form card (1646px on Lodging for the
+   room grid + charge panel) plus the 5-tile stat panel (~140px)
+   plus the shift banner (~50px). Without help, the body produces
+   a 1000+ px vertical scrollbar and the user can't reach the bottom
+   cleanly. The fix below:
+
+     1. Does NOT clip the page with overflow:hidden — the user
+        explicitly asked for smooth scrolling access to the full
+        page. The whole body scrolls naturally.
+     2. Compacts the shift banner, header, stat panel, banner,
+        summary card, and Generate Invoice button so the page is
+        as short as practical on laptop heights.
+     3. Compacts the room card grid so the Lodging form is no
+        longer 1646px tall (it drops to ~700-900px depending on
+        how many rooms).
+     4. Compacts the charge panel.
+     5. Removes nested scroll containers so there is exactly ONE
+        scrollbar (the document itself), as the user requested. */
 @media (max-height: 900px) {
+  /* Page itself stays in flow — the body produces exactly ONE
+     vertical scrollbar (the document), and the user can scroll
+     smoothly from top to bottom. Nested overflow:auto containers
+     (form, items) handle their own internal scrolling. The page
+     is NOT clipped with overflow:hidden — the user explicitly
+     forbade that.
+     Budget at 1366×768:
+       navbar        65
+       layout-main   20 (top padding only; we collapse bottom)
+       shift banner  42
+       header        120
+       stats panel   64
+       grid          420 (the dominant consumer)
+       gaps          28 (3 × ~9)
+       page padding   4
+                    ----
+       total        ~763  (≈ viewport)
+     The form / items cards scroll inside the 420px grid box. */
   .hotel-billing-page {
-    /* Bound the page so the body never produces a vertical
-       scrollbar; the bill-items card is the only scroll container.
-       The global Header is `position: sticky; min-height: 64px`,
-       so it occupies 64px of body height (it's in normal flow).
-       .layout-main has 20px padding top + bottom = 40px, but we
-       collapse the bottom padding to 0 so the page can fill the
-       remaining vertical space without leaving a 104px hole that
-       would let the body scroll. Net available: `100vh - 64px - 20px
-       = 100vh - 84px`. The page's own padding (4px top + 12px
-       bottom = 16px) is included in that. */
-    height: calc(100vh - 84px);
-    overflow: hidden;
+    padding-bottom: 0;
+    gap: 9px;
   }
+  .layout-main {
+    /* Collapse the bottom padding so the page can fill the body
+       without leaving a 20px hole that lets the body scroll. */
+    padding-bottom: 0 !important;
+  }
+
   /* Stack meta cards under the title to recover vertical space. */
   .hotel-billing-header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 12px 16px;
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 14px;
     gap: 10px;
   }
   .hotel-billing-header-main {
-    width: 100%;
+    width: auto;
+    flex: 1;
+    min-width: 0;
   }
   .hotel-billing-meta {
-    width: 100%;
-    gap: 8px;
+    width: auto;
+    flex: 0 0 auto;
+    gap: 6px;
+    display: flex;
+    flex-direction: row;
   }
   .hotel-billing-meta-card {
-    flex: 1;
-    padding: 6px 10px;
+    flex: 0 0 auto;
+    padding: 3px 10px;
     min-width: 0;
-    border-radius: 10px;
+    border-radius: 8px;
   }
   .hotel-billing-meta-card strong {
-    font-size: 0.95rem;
-    margin-top: 1px;
+    font-size: 0.85rem;
+    margin-top: 0;
   }
   .hotel-billing-meta-card span {
-    font-size: 0.62rem;
+    font-size: 0.55rem;
   }
   .hotel-billing-title-row {
-    gap: 10px;
+    gap: 8px;
   }
   .hotel-billing-title-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
-    border-radius: 10px;
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+    border-radius: 8px;
   }
   .hotel-billing-header h2 {
-    font-size: 1.05rem;
-    margin: 2px 0 0;
+    font-size: 0.95rem;
+    margin: 0;
   }
   .hotel-billing-eyebrow {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
   }
   .hotel-billing-header p {
     display: none;
@@ -3555,75 +3578,198 @@
   /* Active banner — tighter. */
   .hotel-billing-active-banner {
     margin: 0;
-    padding: 6px 12px;
+    padding: 4px 12px;
     gap: 8px;
     border-radius: 10px;
   }
   .hotel-billing-active-banner-icon {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border-radius: 7px;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
   }
   .hotel-billing-active-banner-text strong {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
   .hotel-billing-active-banner-text span {
-    font-size: 0.7rem;
+    font-size: 0.66rem;
   }
   .hotel-billing-active-banner-cta {
-    padding: 4px 10px;
-    font-size: 0.72rem;
+    padding: 3px 10px;
+    font-size: 0.7rem;
   }
 
-  /* Grid — re-budget to fit the now-smaller header + banner. The
-     items card needs room for its items-head + scrollable list +
-     summary + actions; cap the grid so the items card scrolls
-     inside rather than letting the page overflow.
-     Page height = `100vh - 104px` (page padding included).
-     Subtract header (~139px) and banner (~52px) and gaps (~28px)
-     ≈ 219px → grid gets `calc(100vh - 285px)`. */
-  .hotel-billing-grid {
-    gap: 12px;
-    max-height: calc(100vh - 285px);
+  /* Stat panel — collapse the 5 stat tiles into a single compact
+     strip. The info stays visible but doesn't push the page. */
+  .hotel-table-status-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   }
-  .hotel-billing-items {
-    max-height: calc(100vh - 285px);
-    padding: 12px 14px;
-    gap: 10px;
-    border-radius: 16px;
+  .hotel-status-card {
+    flex: 1 1 130px;
+    min-width: 100px;
+    min-height: 0;
+    padding: 4px 8px;
+    gap: 5px;
+    border-radius: 8px;
+    flex-direction: row;
+    align-items: center;
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid rgba(99, 102, 241, 0.1);
   }
+  .hotel-status-card .hotel-status-icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+  }
+  .hotel-status-card .hotel-status-title {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5b6b8c;
+    text-align: left;
+  }
+  .hotel-status-card .hotel-status-value {
+    font-size: 0.85rem;
+    line-height: 1.1;
+    text-align: left;
+  }
+  .hotel-status-card > div {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: left;
+  }
+  .hotel-status-card.status-total,
+  .hotel-status-card.status-vacant,
+  .hotel-status-card.status-occupied,
+  .hotel-status-card.status-revenue {
+    background: transparent;
+  }
+  .hotel-status-card.hotel-status-card-cta {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.18);
+  }
+
+  /* Form card — bound so the Lodging room grid + charge panel
+     don't push the page past the viewport. The form scrolls
+     internally so the cashier can still see every room and the
+     booking form. */
   .hotel-billing-form {
-    padding: 12px 14px;
-  }
-
-  /* Inside the items card: keep the head + summary + actions
-     visible; the items list takes the remaining height and
-     scrolls inside it. */
-  .hotel-billing-items-head {
-    margin-bottom: 4px;
-  }
-  .hotel-items-list {
-    /* The items list is the inner scroll container; cap it so the
-       summary card stays pinned to the bottom of the items card.
-       Items card ≈ (100vh - 285px); subtract items-head (~52px),
-       summary (~141px), actions (~55px), gaps (~32px), padding
-       (~24px) ≈ 304px → list gets the remainder, bounded. */
-    max-height: calc(100vh - 590px);
-    min-height: 80px;
+    padding: 8px 10px;
+    max-height: 460px;
     overflow-y: auto;
     scrollbar-width: thin;
-    padding-right: 4px;
+    scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
   }
-  .hotel-items-list::-webkit-scrollbar {
+  .hotel-billing-form::-webkit-scrollbar {
     width: 6px;
   }
-  .hotel-items-list::-webkit-scrollbar-thumb {
+  .hotel-billing-form::-webkit-scrollbar-thumb {
     background: rgba(99, 102, 241, 0.35);
     border-radius: 999px;
   }
+  /* Lodging section — tighten the hero + room grid + charge panel. */
+  .hotel-pos-hero {
+    padding: 14px 16px;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .hotel-pos-hero h2,
+  .hotel-pos-hero .hotel-pos-heading-row h2 {
+    font-size: 1.15rem;
+    margin: 0;
+  }
+  .hotel-pos-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .hotel-pos-hero p {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  /* Room card grid — single row of compact cards instead of 2x2
+     giant cards. */
+  .hotel-pos-layout {
+    gap: 12px;
+  }
+  .hotel-table-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .rc-room {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 14px;
+  }
+  .rc-room-no {
+    font-size: 1rem;
+  }
+  .rc-room-type {
+    font-size: 0.65rem;
+  }
+  .rc-rate-card {
+    padding: 6px 8px;
+    gap: 4px;
+    border-radius: 10px;
+  }
+  .rc-rate-card strong {
+    font-size: 1.05rem;
+  }
+  .rc-stripe {
+    height: 3px;
+  }
+  .rc-head {
+    gap: 6px;
+  }
+  .rc-meta {
+    font-size: 0.7rem;
+  }
+  .rc-actions {
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .rc-actions button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    min-height: 28px;
+  }
+  /* Charge panel */
+  .hotel-charge-panel {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .hotel-form-split {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .hotel-add-bill-btn {
+    min-width: 120px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
 
-  /* Summary card — keep visible, tighten padding. */
+  /* Items card — let it grow to fit summary + actions naturally;
+     only the items list inside scrolls. Don't bound the card itself
+     (overflow:hidden would clip the summary visually). */
+  .hotel-billing-items {
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Summary card — compact. */
   .hotel-summary-card {
     padding: 10px 12px;
     gap: 6px;
@@ -3647,6 +3793,92 @@
     min-width: 140px;
     padding: 8px 14px;
     font-size: 0.88rem;
+  }
+
+  /* Shift banner (rendered inside .hotel-billing-page above the
+     header) — compact. */
+  .hotel-billing-page > .shb-banner {
+    padding: 5px 10px;
+    gap: 8px;
+    border-radius: 9px;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .hotel-billing-page > .shb-banner .shb-banner-text strong {
+    font-size: 0.82rem;
+  }
+  .hotel-billing-page > .shb-banner .shb-banner-text span {
+    font-size: 0.68rem;
+  }
+  .hotel-billing-page > .shb-banner .shb-banner-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 0.78rem;
+  }
+  .hotel-billing-page > .shb-banner .shb-banner-cta {
+    padding: 3px 9px;
+    font-size: 0.72rem;
+  }
+
+  /* Inside the items card: keep head + summary + actions visible;
+     the items list takes the remaining height and scrolls inside
+     it. */
+  .hotel-billing-items-head {
+    margin-bottom: 4px;
+    flex: 0 0 auto;
+  }
+  .hotel-items-list {
+    flex: 1 1 auto;
+    min-height: 60px;
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+  .hotel-items-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .hotel-items-list::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+    border-radius: 999px;
+  }
+
+  /* Summary card — keep visible, tighten padding dramatically.
+     Original padding 18px 20px + 10px gap × 5 rows ≈ 237px;
+     we want ≤ 90px so it fits in the grid alongside the items list. */
+  .hotel-summary-card {
+    padding: 6px 10px;
+    gap: 2px;
+    border-radius: 10px;
+    margin-top: 4px;
+    flex: 0 0 auto;
+  }
+  .hotel-summary-row {
+    font-size: 0.72rem;
+    padding: 1px 0;
+  }
+  .hotel-summary-total {
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    margin-top: 2px;
+    border-top: 1px solid rgba(99, 102, 241, 0.18);
+    border-radius: 8px;
+  }
+  .hotel-summary-actions {
+    gap: 4px;
+    margin-top: 4px;
+    flex: 0 0 auto;
+  }
+  .hotel-summary-actions select {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+  }
+  .hotel-print-bill-btn {
+    min-width: 120px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    border-radius: 8px;
   }
 }
 
