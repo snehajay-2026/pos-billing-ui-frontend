@@ -418,6 +418,178 @@ const HotelBilling = () => {
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [activeTab, setActiveTab] = useState("lodging");
 
+  // ---------------------------------------------------------------------
+  // Resizable splitter between the form card (Lodging/Dining) and the
+  // Live Bill card. The user can drag the divider horizontally to grow
+  // either side. The chosen split is persisted to localStorage so it
+  // survives reloads. Defaults to ~0.55 (closest to the previous
+  // hard-coded `grid-template-columns: 1.2fr 0.9fr`).
+  //
+  // Bounds are expressed in *pixels* (form >= FORM_MIN_PX, items >=
+  // ITEMS_MIN_PX) so the floor is stable across zoom levels and narrow
+  // viewports. The pixel ratio is computed at drag time from the live
+  // grid width so a small grid (~700 px wide) can't squeeze the form
+  // below the absolute minimum.
+  // ---------------------------------------------------------------------
+  const SPLIT_STORAGE_KEY = "hotel_billing_split_ratio";
+  const SPLIT_DEFAULT = 0.55;
+  const FORM_MIN_PX = 280; // form card floor — Lodging charge panel reads cleanly down to ~260 px
+  const ITEMS_MIN_PX = 320; // items card floor — Live Bill + Summary + actions must remain visible
+  // Convert the persisted/default ratio to a clamped value at read time.
+  // We can't apply pixel floors here without knowing the grid width, so
+  // we accept any ratio in [0, 1] and re-clamp during render / drag.
+  const readPersistedSplit = () => {
+    try {
+      const raw = window.localStorage.getItem(SPLIT_STORAGE_KEY);
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0 && n < 1) return n;
+    } catch {
+      /* localStorage disabled — fall through to default */
+    }
+    return SPLIT_DEFAULT;
+  };
+  const [splitRatio, setSplitRatio] = useState(readPersistedSplit);
+  const gridRef = useRef(null);
+  const dividerRef = useRef(null);
+
+  // Clamp a candidate ratio so neither card goes below its pixel floor.
+  // The items column is `1fr` after the divider track in the template
+  // (form px + 12 px + items 1fr = gridWidth), so the items floor must
+  // be enforced against the *remainder* after form + divider:
+  //   formPx + 12 + itemsMin <= gridWidth
+  //   formPx <= gridWidth - 12 - ITEMS_MIN_PX
+  // When the grid is so narrow that the two floors + divider track
+  // would overlap, snap to the largest ratio that still respects the
+  // form floor and let the items column shrink to whatever's left (the
+  // divider is hidden in that range anyway via the @media (max-width:
+  // 992px) override, so the user won't notice the squeeze).
+  const DIVIDER_PX = 12;
+  const clampRatioForGrid = (ratio, gridWidth) => {
+    if (!Number.isFinite(ratio) || !gridWidth) return SPLIT_DEFAULT;
+    const minPx = FORM_MIN_PX;
+    const maxPx = Math.max(minPx, gridWidth - DIVIDER_PX - ITEMS_MIN_PX);
+    const minRatio = minPx / gridWidth;
+    const maxRatio = maxPx / gridWidth;
+    if (minRatio > maxRatio) return minRatio; // tiny viewport — favour the form floor
+    return Math.min(maxRatio, Math.max(minRatio, ratio));
+  };
+
+  // Track live drag values in refs so window-level listeners (registered
+  // at pointerdown) read the *current* grid rectangle on every move
+  // instead of a stale one captured at drag start. Window resize during a
+  // drag also re-clamps against the latest grid width.
+  // `latestRatio` mirrors `splitRatio` so the pointerup handler — registered
+  // once at drag start but reading from this ref — gets the freshest value
+  // even after many pointermove re-renders.
+  const splitDragRef = useRef({
+    active: false,
+    startX: 0,
+    startRatio: 0,
+    gridWidth: 0,
+    latestRatio: SPLIT_DEFAULT,
+  });
+
+  // Keep `latestRatio` in sync with `splitRatio` on every render so the
+  // pointerup handler (which is bound to the window) can persist the
+  // *final* ratio even though that handler was created in an older render.
+  splitDragRef.current.latestRatio = splitRatio;
+
+  // Persist splitRatio changes that don't originate from a drag — e.g.
+  // keyboard arrow steps on the divider. The pointerup handler already
+  // persists during drags, so this effect would normally be a no-op, but
+  // it's the single source of truth for persistence and runs whenever
+  // the ratio settles. We debounce via a 250 ms timeout to avoid
+  // hammering localStorage during a continuous pointermove.
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      try {
+        const committed = Number.isFinite(splitRatio) ? splitRatio : SPLIT_DEFAULT;
+        window.localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(committed * 1000) / 1000));
+      } catch {
+        /* localStorage disabled — ignore */
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [splitRatio]);
+
+  const handleDividerPointerDown = (e) => {
+    // Only act on primary mouse button or touch / pen — ignore middle/right
+    // click, which the user might use for context menus in the future.
+    if (e.button !== undefined && e.button !== 0) return;
+    const grid = gridRef.current;
+    if (!grid) return;
+    const rect = grid.getBoundingClientRect();
+    // On a narrow viewport (< 700px wide) the single-column stack is
+    // already in effect — do nothing.
+    if (rect.width < 700) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dividerRef.current?.classList.add("is-dragging");
+    // Page-level class lets the global `cursor: col-resize !important`
+    // rule (see HotelBilling.css .hotel-billing-page.is-resizing) take
+    // effect over inputs and other elements that would otherwise swap
+    // the cursor on pointer hover.
+    const pageEl = dividerRef.current?.closest(".hotel-billing-page");
+    pageEl?.classList.add("is-resizing");
+
+    splitDragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startRatio: splitRatio,
+      gridWidth: rect.width,
+    };
+
+    const onMove = (ev) => {
+      const drag = splitDragRef.current;
+      if (!drag.active) return;
+      // Re-measure every tick so window-resize during drag doesn't drift.
+      const liveGrid = gridRef.current?.getBoundingClientRect();
+      const gw = liveGrid?.width ?? drag.gridWidth;
+      if (!gw) return;
+      const dx = ev.clientX - drag.startX;
+      // Translate the captured start ratio by (dx / gridWidth). The
+      // anchor is the ratio at drag start so a fast drag can't blow
+      // past the bounds.
+      const nextRatioRaw = drag.startRatio + dx / gw;
+      const nextRatio = clampRatioForGrid(nextRatioRaw, gw);
+      setSplitRatio(nextRatio);
+    };
+    const onUp = (ev) => {
+      const drag = splitDragRef.current;
+      if (!drag.active) return;
+      drag.active = false;
+      dividerRef.current?.classList.remove("is-dragging");
+      const pageEl = dividerRef.current?.closest(".hotel-billing-page");
+      pageEl?.classList.remove("is-resizing");
+      try {
+        dividerRef.current?.releasePointerCapture?.(ev.pointerId);
+      } catch {
+        /* already released */
+      }
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      // Persist the final ratio (3-decimal precision — the split doesn't
+      // need finer granularity and this keeps the key string tiny).
+      try {
+        const committed = Number.isFinite(drag.latestRatio) ? drag.latestRatio : SPLIT_DEFAULT;
+        window.localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(committed * 1000) / 1000));
+      } catch {
+        /* localStorage disabled — ignore */
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  // Reset pointermove bookkeeping whenever the local ratio changes so the
+  // next drag uses the latest committed value as its anchor.
+  // (No-op work — kept here so the handlers above stay self-contained.)
+  const beginNextDragFrom = (latestRatio) => {
+    splitDragRef.current.startRatio = latestRatio;
+  };
+
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedProductVariant, setSelectedProductVariant] = useState("regular");
   const [quantity, setQuantity] = useState(1);
@@ -3458,7 +3630,21 @@ const HotelBilling = () => {
         )}
       </div>
 
-      <div className="hotel-billing-grid">
+      <div
+        ref={gridRef}
+        className="hotel-billing-grid"
+        /* Form takes splitRatio of the grid, divider is 12px, items card
+           fills the remainder (`1fr`). Updating this inline style on
+           every drag tick is what makes the resize handle feel real-time.
+           The CSS variable `--hotel-split` carries the ratio so the
+           `.hotel-billing-grid` rule in CSS can compose the template
+           once, and the @media (max-width: 992px) override can swap to
+           a single column without losing the divider hidden via
+           `display: none`. */
+        style={{
+          "--hotel-split": `${(splitRatio * 100).toFixed(2)}%`,
+        }}
+      >
         <div className="hotel-billing-card hotel-billing-form">
           <div className="hotel-billing-tabs" data-active={activeTab}>
             <div className="hotel-billing-tabs-indicator" />
@@ -5164,6 +5350,46 @@ const HotelBilling = () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Resizable divider between the form card (Lodging / Dining)
+            and the Live Bill card. Drag horizontally to grow either side.
+            The pointer handler is declared above; the divider element itself
+            just owns the visual style + ARIA semantics. The element hides
+            itself on narrow viewports via the existing `max-width: 992px`
+            rule on `.hotel-billing-grid-divider { display: none; }`. */}
+        <div
+          ref={dividerRef}
+          className="hotel-billing-grid-divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Live Bill"
+          tabIndex={0}
+          onPointerDown={handleDividerPointerDown}
+          onKeyDown={(e) => {
+            // Keyboard accessibility — Left / Right arrows step by 2% of
+            // the current grid width, Home / End snap to the bounds.
+            const grid = gridRef.current;
+            if (!grid) return;
+            const gw = grid.getBoundingClientRect().width;
+            if (!gw) return;
+            const step = (e.shiftKey ? 0.05 : 0.02) * gw;
+            if (e.key === "ArrowLeft") {
+              setSplitRatio((r) => clampRatioForGrid(r + step / gw, gw));
+              e.preventDefault();
+            } else if (e.key === "ArrowRight") {
+              setSplitRatio((r) => clampRatioForGrid(r - step / gw, gw));
+              e.preventDefault();
+            } else if (e.key === "Home") {
+              setSplitRatio(clampRatioForGrid(0.78, gw));
+              e.preventDefault();
+            } else if (e.key === "End") {
+              setSplitRatio(clampRatioForGrid(0.22, gw));
+              e.preventDefault();
+            }
+          }}
+        >
+          <span className="hotel-billing-grid-divider-grip" aria-hidden="true" />
         </div>
 
         {hotelModuleLock.liveBillLocked ? (

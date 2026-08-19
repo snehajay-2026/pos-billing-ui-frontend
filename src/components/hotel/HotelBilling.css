@@ -50,15 +50,93 @@
 
 .hotel-billing-grid {
   display: grid;
-  grid-template-columns: 1.2fr 0.9fr;
-  /* FIT-TO-SCREEN: was gap:20px → 14px. */
-  gap: 14px;
-  align-items: start;
+  /* Two-column template with a 12 px divider track in the middle. The
+     first track reads `--hotel-split` (set inline from React state) so
+     the user can drag the divider and the template reflows every tick.
+     `minmax(0, ...)` is essential — without the 0 floor the items card's
+     intrinsic min-content (e.g. a wide Generate Invoice button) would
+     expand the right column past 1fr and push the divider off-screen. */
+  grid-template-columns: minmax(0, var(--hotel-split, 55%)) 12px minmax(0, 1fr);
+  /* FIT-TO-SCREEN: was gap:20px → 14px → 0 because the divider track
+     is the visual separator. The 14 px gap still holds on narrow
+     breakpoints via the existing @media (max-width: 992px) override. */
+  gap: 0;
+  align-items: stretch;
   /* FIT-TO-SCREEN: bound the grid's vertical height so it scrolls
      inside its own card on laptop viewports instead of letting the
      page itself overflow. */
   max-height: calc(100vh - 240px);
   min-height: 0;
+}
+
+/* ---------- Resizable splitter divider ----------
+   The user can drag this column track to grow either the Lodging/Dining
+   form card (left) or the Live Bill card (right). The track sits in the
+   12 px middle column of `.hotel-billing-grid` (which is laid out as
+   `<form> | <divider> | <items>` via the inline style). The grip is the
+   pill-shaped handle in the centre; the surrounding column carries a
+   faint vertical gradient so users discover the affordance without
+   turning it into a heavy border. */
+.hotel-billing-grid-divider {
+  cursor: col-resize;
+  width: 12px;
+  align-self: stretch;
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0) 0%,
+    rgba(99, 102, 241, 0.16) 50%,
+    rgba(99, 102, 241, 0) 100%
+  );
+  border-radius: 6px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  /* `touch-action: none` lets pointermove fire on touch devices without
+     the page scrolling under the user's finger while they drag. */
+  touch-action: none;
+  transition: background 160ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+.hotel-billing-grid-divider:hover,
+.hotel-billing-grid-divider:focus-visible,
+.hotel-billing-grid-divider.is-dragging {
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0) 0%,
+    rgba(99, 102, 241, 0.42) 50%,
+    rgba(99, 102, 241, 0) 100%
+  );
+}
+.hotel-billing-grid-divider:focus-visible {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.32);
+}
+.hotel-billing-grid-divider-grip {
+  width: 4px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  transition:
+    height 160ms ease,
+    background 160ms ease;
+}
+.hotel-billing-grid-divider:hover .hotel-billing-grid-divider-grip,
+.hotel-billing-grid-divider:focus-visible .hotel-billing-grid-divider-grip,
+.hotel-billing-grid-divider.is-dragging .hotel-billing-grid-divider-grip {
+  height: 56px;
+  background: rgba(99, 102, 241, 0.85);
+}
+/* While dragging, suppress the cursor on the whole page so the user's
+   pointer never flips to a default arrow over an input. The drag handler
+   already calls setPointerCapture, but the rule covers the edge case
+   where capture fails (e.g. older Chromium without PointerEvent). */
+.hotel-billing-page.is-resizing,
+.hotel-billing-page.is-resizing * {
+  cursor: col-resize !important;
 }
 
 .hotel-billing-subnav {
@@ -227,6 +305,16 @@
   padding: 24px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   backdrop-filter: blur(18px);
+  /* `min-width: 0` lets the grid track resize the card below its
+     intrinsic content width. Without it, the form's charge panel
+     inputs (and the items card's discount editor) push the right
+     grid track wider than `1fr` allows and the page grows a
+     horizontal scrollbar whenever the user shrinks the splitter.
+     `overflow-x: hidden` clips any child that still wants to render
+     wider than the card after `min-width: 0` propagation — card-level
+     clipping, not the page-level clipping the user forbade. */
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .hotel-table-grid {
@@ -2133,8 +2221,14 @@
 }
 
 @media (max-width: 992px) {
+  /* On narrow viewports the form + items cards stack into a single
+     column, so the divider has nothing to separate. Force `--hotel-split`
+     to occupy the full width and drop the divider track + handle. */
   .hotel-billing-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hotel-billing-grid-divider {
+    display: none;
   }
 }
 
@@ -3016,9 +3110,26 @@
      content exceeds the available grid height. The parent grid has
      `max-height: calc(100vh - 240px)` and `align-items: start`, so
      this card naturally fills the available vertical space and
-     scrolls inside rather than letting the page itself overflow. */
+     scrolls inside rather than letting the page itself overflow.
+     `min-width: 0` is critical: without it the items card's intrinsic
+     min-content (e.g. the discount editor's Manual % + Coupon code
+     inputs) pushes the right grid track wider than `1fr` allows and
+     the page grows a horizontal scrollbar. The user's resizable
+     splitter can shrink the items card to the 320 px floor, and that
+     floor must actually apply — so the children must accept the
+     squeeze and reflow instead of overflowing. */
+  min-width: 0;
   max-height: calc(100vh - 240px);
   min-height: 0;
+  /* `overflow-x: hidden` clips any child that still wants to render
+     wider than the items track after `min-width: 0` propagation. The
+     summary card's grid rows + the discount editor's inputs can have
+     intrinsic widths above 320 px when the splitter shrinks the items
+     card; clipping them at the card boundary keeps the page from
+     growing a horizontal scrollbar. (This is *card-level* clipping,
+     not the page-level overflow:hidden the user forbade — the body
+     still scrolls naturally for any height overflow.) */
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
@@ -3762,9 +3873,13 @@
 
   /* Items card — let it grow to fit summary + actions naturally;
      only the items list inside scrolls. Don't bound the card itself
-     (overflow:hidden would clip the summary visually). */
+     (overflow:hidden would clip the summary visually). The
+     `overflow-x: hidden` (inherited from `.hotel-billing-card`) clips
+     any child that renders wider than the items track when the user
+     drags the splitter past the 320 px items floor. */
   .hotel-billing-items {
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
     display: flex;
     flex-direction: column;
   }
