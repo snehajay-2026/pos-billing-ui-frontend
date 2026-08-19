@@ -3486,10 +3486,10 @@ const HotelBilling = () => {
                 {diningCount > 0 && <span className="hotel-billing-tab-badge">{diningCount}</span>}
               </button>
             ) : null}
-            <Link to="/hotel-tables" className="hotel-billing-tab hotel-billing-tab-link">
-              <FaChair />
-              <span className="hotel-billing-tab-label">Tables</span>
-            </Link>
+            {/* Table shortcut removed from POS Billing per spec — the
+                /hotel-tables route is still reachable from the sidebar
+                (Sidebar.jsx), the global header search, and the AI
+                assistant, so the underlying functionality is intact. */}
           </div>
 
           {/* Live "active bill" banner: shows what's in the cart right now, regardless of tab */}

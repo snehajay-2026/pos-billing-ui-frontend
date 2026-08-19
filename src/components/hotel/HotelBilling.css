@@ -1,8 +1,12 @@
 .hotel-billing-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 6px 0 24px;
+  /* FIT-TO-SCREEN: was gap:20px → 14px; padding 6px 0 24px → 4px 0 12px.
+     Total vertical budget on a 768px laptop:
+     header(~80) + banner(~50) + grid + subnav(~52) + gaps(~42)
+     ≈ <viewport when grid height is bounded. */
+  gap: 14px;
+  padding: 4px 0 12px;
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 24%),
     radial-gradient(circle at top right, rgba(251, 191, 36, 0.09), transparent 20%),
@@ -14,7 +18,8 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 16px;
-  padding: 26px 24px;
+  /* FIT-TO-SCREEN: was padding 26px 24px → 16px 20px. */
+  padding: 16px 20px;
   background: linear-gradient(135deg, #2b67ff, #1c3c9c);
   color: #fff;
   border-radius: 22px;
@@ -25,14 +30,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.75rem;
+  /* FIT-TO-SCREEN: was 1.75rem → 1.25rem. */
+  font-size: 1.25rem;
   margin: 0;
 }
 
 .hotel-billing-header p {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   opacity: 0.9;
   max-width: 640px;
+  font-size: 0.9rem;
 }
 
 .hotel-billing-meta {
@@ -44,8 +51,14 @@
 .hotel-billing-grid {
   display: grid;
   grid-template-columns: 1.2fr 0.9fr;
-  gap: 20px;
+  /* FIT-TO-SCREEN: was gap:20px → 14px. */
+  gap: 14px;
   align-items: start;
+  /* FIT-TO-SCREEN: bound the grid's vertical height so it scrolls
+     inside its own card on laptop viewports instead of letting the
+     page itself overflow. */
+  max-height: calc(100vh - 240px);
+  min-height: 0;
 }
 
 .hotel-billing-subnav {
@@ -1507,9 +1520,10 @@
 }
 
 .hotel-add-bill-btn {
-  min-width: 200px;
-  padding: 14px 24px;
-  font-size: 1rem;
+  /* FIT-TO-SCREEN: was min-width:200px padding:14px 24px → min-width:160px padding:10px 18px. */
+  min-width: 160px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
 }
 
 .hotel-add-bill-btn:disabled {
@@ -1980,14 +1994,15 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
+  /* FIT-TO-SCREEN: was gap:12px margin-top:16px → gap:8px margin-top:10px. */
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .hotel-payment-picker {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 160px;
 }
 
@@ -2009,8 +2024,8 @@
 
 .hotel-payment-picker select {
   border: 1px solid rgba(99, 102, 241, 0.32);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 0.95rem;
   background: #ffffff;
   color: #0f172a;
@@ -2028,8 +2043,9 @@
 }
 
 .hotel-print-bill-btn {
-  min-width: 220px;
-  padding: 14px 22px;
+  /* FIT-TO-SCREEN: was min-width:220px padding:14px 22px → min-width:170px padding:10px 18px. */
+  min-width: 170px;
+  padding: 10px 18px;
   font-size: 0.95rem;
 }
 
@@ -2996,6 +3012,23 @@
   padding: 16px 18px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+  /* FIT-TO-SCREEN: let this card be the scroll container when its
+     content exceeds the available grid height. The parent grid has
+     `max-height: calc(100vh - 240px)` and `align-items: start`, so
+     this card naturally fills the available vertical space and
+     scrolls inside rather than letting the page itself overflow. */
+  max-height: calc(100vh - 240px);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+}
+.hotel-billing-items::-webkit-scrollbar {
+  width: 6px;
+}
+.hotel-billing-items::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35);
+  border-radius: 999px;
 }
 
 .hotel-item-row {
@@ -3048,18 +3081,19 @@
 }
 
 .hotel-summary-card {
-  border-radius: 22px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.14);
-  padding: 20px;
+  /* FIT-TO-SCREEN: was padding 20px gap 14px → padding 14px 16px gap 10px. */
+  padding: 14px 16px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   background: linear-gradient(180deg, #f5f9ff 0%, #ffffff 100%);
 }
 
 .hotel-summary-actions select {
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
 }
 
@@ -3440,6 +3474,182 @@
   }
 }
 
+/* ---------- Laptop fit-to-screen (≤900px tall) ----------
+   On 1366×768 / 1536×864 / 1440×900 laptops the natural page
+   height (header + banner + grid + summary) is ~860–1010px — over
+   the 768/864/900 viewport by 90–115px. Without help, the body
+   grows a vertical scrollbar even when the bill-items card has
+   `overflow-y: auto`. The fix below:
+     1. Bound the .hotel-billing-page to 100vh and clip overflow
+        so the page itself never scrolls.
+     2. Stack the header meta cards BELOW the title block on laptop
+        heights (saves ~50px of vertical space vs side-by-side).
+     3. Tighten header padding + h2 size + active-banner further.
+     4. Re-budget .hotel-billing-grid max-height to (100vh − ~340px)
+        so the items card scrolls inside its own box with the
+        summary card visible at the bottom.
+   Nothing here hides content — the items list still shows every
+   line item via the card's own internal scroll. */
+@media (max-height: 900px) {
+  .hotel-billing-page {
+    /* Bound the page so the body never produces a vertical
+       scrollbar; the bill-items card is the only scroll container.
+       The global Header is `position: sticky; min-height: 64px`,
+       so it occupies 64px of body height (it's in normal flow).
+       .layout-main has 20px padding top + bottom = 40px, but we
+       collapse the bottom padding to 0 so the page can fill the
+       remaining vertical space without leaving a 104px hole that
+       would let the body scroll. Net available: `100vh - 64px - 20px
+       = 100vh - 84px`. The page's own padding (4px top + 12px
+       bottom = 16px) is included in that. */
+    height: calc(100vh - 84px);
+    overflow: hidden;
+  }
+  /* Stack meta cards under the title to recover vertical space. */
+  .hotel-billing-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .hotel-billing-header-main {
+    width: 100%;
+  }
+  .hotel-billing-meta {
+    width: 100%;
+    gap: 8px;
+  }
+  .hotel-billing-meta-card {
+    flex: 1;
+    padding: 6px 10px;
+    min-width: 0;
+    border-radius: 10px;
+  }
+  .hotel-billing-meta-card strong {
+    font-size: 0.95rem;
+    margin-top: 1px;
+  }
+  .hotel-billing-meta-card span {
+    font-size: 0.62rem;
+  }
+  .hotel-billing-title-row {
+    gap: 10px;
+  }
+  .hotel-billing-title-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    border-radius: 10px;
+  }
+  .hotel-billing-header h2 {
+    font-size: 1.05rem;
+    margin: 2px 0 0;
+  }
+  .hotel-billing-eyebrow {
+    font-size: 0.6rem;
+  }
+  .hotel-billing-header p {
+    display: none;
+  }
+
+  /* Active banner — tighter. */
+  .hotel-billing-active-banner {
+    margin: 0;
+    padding: 6px 12px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+  .hotel-billing-active-banner-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: 0.85rem;
+  }
+  .hotel-billing-active-banner-text strong {
+    font-size: 0.82rem;
+  }
+  .hotel-billing-active-banner-text span {
+    font-size: 0.7rem;
+  }
+  .hotel-billing-active-banner-cta {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+  }
+
+  /* Grid — re-budget to fit the now-smaller header + banner. The
+     items card needs room for its items-head + scrollable list +
+     summary + actions; cap the grid so the items card scrolls
+     inside rather than letting the page overflow.
+     Page height = `100vh - 104px` (page padding included).
+     Subtract header (~139px) and banner (~52px) and gaps (~28px)
+     ≈ 219px → grid gets `calc(100vh - 285px)`. */
+  .hotel-billing-grid {
+    gap: 12px;
+    max-height: calc(100vh - 285px);
+  }
+  .hotel-billing-items {
+    max-height: calc(100vh - 285px);
+    padding: 12px 14px;
+    gap: 10px;
+    border-radius: 16px;
+  }
+  .hotel-billing-form {
+    padding: 12px 14px;
+  }
+
+  /* Inside the items card: keep the head + summary + actions
+     visible; the items list takes the remaining height and
+     scrolls inside it. */
+  .hotel-billing-items-head {
+    margin-bottom: 4px;
+  }
+  .hotel-items-list {
+    /* The items list is the inner scroll container; cap it so the
+       summary card stays pinned to the bottom of the items card.
+       Items card ≈ (100vh - 285px); subtract items-head (~52px),
+       summary (~141px), actions (~55px), gaps (~32px), padding
+       (~24px) ≈ 304px → list gets the remainder, bounded. */
+    max-height: calc(100vh - 590px);
+    min-height: 80px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+  .hotel-items-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .hotel-items-list::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+    border-radius: 999px;
+  }
+
+  /* Summary card — keep visible, tighten padding. */
+  .hotel-summary-card {
+    padding: 10px 12px;
+    gap: 6px;
+    border-radius: 12px;
+  }
+  .hotel-summary-row {
+    font-size: 0.85rem;
+  }
+  .hotel-summary-total {
+    font-size: 1rem;
+  }
+  .hotel-summary-actions {
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .hotel-summary-actions select {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+  .hotel-print-bill-btn {
+    min-width: 140px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+  }
+}
+
 /* ---------- Tab bar inside the billing card ---------- */
 .hotel-billing-tabs {
   position: relative;
@@ -3515,10 +3725,12 @@
 .hotel-billing-active-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  margin-bottom: 18px;
+  /* FIT-TO-SCREEN: was gap:12px padding:12px 16px → gap:10px padding:8px 14px.
+     Saves ~12px of vertical space. */
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  margin-bottom: 0;
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   border: 1px solid rgba(79, 70, 229, 0.18);
   flex-wrap: wrap;
@@ -3530,9 +3742,10 @@
 }
 
 .hotel-billing-active-banner-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  /* FIT-TO-SCREEN: was 38×38 → 32×32. */
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   color: #fff;
@@ -3549,27 +3762,30 @@
   display: flex;
   flex-direction: column;
   min-width: 200px;
+  gap: 1px;
 }
 
 .hotel-billing-active-banner-text strong {
-  font-size: 1rem;
+  font-size: 0.92rem;
   color: #1e293b;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .hotel-billing-active-banner-text span {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: #475569;
+  line-height: 1.2;
 }
 
 .hotel-billing-active-banner-cta {
   border: 1px solid rgba(79, 70, 229, 0.35);
   background: #fff;
   color: #4f46e5;
-  padding: 7px 14px;
+  padding: 5px 12px;
   border-radius: 999px;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.15s ease;
 }
