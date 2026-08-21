@@ -1,7 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "../components/layout/Layout";
 import { getStoreSettings } from "../services/storeSettingsService";
-import { getProducts, addProduct, updateProduct, deleteProduct } from "../services/productService";
+import {
+  getProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductImage,
+  deleteProductImage,
+} from "../services/productService";
 import { useUi } from "../context/UiContext";
 import {
   FaBoxOpen,
@@ -22,10 +29,18 @@ import {
   FaThLarge,
   FaListUl,
   FaBoxes as FaBoxesSolid,
+  FaCamera,
+  FaImage,
 } from "react-icons/fa";
 import "./ProductPage.css";
 
 const LOW_STOCK_THRESHOLD = 10;
+
+// Mirror of server-side validation in server/lib/product-images.js so
+// the UI rejects bad files before the round-trip. Keep in sync.
+const ALLOWED_IMAGE_MIME = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 const EMPTY_FORM = {
   name: "",
   price: "",
@@ -56,6 +71,21 @@ const ProductPage = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [view, setView] = useState("grid"); // "grid" | "list"
+
+  // Upload Picture state — separate from `form` because the file is a
+  // binary blob and a server-issued URL we don't want to resubmit on
+  // every keystroke. We track:
+  //   imageFile        — user-selected File (yet to upload)
+  //   imagePreviewUrl  — objectURL of the local file, for preview
+  //   imageUrl         — server-side URL (existing image on Edit)
+  //   imageMarkedClear — true when the user clicked "Remove" and we
+  //                      need to send `removeImage: true` on save
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageMarkedClear, setImageMarkedClear] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const fileInputRef = useRef(null);
 
   const getCategories = () => {
     switch (businessType) {
@@ -151,11 +181,80 @@ const ProductPage = () => {
     return Object.keys(next).length === 0;
   };
 
+  // Revoke the previous objectURL to avoid leaking memory. objectURLs
+  // are pinned until document.unload or manual revoke.
+  const resetImageState = () => {
+    if (imagePreviewUrl) {
+      try {
+        URL.revokeObjectURL(imagePreviewUrl);
+      } catch {
+        /* ignore */
+      }
+    }
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setImageUrl(null);
+    setImageMarkedClear(false);
+    setImageError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const cancelEdit = () => {
     setForm(EMPTY_FORM);
     setEditing(null);
     setErrors({});
     setShowForm(false);
+    resetImageState();
+  };
+
+  // Image picker handler. Validates MIME + size before accepting.
+  const onPickImage = (e) => {
+    const file = e.target.files && e.target.files[0];
+    setImageError("");
+    if (!file) return;
+    const mime = (file.type || "").toLowerCase();
+    if (!ALLOWED_IMAGE_MIME.includes(mime)) {
+      setImageError("Please choose a JPG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError(`Image is too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB).`);
+      return;
+    }
+    // Replacing an existing local preview: revoke the old objectURL.
+    if (imagePreviewUrl) {
+      try {
+        URL.revokeObjectURL(imagePreviewUrl);
+      } catch {
+        /* ignore */
+      }
+    }
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    // If the user was about to clear the image, this means they want
+    // to replace it instead — undo the clear.
+    setImageMarkedClear(false);
+  };
+
+  const onClearImage = () => {
+    // If a new file was selected, just drop it. If an existing image
+    // was shown, mark it for removal on save.
+    if (imageFile) {
+      if (imagePreviewUrl) {
+        try {
+          URL.revokeObjectURL(imagePreviewUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (imageUrl) {
+      setImageMarkedClear(true);
+    }
   };
 
   const saveProduct = async () => {
@@ -172,6 +271,7 @@ const ProductPage = () => {
 
     setSaving(true);
     try {
+      let saved;
       if (editing) {
         const updated = await updateProduct({
           ...form,
@@ -180,7 +280,13 @@ const ProductPage = () => {
           gst: Number(form.gst),
           stock: Number(form.stock),
           unit: getUnitForCategory(form.category) || "unit",
+          // Send the flag only when the user explicitly marked the
+          // existing image for removal. Never include new image
+          // metadata here — the image is uploaded via a separate
+          // multipart endpoint.
+          removeImage: imageMarkedClear || undefined,
         });
+        saved = updated;
         setProducts((list) => list.map((p) => (p.id === editing ? updated : p)));
         showToast("success", `Updated "${form.name}"`);
       } else {
@@ -194,9 +300,28 @@ const ProductPage = () => {
           hsn: form.hsn,
           unit: getUnitForCategory(form.category),
         });
+        saved = created;
         setProducts((list) => [...list, created]);
         showToast("success", `Added "${form.name}" to catalog`);
       }
+
+      // Image handling — separate from the JSON create/update so the
+      // file upload can be retried / fail independently of the row.
+      if (imageFile && saved && saved.id) {
+        try {
+          const withImage = await uploadProductImage(saved.id, imageFile);
+          // Replace the row in state with the server's response (which
+          // now includes imageUrl).
+          setProducts((list) => list.map((p) => (p.id === withImage.id ? withImage : p)));
+        } catch (err) {
+          console.error("Image upload failed:", err);
+          showToast(
+            "error",
+            err?.message || "Product saved but image upload failed. Try again from Edit."
+          );
+        }
+      }
+
       cancelEdit();
     } catch (err) {
       console.error("Failed to save product:", err);
@@ -211,6 +336,13 @@ const ProductPage = () => {
     setForm({ ...p, unit: p.unit || getUnitForCategory(p.category) });
     setErrors({});
     setShowForm(true);
+    // Reset any previous image state, then load the existing image so
+    // the preview box shows the current picture and the user can choose
+    // to replace or remove it.
+    resetImageState();
+    if (p.imageUrl) {
+      setImageUrl(p.imageUrl);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -348,6 +480,64 @@ const ProductPage = () => {
             </div>
 
             <div className="pr-form-grid">
+              <div className="pr-field pr-field-image">
+                <label>Upload Picture</label>
+                <div className="pr-image-uploader">
+                  <div className="pr-image-preview">
+                    {imagePreviewUrl ? (
+                      <img src={imagePreviewUrl} alt="Selected product preview" />
+                    ) : imageMarkedClear ? (
+                      <span className="pr-image-empty">Will be removed on save</span>
+                    ) : imageUrl ? (
+                      <img src={imageUrl} alt="Current product image" />
+                    ) : (
+                      <span className="pr-image-empty">
+                        <FaImage />
+                        <span>No image yet</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="pr-image-actions">
+                    <button
+                      type="button"
+                      className="pr-btn pr-btn-soft"
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    >
+                      <FaCamera />
+                      <span>{imageUrl || imagePreviewUrl ? "Replace image" : "Choose image"}</span>
+                    </button>
+                    {(imageFile || imageUrl) && !imageMarkedClear && (
+                      <button type="button" className="pr-btn pr-btn-ghost" onClick={onClearImage}>
+                        <FaTimes />
+                        <span>{imageFile ? "Cancel selection" : "Remove image"}</span>
+                      </button>
+                    )}
+                    {imageMarkedClear && (
+                      <button
+                        type="button"
+                        className="pr-btn pr-btn-soft"
+                        onClick={() => setImageMarkedClear(false)}
+                      >
+                        <FaCamera />
+                        <span>Keep existing image</span>
+                      </button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      onChange={onPickImage}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+                  {imageError ? (
+                    <small className="pr-error-text">{imageError}</small>
+                  ) : (
+                    <small className="pr-image-hint">JPG, PNG, WebP, or GIF · up to 2 MB</small>
+                  )}
+                </div>
+              </div>
+
               <div className={`pr-field ${errors.name ? "is-error" : ""}`}>
                 <label>Product Name</label>
                 <div className="pr-input-wrap">
@@ -594,8 +784,19 @@ const ProductPage = () => {
                   <article key={p.id} className={`pr-card pr-card-${tone.key} pr-cat-${cat}`}>
                     <header className="pr-card-head">
                       <div className="pr-card-title">
-                        <span className="pr-card-name">{p.name}</span>
-                        <span className="pr-card-cat">{p.category || "Uncategorised"}</span>
+                        {p.imageUrl ? (
+                          <span className="pr-card-thumb">
+                            <img src={p.imageUrl} alt={p.name} loading="lazy" />
+                          </span>
+                        ) : (
+                          <span className={`pr-card-thumb pr-card-thumb-fallback pr-cat-${cat}`}>
+                            <FaBoxOpen />
+                          </span>
+                        )}
+                        <span className="pr-card-namewrap">
+                          <span className="pr-card-name">{p.name}</span>
+                          <span className="pr-card-cat">{p.category || "Uncategorised"}</span>
+                        </span>
                       </div>
                       <span className={`pr-stock-pill pr-stock-${tone.key}`}>
                         {tone.key === "out" ? <FaExclamationTriangle /> : <FaCheckCircle />}
@@ -687,7 +888,13 @@ const ProductPage = () => {
                       <tr key={p.id}>
                         <td>
                           <div className="pr-cell-name">
-                            <span className={`pr-cat-dot pr-cat-dot-${cat}`} />
+                            {p.imageUrl ? (
+                              <span className="pr-cell-thumb">
+                                <img src={p.imageUrl} alt={p.name} loading="lazy" />
+                              </span>
+                            ) : (
+                              <span className={`pr-cat-dot pr-cat-dot-${cat}`} />
+                            )}
                             <strong>{p.name}</strong>
                           </div>
                         </td>
