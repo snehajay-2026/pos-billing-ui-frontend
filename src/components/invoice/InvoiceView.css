@@ -299,6 +299,88 @@
   border-color: #93c5fd;
 }
 
+/* Back button — consistent across Retail / Hotel Dining / Hotel Lodging /
+   Laundry / Service Invoice Previews. Visually distinguishable from the
+   other action buttons (which lean blue/indigo) by a neutral slate fill +
+   arrow-left icon, so the cashier spots it as the "exit" affordance
+   rather than another share / download option. Mirrors the existing
+   `invoice-action-btn` shape so the toolbar layout doesn't shift. */
+.invoice-back-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.invoice-back-btn:hover,
+.invoice-back-btn:focus {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* Top back bar — sticky row above the header that hosts the prominent
+   Back button. Always visible (sits OUTSIDE the action group so it isn't
+   pushed off-screen by toolbar wrap), touches the container's left edge
+   so the cashier sees it the moment the preview renders. The label
+   "Back to Billing" makes the destination unambiguous; the slate-and-
+   ghost-button treatment distinguishes it from the blue action buttons
+   below so it's not mistaken for another share / download / print
+   option. */
+.invoice-back-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 18px 0 18px;
+  background: transparent;
+}
+
+.invoice-back-bar .invoice-back-btn {
+  /* Promote the bar-hosted Back button to a larger, more clickable target
+     than the action-group variant. Cashiers reach for it on touch screens
+     and on busy till hardware too, so 44px+ tall with a clear icon. */
+  padding: 10px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: #ffffff;
+  border: 1.5px solid #94a3b8;
+  color: #1e293b;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.05s ease;
+}
+
+.invoice-back-bar .invoice-back-btn:hover,
+.invoice-back-bar .invoice-back-btn:focus {
+  background: #e2e8f0;
+  border-color: #475569;
+  color: #0f172a;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.invoice-back-bar .invoice-back-btn:active {
+  transform: translateY(1px);
+}
+
+@media print {
+  .invoice-back-bar {
+    /* Belt-and-braces: even if the parent .invoice-container loses its
+       d-print-none, the Back button must never bleed onto the printed
+       invoice. */
+    display: none !important;
+  }
+}
+
 .invoice-subtitle {
   margin: 4px 0 0;
   color: #475569;

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { getInvoiceByNo, updateInvoice } from "../../services/invoiceService";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import { getUser } from "../../utils/auth";
@@ -21,14 +21,42 @@ import {
   FaUndo,
   FaSearchPlus,
   FaSearchMinus,
+  FaArrowLeft,
 } from "react-icons/fa";
 import "./InvoiceView.css"; // ⬅️ import new CSS
 
 const InvoiceView = () => {
   const { invoiceNo } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isForceReprint = new URLSearchParams(location.search).get("reprint") === "true";
+
+  // === Back navigation =====================================================
+  // The cashier opens this preview from the live billing screen (POSBilling,
+  // HotelBilling, ServiceBilling, LaundryBilling) by clicking Generate Invoice.
+  // `useNavigate` was added to the router history by that caller, so a plain
+  // `navigate(-1)` returns the cashier to the exact screen they came from —
+  // including the right store-type sub-section (Hotel Dining vs Hotel Lodging,
+  // etc.). React Router keeps the previous entry in `window.history`, and
+  // the originating screen re-mounts with its own state. We deliberately do
+  // NOT route to /dashboard or /login because the cashier may still be mid-
+  // billing; redirecting to dashboard would silently lose their cart.
+  //
+  // History-edge case: if the user landed here from an external deep link
+  // (e.g. a share-link round-trip on a public device, or a reload after the
+  // cashier closed their tab mid-preview), `navigate(-1)` would fall out of
+  // the SPA entirely. Fall back to `/home` in that scenario — that's the
+  // same destination the app's `authExpired` handler uses for an
+  // unauthenticated visit, so the user lands on the home screen instead of
+  // bouncing out to a blank page.
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/home");
+    }
+  };
 
   const previewMode = new URLSearchParams(location.search).get("preview");
 
@@ -561,6 +589,24 @@ const InvoiceView = () => {
 
   return (
     <div className={`invoice-container${isServiceInvoice ? " invoice-container-service" : ""}`}>
+      {/* TOP BACK BAR — always-visible, sticky at the top so the cashier can
+          leave the Invoice Preview no matter how wide/narrow their screen
+          is, and regardless of how many other toolbar buttons wrap onto
+          subsequent rows. Sits OUTSIDE the .invoice-header so its presence
+          doesn't depend on the action-group flex layout. Hidden in print
+          so the printed page still shows only the receipt. */}
+      <div className="invoice-back-bar d-print-none">
+        <button
+          type="button"
+          className="invoice-back-btn"
+          onClick={handleBack}
+          title="Return to the previous billing screen"
+          aria-label="Back to previous billing screen"
+        >
+          <FaArrowLeft /> Back to Billing
+        </button>
+      </div>
+
       {/* HEADER BAR */}
       <div className="invoice-header d-print-none">
         <div>

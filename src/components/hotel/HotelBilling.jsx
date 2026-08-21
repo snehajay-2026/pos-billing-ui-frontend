@@ -3387,8 +3387,38 @@ const HotelBilling = () => {
       // Also append the layout preference as a class on the popup's
       // <body> so the print stylesheet can scope print-only rules to the
       // chosen layout (e.g. force `@page size: 80mm auto` when thermal).
+      //
+      // The popup preview runs outside React Router, so a Back button
+      // rendered by the invoice component can't navigate history. Instead,
+      // we inject a tiny floating "Close" button into the popup's own DOM
+      // — it calls `window.close()` which dismisses the popup and returns
+      // the cashier to the HotelBilling tab they were on. The main tab is
+      // untouched (no full reload, no cart reset), and the cashier can
+      // keep billing the next table right away.
+      //
+      // Markup + styles are kept here (not in a stylesheet) because the
+      // popup doesn't share the parent document's stylesheets reliably
+      // across browsers — they get injected below via cloneNode, but a
+      // standalone `position: fixed` button keeps working regardless of
+      // which stylesheets successfully attach.
       w.document.write(
-        '<!doctype html><html><head><title>Invoice Preview</title></head><body class="hotel-preview-popup"><div id="root"></div></body></html>'
+        "<!doctype html><html><head><title>Invoice Preview</title>" +
+          "<style>" +
+          ".hotel-preview-close-btn{position:fixed;top:12px;right:12px;z-index:9999;" +
+          "display:inline-flex;align-items:center;gap:6px;padding:8px 14px;" +
+          "background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;border-radius:10px;" +
+          "font:600 0.92rem system-ui,-apple-system,Segoe UI,Roboto,sans-serif;" +
+          "cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,0.08);}" +
+          ".hotel-preview-close-btn:hover{background:#e2e8f0;color:#1e293b;}" +
+          ".hotel-preview-close-btn:focus{outline:2px solid #6366f1;outline-offset:2px;}" +
+          "@media print{display:none !important;}" +
+          "</style>" +
+          '</head><body class="hotel-preview-popup">' +
+          '<button type="button" class="hotel-preview-close-btn" onclick="window.close()" aria-label="Close invoice preview">' +
+          "&larr; Back" +
+          "</button>" +
+          '<div id="root"></div>' +
+          "</body></html>"
       );
       Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).forEach((node) => {
         try {
@@ -3413,6 +3443,50 @@ const HotelBilling = () => {
         w.document.body.classList.add(isThermal ? "hotel-preview-thermal" : "hotel-preview-a4");
       } catch (e) {
         /* ignore */
+      }
+      // Inject a high-priority close button into the popup AFTER the body
+      // class is set. We attach it via DOM manipulation (rather than relying
+      // on the inline `<button>` we wrote earlier) so the button survives
+      // any popup-blocker scripts that strip bare `<button onclick=...>`
+      // tags but leave programmatic DOM nodes alone. The styles inline on
+      // the element override anything the cloned parent stylesheets try to
+      // apply, and it sits at the top-right corner so it never overlaps the
+      // receipt content.
+      try {
+        const closeBtn = w.document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.setAttribute("aria-label", "Close invoice preview");
+        closeBtn.textContent = "← Back";
+        closeBtn.style.cssText =
+          "position:fixed;top:12px;right:12px;z-index:2147483647;" +
+          "display:inline-flex;align-items:center;gap:6px;padding:10px 16px;" +
+          "background:#ffffff;border:1.5px solid #94a3b8;color:#1e293b;" +
+          "border-radius:10px;font:700 0.95rem system-ui,-apple-system,Segoe UI,Roboto,sans-serif;" +
+          "cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,0.12);" +
+          "transition:background 0.18s ease,transform 0.05s ease;";
+        closeBtn.addEventListener("click", () => {
+          try {
+            w.close();
+          } catch (e) {
+            /* ignore */
+          }
+        });
+        closeBtn.addEventListener("mouseover", () => {
+          closeBtn.style.background = "#e2e8f0";
+        });
+        closeBtn.addEventListener("mouseout", () => {
+          closeBtn.style.background = "#ffffff";
+        });
+        // A print stylesheet hides it during the auto-print so the printed
+        // page is just the receipt.
+        const printStyle = w.document.createElement("style");
+        printStyle.textContent =
+          "@media print { .hotel-preview-close-btn { display:none !important; } }";
+        closeBtn.className = "hotel-preview-close-btn";
+        w.document.head.appendChild(printStyle);
+        w.document.body.appendChild(closeBtn);
+      } catch (e) {
+        /* ignore — popup will still show the receipt, just no close button */
       }
       reactRoot.render(
         <InvoiceComponent
