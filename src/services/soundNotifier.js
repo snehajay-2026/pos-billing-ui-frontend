@@ -67,9 +67,21 @@ const writeVolumeToStorage = (next) => {
 let audioCtx = null;
 let enabled = readEnabledFromStorage();
 let volume = readVolumeFromStorage();
+// Chrome warns "AudioContext was not allowed to start" if we instantiate
+// or resume() an AudioContext before the page has seen a real user
+// gesture. We only need the context when the user has enabled sounds or
+// clicks the "Test Sound" button, so we defer construction until either
+// condition is met. This flag flips on the first trusted click / keydown
+// / touchstart and is the gate ensureContext() checks before touching
+// the Web Audio API.
+let userGestureSeen = false;
 
 const ensureContext = () => {
   if (!isBrowser) return null;
+  // Hard gate: never touch the Web Audio API before a user gesture.
+  // Some browsers log a console warning even when we only call
+  // `new AudioContext()` (no resume) before a gesture, so we wait.
+  if (!userGestureSeen) return null;
   if (!audioCtx) {
     const Ctor = window.AudioContext || window.webkitAudioContext;
     if (!Ctor) return null;
@@ -84,19 +96,21 @@ const ensureContext = () => {
   return audioCtx;
 };
 
-// Browser autoplay policy: attach a one-shot listener that resumes the
-// AudioContext on the first user interaction. After that, programmatic
-// play() works.
+// Browser autoplay policy: stamp the first user interaction so subsequent
+// sound playback is allowed. We do NOT eagerly construct the AudioContext
+// here — that fires Chrome's "AudioContext was not allowed to start"
+// warning even when no sound is requested. Construction happens lazily
+// inside `ensureContext()` once a real play/preview is asked for.
 if (isBrowser) {
-  const resume = () => {
-    ensureContext();
-    window.removeEventListener("click", resume, true);
-    window.removeEventListener("keydown", resume, true);
-    window.removeEventListener("touchstart", resume, true);
+  const markGesture = () => {
+    userGestureSeen = true;
+    window.removeEventListener("click", markGesture, true);
+    window.removeEventListener("keydown", markGesture, true);
+    window.removeEventListener("touchstart", markGesture, true);
   };
-  window.addEventListener("click", resume, true);
-  window.addEventListener("keydown", resume, true);
-  window.addEventListener("touchstart", resume, true);
+  window.addEventListener("click", markGesture, true);
+  window.addEventListener("keydown", markGesture, true);
+  window.addEventListener("touchstart", markGesture, true);
 }
 
 // Synthesize a short tone at the given frequency. Falls back to a quick

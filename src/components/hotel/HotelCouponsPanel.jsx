@@ -51,6 +51,7 @@ const HotelCouponsPanel = () => {
     minSubtotal: "",
     validFrom: "",
     validUntil: "",
+    usageLimit: "",
   });
   const [busyId, setBusyId] = useState(null);
 
@@ -75,7 +76,14 @@ const HotelCouponsPanel = () => {
 
   const reset = () => {
     setEditingId(null);
-    setForm({ code: "", value: "", minSubtotal: "", validFrom: "", validUntil: "" });
+    setForm({
+      code: "",
+      value: "",
+      minSubtotal: "",
+      validFrom: "",
+      validUntil: "",
+      usageLimit: "",
+    });
   };
 
   const handleEdit = (row) => {
@@ -86,6 +94,7 @@ const HotelCouponsPanel = () => {
       minSubtotal: row.minSubtotal != null ? String(row.minSubtotal) : "",
       validFrom: row.validFrom || "",
       validUntil: row.validUntil || "",
+      usageLimit: row.usageLimit != null ? String(row.usageLimit) : "",
     });
   };
 
@@ -104,6 +113,13 @@ const HotelCouponsPanel = () => {
       setError("Percent value must be between 0 and 100");
       return;
     }
+    // usageLimit is optional. Empty/0 means "unlimited" (server stores
+    // NULL). Owners set it when they want a "first 50 bookings" promo.
+    const usageLimitRaw = form.usageLimit === "" ? null : Number(form.usageLimit);
+    if (usageLimitRaw != null && (!Number.isInteger(usageLimitRaw) || usageLimitRaw < 1)) {
+      setError("Usage limit must be a positive whole number, or blank for unlimited");
+      return;
+    }
     const payload = {
       code,
       type: "percent",
@@ -111,6 +127,7 @@ const HotelCouponsPanel = () => {
       minSubtotal: form.minSubtotal === "" ? null : Math.max(0, Number(form.minSubtotal) || 0),
       validFrom: form.validFrom || null,
       validUntil: form.validUntil || null,
+      usageLimit: usageLimitRaw,
       active: true,
     };
     try {
@@ -193,6 +210,20 @@ const HotelCouponsPanel = () => {
             onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
           />
         </Field>
+        <Field
+          icon={<FaTag />}
+          label="Usage limit (optional)"
+          hint="Leave blank for unlimited redemptions"
+        >
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={form.usageLimit}
+            onChange={(e) => setForm((f) => ({ ...f, usageLimit: e.target.value }))}
+            placeholder="e.g. 50"
+          />
+        </Field>
         <div className="ss-field" style={{ alignSelf: "end" }}>
           <div className="ss-field-row" style={{ gap: 8 }}>
             <button type="submit" className="ss-btn ss-btn-sm" disabled={loading}>
@@ -232,6 +263,7 @@ const HotelCouponsPanel = () => {
                 <th style={{ textAlign: "left", padding: 6 }}>Code</th>
                 <th style={{ textAlign: "right", padding: 6 }}>%</th>
                 <th style={{ textAlign: "right", padding: 6 }}>Min subtotal</th>
+                <th style={{ textAlign: "right", padding: 6 }}>Used</th>
                 <th style={{ textAlign: "left", padding: 6 }}>Window</th>
                 <th style={{ textAlign: "left", padding: 6 }}>Status</th>
                 <th style={{ textAlign: "right", padding: 6 }}>Actions</th>
@@ -244,6 +276,11 @@ const HotelCouponsPanel = () => {
                   <td style={{ padding: 6, textAlign: "right" }}>{Number(row.value).toFixed(2)}</td>
                   <td style={{ padding: 6, textAlign: "right" }}>
                     {row.minSubtotal != null ? `₹${Number(row.minSubtotal).toFixed(2)}` : "—"}
+                  </td>
+                  <td style={{ padding: 6, textAlign: "right" }}>
+                    {row.usageLimit != null
+                      ? `${row.usageCount ?? 0} / ${row.usageLimit}`
+                      : `${row.usageCount ?? 0} / ∞`}
                   </td>
                   <td style={{ padding: 6 }}>
                     {row.validFrom || row.validUntil
