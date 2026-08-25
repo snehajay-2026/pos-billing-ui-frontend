@@ -87,6 +87,33 @@ const ProductPage = () => {
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef(null);
 
+  // Track every objectURL we mint in a ref so the unmount cleanup can
+  // revoke them. setState-based cleanup misses the case where the user
+  // navigates away (or the form unmounts) while a preview is still
+  // active — without this, the blob stays pinned in memory until
+  // document.unload.
+  const previewUrlsRef = useRef([]);
+  const revokePreviewUrls = () => {
+    previewUrlsRef.current.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {
+        /* ignore */
+      }
+    });
+    previewUrlsRef.current = [];
+  };
+  // Release the objectURL on component unmount. The ProductPage itself
+  // outlives the form (the form is conditionally rendered inside
+  // ProductPage), but if a parent ever unmounts us mid-flow we still
+  // want to release pinned blobs.
+  useEffect(() => {
+    return () => {
+      revokePreviewUrls();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const getCategories = () => {
     switch (businessType) {
       case "laundry":
@@ -184,13 +211,7 @@ const ProductPage = () => {
   // Revoke the previous objectURL to avoid leaking memory. objectURLs
   // are pinned until document.unload or manual revoke.
   const resetImageState = () => {
-    if (imagePreviewUrl) {
-      try {
-        URL.revokeObjectURL(imagePreviewUrl);
-      } catch {
-        /* ignore */
-      }
-    }
+    revokePreviewUrls();
     setImageFile(null);
     setImagePreviewUrl(null);
     setImageUrl(null);
@@ -208,6 +229,9 @@ const ProductPage = () => {
   };
 
   // Image picker handler. Validates MIME + size before accepting.
+  // Immediately mints an objectURL for the chosen file so the preview
+  // box renders the new image *before* the form is saved — the user
+  // should see what they picked, not a stale "No image yet" placeholder.
   const onPickImage = (e) => {
     const file = e.target.files && e.target.files[0];
     setImageError("");
@@ -215,25 +239,39 @@ const ProductPage = () => {
     const mime = (file.type || "").toLowerCase();
     if (!ALLOWED_IMAGE_MIME.includes(mime)) {
       setImageError("Please choose a JPG, PNG, WebP, or GIF image.");
+      // Reset the underlying input so re-picking the same bad file fires
+      // onChange again — otherwise the user gets stuck on a silent error.
+      if (e.target) e.target.value = "";
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
       setImageError(`Image is too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB).`);
+      if (e.target) e.target.value = "";
       return;
     }
-    // Replacing an existing local preview: revoke the old objectURL.
+    // Replacing an existing local preview: revoke the previous objectURL
+    // so the old blob isn't pinned in memory. We track every URL we mint
+    // (including the new one) in `previewUrlsRef` so the unmount cleanup
+    // can release them in bulk.
+    const newUrl = URL.createObjectURL(file);
+    previewUrlsRef.current.push(newUrl);
+    // If the user is replacing an existing preview, revoke just that one.
     if (imagePreviewUrl) {
       try {
         URL.revokeObjectURL(imagePreviewUrl);
       } catch {
         /* ignore */
       }
+      previewUrlsRef.current = previewUrlsRef.current.filter((u) => u !== imagePreviewUrl);
     }
     setImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
+    setImagePreviewUrl(newUrl);
     // If the user was about to clear the image, this means they want
     // to replace it instead — undo the clear.
     setImageMarkedClear(false);
+    // Clear the input's value so picking the same file twice in a row
+    // still fires onChange (browsers short-circuit identical selections).
+    if (e.target) e.target.value = "";
   };
 
   const onClearImage = () => {
@@ -246,6 +284,7 @@ const ProductPage = () => {
         } catch {
           /* ignore */
         }
+        previewUrlsRef.current = previewUrlsRef.current.filter((u) => u !== imagePreviewUrl);
       }
       setImageFile(null);
       setImagePreviewUrl(null);
@@ -485,11 +524,19 @@ const ProductPage = () => {
                 <div className="pr-image-uploader">
                   <div className="pr-image-preview">
                     {imagePreviewUrl ? (
-                      <img src={imagePreviewUrl} alt="Selected product preview" />
+                      // `key` forces React to mount a fresh <img> whenever
+                      // the objectURL changes, which guarantees the new
+                      // file actually paints (browsers can otherwise cache
+                      // the old image against the same element).
+                      <img
+                        key={imagePreviewUrl}
+                        src={imagePreviewUrl}
+                        alt="Selected product preview"
+                      />
                     ) : imageMarkedClear ? (
                       <span className="pr-image-empty">Will be removed on save</span>
                     ) : imageUrl ? (
-                      <img src={imageUrl} alt="Current product image" />
+                      <img key={imageUrl} src={imageUrl} alt="Current product image" />
                     ) : (
                       <span className="pr-image-empty">
                         <FaImage />
