@@ -53,7 +53,15 @@ export const uploadProductImage = async (id, file) => {
   if (!isAuthed()) throw new Error("Not signed in");
   if (!id) throw new Error("Product id required");
   if (!file) throw new Error("Image file required");
-  const { storeType, email } = getUserMeta();
+  // Pull storeId too — the backend's getRequestScope() falls back to
+  // req.user.storeId || req.user.storeType when ?storeId is absent, and
+  // for a SUPER_OWNER who picked an activeStore the raw user record
+  // (storeType=system, storeId=null) would resolve to "system", which
+  // doesn't match the row that POST /api/products just inserted under
+  // activeStore's storeId. Mirrors what apiPost → getScopedParams does
+  // for the JSON create/update paths so the multipart image upload
+  // sees the same effective scope.
+  const { storeType, storeId, email } = getUserMeta();
   const form = new FormData();
   form.append("image", file);
   // CSRF: read the live cookie so the header matches what the backend
@@ -66,6 +74,7 @@ export const uploadProductImage = async (id, file) => {
   if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   const params = new URLSearchParams();
   if (storeType) params.set("storeType", storeType);
+  if (storeId) params.set("storeId", storeId);
   if (email) params.set("email", email);
   const qs = params.toString();
   const urlBase =
