@@ -71,6 +71,19 @@ const POSBilling = () => {
   const receiptRef = useRef();
   const [hydrated, setHydrated] = useState(false);
   const [exportToast, setExportToast] = useState(null);
+  // Track product ids whose product image failed to load (Render wiped the
+  // file, transient network error, etc.) so we can swap back to the
+  // FaBoxOpen placeholder instead of showing a broken image. Set-based so
+  // membership checks stay O(1) on every render of the product grid.
+  const [imageErrors, setImageErrors] = useState(() => new Set());
+  const markImageError = useCallback((id) => {
+    setImageErrors((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
   const settings = getStoreSettings();
 
   // Always get the current user/store for draft key
@@ -1559,9 +1572,19 @@ const POSBilling = () => {
                         <span className="pos-in-cart-badge">× {formatQty(inCartQty, unit)}</span>
                       )}
                       <div className="pos-product-card-top">
-                        <div className={`pos-product-icon tone-${stockTone}`}>
-                          <FaBoxOpen />
-                        </div>
+                        {p.imageUrl && !imageErrors.has(p.id) ? (
+                          <img
+                            src={p.imageUrl}
+                            alt={p.name}
+                            className="pos-product-image"
+                            loading="lazy"
+                            onError={() => markImageError(p.id)}
+                          />
+                        ) : (
+                          <div className={`pos-product-icon tone-${stockTone}`}>
+                            <FaBoxOpen />
+                          </div>
+                        )}
                         <div className="pos-product-info">
                           <div className="pos-product-name">{p.name}</div>
                           <div className="pos-product-category">{p.category || "General"}</div>

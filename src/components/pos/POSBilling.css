@@ -2060,6 +2060,23 @@
   color: var(--pos-danger);
 }
 
+/* Uploaded product image — sits in the same slot as .pos-product-icon so
+   the card layout stays consistent whether or not the product has an
+   image. object-fit: cover keeps aspect ratio without stretching; the
+   subtle background gives a visible placeholder while the lazy-loaded
+   bytes arrive. */
+.pos-product-image {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: block;
+  border-radius: var(--pos-radius-sm);
+  background: var(--pos-surface-2);
+  object-fit: cover;
+  object-position: center;
+  border: 1px solid var(--pos-border);
+}
+
 .pos-product-info {
   flex: 1;
   display: flex;
