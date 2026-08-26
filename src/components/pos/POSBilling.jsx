@@ -84,6 +84,23 @@ const POSBilling = () => {
       return next;
     });
   }, []);
+  // The browser's <img> error event only tells us "it failed" — it doesn't
+  // surface the response body, and DevTools' Response tab is hidden behind
+  // a click. To make a future "why is this 404?" answerable from the
+  // browser console alone, re-fetch the same URL with credentials and log
+  // the status + body once. Best-effort — failures here are silent.
+  const logImageLoadFailure = useCallback(async (productId, url) => {
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      const body = await res.text();
+      console.warn(
+        `[product-image] failed to load product ${productId}: ` +
+          `${res.status} ${res.statusText} — ${body || "<empty body>"}`
+      );
+    } catch (err) {
+      console.warn(`[product-image] failed to load product ${productId}:`, url, err);
+    }
+  }, []);
   const settings = getStoreSettings();
 
   // Always get the current user/store for draft key
@@ -1578,7 +1595,10 @@ const POSBilling = () => {
                             alt={p.name}
                             className="pos-product-image"
                             loading="lazy"
-                            onError={() => markImageError(p.id)}
+                            onError={() => {
+                              logImageLoadFailure(p.id, p.imageUrl);
+                              markImageError(p.id);
+                            }}
                           />
                         ) : (
                           <div className={`pos-product-icon tone-${stockTone}`}>
