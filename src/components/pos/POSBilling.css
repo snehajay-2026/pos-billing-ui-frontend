@@ -2032,22 +2032,44 @@
   animation: pos-add-pulse 0.6s var(--pos-ease);
 }
 
-.pos-product-card-top {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+/* Hero image / icon band — full card width, large enough that the
+   uploaded product is the main visual element of the card, not a
+   thumbnail in the corner. */
+.pos-product-image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--pos-radius-sm);
+  background: var(--pos-surface-2);
+  border: 1px solid var(--pos-border);
+  margin-bottom: 10px;
 }
 
+/* Uploaded product image fills the wrap. object-fit: cover preserves
+   aspect ratio without stretching; the bg colour shows through if the
+   image is taller than wide. */
+.pos-product-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: var(--pos-radius-sm);
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Placeholder occupies the same hero area so cards with and without an
+   image line up. Larger icon size matches the visual weight of a real
+   product photo. */
 .pos-product-icon {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
   border-radius: var(--pos-radius-sm);
   background: var(--pos-primary-soft);
   color: var(--pos-primary);
-  font-size: 1.05rem;
+  font-size: 3rem;
 }
 
 .pos-product-icon.tone-low {
@@ -2060,25 +2082,7 @@
   color: var(--pos-danger);
 }
 
-/* Uploaded product image — sits in the same slot as .pos-product-icon so
-   the card layout stays consistent whether or not the product has an
-   image. object-fit: cover keeps aspect ratio without stretching; the
-   subtle background gives a visible placeholder while the lazy-loaded
-   bytes arrive. */
-.pos-product-image {
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
-  display: block;
-  border-radius: var(--pos-radius-sm);
-  background: var(--pos-surface-2);
-  object-fit: cover;
-  object-position: center;
-  border: 1px solid var(--pos-border);
-}
-
 .pos-product-info {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;

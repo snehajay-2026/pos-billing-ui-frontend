@@ -1588,7 +1588,7 @@ const POSBilling = () => {
                       {cartLine && (
                         <span className="pos-in-cart-badge">× {formatQty(inCartQty, unit)}</span>
                       )}
-                      <div className="pos-product-card-top">
+                      <div className="pos-product-image-wrap">
                         {p.imageUrl && !imageErrors.has(p.id) ? (
                           <img
                             src={p.imageUrl}
@@ -1605,10 +1605,11 @@ const POSBilling = () => {
                             <FaBoxOpen />
                           </div>
                         )}
-                        <div className="pos-product-info">
-                          <div className="pos-product-name">{p.name}</div>
-                          <div className="pos-product-category">{p.category || "General"}</div>
-                        </div>
+                      </div>
+
+                      <div className="pos-product-info">
+                        <div className="pos-product-name">{p.name}</div>
+                        <div className="pos-product-category">{p.category || "General"}</div>
                       </div>
 
                       <div className="pos-product-stock">
