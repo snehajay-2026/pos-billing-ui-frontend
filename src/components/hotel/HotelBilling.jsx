@@ -931,6 +931,11 @@ const HotelBilling = () => {
             const key = String(b.roomId || b.roomNumber);
             if (!key) return;
             const existing = byKey.get(key) || { id: key, number: b.roomNumber || key };
+            const serverStamp = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+            // Staleness guard: if this device already has a newer status
+            // for the same room (e.g. user just checked out locally and
+            // the server overlay hasn't caught up), don't downgrade it.
+            if ((existing._serverStamp || 0) > serverStamp) return;
             byKey.set(key, {
               ...existing,
               id: b.roomId || existing.id,
@@ -940,9 +945,13 @@ const HotelBilling = () => {
               checkInDate: b.checkInDate || existing.checkInDate,
               checkInTime: b.checkInTime || existing.checkInTime,
               expectedCheckOut: b.expectedCheckOut || existing.expectedCheckOut,
-              status: "booked",
+              // Map backend 'booked' to UI 'occupied' so RoomCard's
+              // `status === "occupied"` check matches what the local
+              // booking/checkout flow already writes.
+              status: "occupied",
               _persisted: true,
               _bookedAt: b.updatedAt || b.createdAt,
+              _serverStamp: serverStamp,
             });
           });
           return Array.from(byKey.values());
@@ -965,6 +974,20 @@ const HotelBilling = () => {
       // Booking upserted (created or updated) — merge into tables or rooms.
       if (event.kind === "booking" && event.booking) {
         const b = event.booking;
+        // Map backend booking status → UI status. Backend uses
+        // 'booked' / 'checked_out' (and 'cancelled' / 'no_show' if
+        // added later); the UI's RoomCard only recognises 'occupied'
+        // and 'vacant'. Keep the mapping in one place so the SSE
+        // path and the initial overlay (above) stay in sync.
+        const uiRoomStatus = (booking) => {
+          if (event.action === "checked_out") return "vacant";
+          if (booking.status === "checked_out" || booking.status === "cancelled") return "vacant";
+          if (booking.status === "booked") return "occupied";
+          // Anything else (unknown future statuses) defaults to vacant
+          // so a stale card never blocks a user from re-booking.
+          return "vacant";
+        };
+
         if (b.kind === "dining") {
           setTables((prev) => {
             const byId = new Map(prev.map((t) => [String(t.id), t]));
@@ -990,6 +1013,14 @@ const HotelBilling = () => {
             const byKey = new Map(prev.map((r) => [String(r.id || r.roomId || r.number), r]));
             const key = String(b.roomId || b.roomNumber);
             const existing = byKey.get(key) || { id: key };
+            const serverStamp = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+            // Staleness guard: a delayed SSE event from an older write
+            // (or a delivery retry) must not overwrite a newer local
+            // edit. The server's updatedAt is the canonical ordering
+            // signal — newer wins.
+            if ((existing._serverStamp || 0) > serverStamp) {
+              return prev;
+            }
             byKey.set(key, {
               ...existing,
               id: b.roomId || existing.id,
@@ -999,8 +1030,9 @@ const HotelBilling = () => {
               checkInDate: b.checkInDate || existing.checkInDate,
               checkInTime: b.checkInTime || existing.checkInTime,
               expectedCheckOut: b.expectedCheckOut || existing.expectedCheckOut,
-              status: event.action === "checked_out" ? "available" : "booked",
+              status: uiRoomStatus(b),
               _persisted: true,
+              _serverStamp: serverStamp,
             });
             return Array.from(byKey.values());
           });
