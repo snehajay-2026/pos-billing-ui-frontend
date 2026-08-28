@@ -1752,6 +1752,13 @@ const HotelBilling = () => {
         checkInTime: undefined,
         checkOutTime,
       });
+      // Flip the underlying hotel_bookings row to checked_out so the
+      // SSE `kind:"booking", action:"checked_out"` event fans out to
+      // every other connected device and flips their UI to Available.
+      // Without this, the booked row would linger and the next
+      // `loadBookingsOverlay` (on any mount) would re-mark the table
+      // as Occupied.
+      await hotelService.checkoutTable(tableId, { checkOutTime });
     } catch (err) {
       showToast("error", "Failed to sync table clear to server.");
     }
@@ -1935,6 +1942,11 @@ const HotelBilling = () => {
       checkInDate: undefined,
       checkInTime: undefined,
     });
+    // Flip the underlying hotel_bookings row to checked_out so the SSE
+    // `kind:"booking", action:"checked_out"` event fans out to every
+    // other connected device and flips their UI to Available. See
+    // `handleDiningTableClear` for the same pattern.
+    await hotelService.checkoutTable(tableId, { checkOutTime });
   };
 
   // ----- Date / checkout helpers (used by both Quick Book & Edit Modal) -----

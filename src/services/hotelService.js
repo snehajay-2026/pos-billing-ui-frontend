@@ -123,6 +123,18 @@ export const saveDiningBill = async (tableId, payload) =>
 export const clearDiningBill = async (tableId) =>
   apiDelete(`/api/hotel/dining-bills/${encodeURIComponent(tableId)}`);
 
+// checkoutTable: flip a dining-table booking to checked_out on the
+// server so every other connected device in the same store receives
+// the SSE `kind:"booking", action:"checked_out"` event and frees the
+// table. Mirrors `checkoutRoom` (the Lodging equivalent).
+export const checkoutTable = async (tableId, payload = {}) => {
+  const { storeType, storeId } = getScope();
+  return apiPost(`/api/hotel/tables/${encodeURIComponent(tableId)}/checkout`, payload || {}, {
+    storeType,
+    storeId,
+  });
+};
+
 // Hotel rooms — server-first CRUD. Mirrors the table pattern so the
 // cashier's bookings are visible to other POS stations / devices within
 // the same store. localStorage stays as an offline cache for booted-without-
@@ -261,6 +273,7 @@ export default {
   getDiningBills,
   saveDiningBill,
   clearDiningBill,
+  checkoutTable,
   getRooms,
   createRoom,
   updateRoom,
