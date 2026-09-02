@@ -246,7 +246,11 @@ const Login = () => {
             {loginError && (
               <div className="lg-error-box" role="alert">
                 <span>⚠</span>
-                <span>{loginError}</span>
+                <span>
+                  {typeof loginError === "string"
+                    ? loginError
+                    : toErrorMessage(loginError, locale.loginFailedTryAgain)}
+                </span>
               </div>
             )}
 
