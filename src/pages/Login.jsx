@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { login, canRegister } from "../services/authService";
 import { loadStoreSettings } from "../services/storeSettingsService";
 import { getActiveStoreContext } from "../utils/auth";
+import { toErrorMessage } from "../utils/errorMessage";
 import { useUi } from "../context/UiContext";
 import {
   FaEye,
@@ -102,7 +103,7 @@ const Login = () => {
         navigate("/pos");
       }
     } catch (err) {
-      setLoginError(err.message || locale.loginFailedTryAgain);
+      setLoginError(toErrorMessage(err, locale.loginFailedTryAgain));
       setSubmitting(false);
     }
   };

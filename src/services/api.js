@@ -219,8 +219,15 @@ const request = async (method, url, data, params, options = {}) => {
     } catch {
       body = { raw: text };
     }
+    // Coerce body fields to strings before handing them to the Error
+    // constructor. A non-string body.error (e.g. an object) would be
+    // stringified to "[object Object]" and render uselessly in any
+    // caller that surfaces err.message in the UI.
+    const safeString = (v) => (typeof v === "string" && v ? v : null);
     const message =
-      body.error || body.message || `API ${method} ${finalUrl} failed: ${response.status}`;
+      safeString(body.error) ||
+      safeString(body.message) ||
+      `API ${method} ${finalUrl} failed: ${response.status}`;
     const err = new Error(message);
     // Attach structured fields so callers can branch on HTTP status
     // (e.g. 409 insufficient stock → body.available / body.requested).

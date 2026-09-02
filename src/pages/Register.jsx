@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Form, Button } from "react-bootstrap";
 import { canRegister, register } from "../services/authService";
+import { toErrorMessage } from "../utils/errorMessage";
 import { useUi } from "../context/UiContext";
 import { FaUserPlus, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Register.css";
@@ -59,7 +60,7 @@ const Register = () => {
       alert(locale.registrationSuccess || "Registration successful! Please wait for approval.");
       navigate("/login");
     } catch (err) {
-      alert(err.message || locale.registrationFailed || "Registration failed");
+      alert(toErrorMessage(err, locale.registrationFailed || "Registration failed"));
     }
   };
 

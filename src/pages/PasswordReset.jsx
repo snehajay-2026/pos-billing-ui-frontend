@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Button, Form, Alert, InputGroup } from "react-bootstrap";
 import { requestPasswordReset, confirmPasswordReset } from "../services/authService";
+import { toErrorMessage } from "../utils/errorMessage";
 import { useUi } from "../context/UiContext";
 import { FaEnvelope, FaKey, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Login.css";
@@ -40,7 +41,9 @@ const PasswordReset = () => {
       }
       setStep(2);
     } catch (err) {
-      setError(err.message || locale.passwordResetFailed || "Failed to request password reset.");
+      setError(
+        toErrorMessage(err, locale.passwordResetFailed || "Failed to request password reset.")
+      );
     }
   };
 
@@ -73,7 +76,7 @@ const PasswordReset = () => {
       setValidation("");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
-      setError(err.message || locale.passwordResetFailed || "Failed to reset password.");
+      setError(toErrorMessage(err, locale.passwordResetFailed || "Failed to reset password."));
     }
   };
 
