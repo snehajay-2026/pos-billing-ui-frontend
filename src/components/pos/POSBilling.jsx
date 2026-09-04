@@ -31,7 +31,7 @@ import {
   FaMinus,
   FaUndo,
   FaTrash,
-  FaWhatsapp,
+  FaFileInvoice,
   FaPrint,
   FaFileExcel,
   FaRupeeSign,
@@ -1094,26 +1094,10 @@ const POSBilling = () => {
     // Customer details now come from per-bill fields (shifted from store settings)
     const billCustomerName = (resolvedCustomerName || "").trim();
     const billCustomerPhone = (activeBill.customerPhone || "").trim();
-    // Send WhatsApp if phone is present and valid
-    if (billCustomerPhone && billCustomerPhone.match(/^\d{10,15}$/)) {
-      const tempInvoice = {
-        invoiceNo: "INV-" + uuid().slice(0, 6),
-        date: new Date().toISOString().split("T")[0],
-        items: activeBill.items,
-        subTotal,
-        gstTotal,
-        grandTotal,
-        paymentMode: activeBill.paymentMode,
-        customerId: activeBill.customerId || undefined,
-        customerName: billCustomerName,
-        customerPhone: billCustomerPhone,
-      };
-      const customerNameForMessage = billCustomerName || "Walking Customer";
-      const msg = encodeURIComponent(
-        `Dear ${customerNameForMessage},\n\nThank you for your purchase!\nInvoice No: ${tempInvoice.invoiceNo}\nDate: ${tempInvoice.date}\nTotal: ₹${tempInvoice.grandTotal.toFixed(2)}`
-      );
-      window.open(`https://wa.me/${billCustomerPhone}?text=${msg}`, "_blank");
-    }
+    // WhatsApp send was intentionally removed from this primary action.
+    // The cashier now lands on the Invoice Preview page after a successful
+    // checkout, where Print / WhatsApp / Share / Public Invoice actions are
+    // still available — see /invoice/:invoiceNo/preview.
     // Get billing user info
     const billingUser = getUser();
     const isSplit = activeBill.paymentMode === "Split";
@@ -1131,17 +1115,17 @@ const POSBilling = () => {
       payments: isSplit ? filteredPayments : undefined,
       tendered: isSplit ? tendered : undefined,
       changeDue: isSplit ? changeDue : undefined,
-      discount: activeBill.discount || undefined,
+      discount: activeBill.discount ? { ...activeBill.discount, source: "manual" } : undefined,
       discountBreakdown: {
         line: activeBill.items
           .filter((i) => i.lineDiscount && Number(i.lineDiscount.value) > 0)
           .map((i) => ({
             productId: i.id,
             productName: i.name,
-            discount: i.lineDiscount,
+            discount: { ...i.lineDiscount, source: "manual" },
             saved: applyDiscount(i.price * getItemQty(i), i.lineDiscount),
           })),
-        bill: activeBill.discount || null,
+        bill: activeBill.discount ? { ...activeBill.discount, source: "manual" } : null,
         totalSavings,
       },
       customerId: activeBill.customerId || undefined,
@@ -2451,7 +2435,7 @@ const POSBilling = () => {
 
                 <div className="pos-footer-btns">
                   <button type="button" className="btn btn-success" onClick={generateInvoice}>
-                    <FaWhatsapp /> Generate Invoice & WhatsApp
+                    <FaFileInvoice /> Generate Invoice
                   </button>
                   <button
                     type="button"
