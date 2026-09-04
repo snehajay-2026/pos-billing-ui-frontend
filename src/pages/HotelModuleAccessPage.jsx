@@ -57,7 +57,43 @@ const HotelModuleAccessPage = () => {
     setError(null);
     try {
       const data = await getAllHotelLocks();
-      setRows(Array.isArray(data) ? data : []);
+      // The backend returns one flat row per (customer, module) — every
+      // hotel tenant admin gets up to three rows even if no lock has
+      // ever been set (module === null in that case). Group them into
+      // one row per customer with nested {lodging, dining, liveBill}
+      // blocks so the table render can read r.lodging.locked etc.
+      // directly.
+      const flatRows = Array.isArray(data) ? data : [];
+      const byEmail = new Map();
+      const emptyModule = () => ({
+        locked: false,
+        lockedBy: null,
+        lockedAt: null,
+      });
+      for (const r of flatRows) {
+        if (!r || !r.customerEmail) continue;
+        let agg = byEmail.get(r.customerEmail);
+        if (!agg) {
+          agg = {
+            customerEmail: r.customerEmail,
+            name: r.name || null,
+            storeType: r.storeType || null,
+            storeId: r.storeId || null,
+            lodging: emptyModule(),
+            dining: emptyModule(),
+            liveBill: emptyModule(),
+          };
+          byEmail.set(r.customerEmail, agg);
+        }
+        if (r.module === "lodging" || r.module === "dining" || r.module === "liveBill") {
+          agg[r.module] = {
+            locked: !!r.locked,
+            lockedBy: r.lockedBy || null,
+            lockedAt: r.lockedAt || null,
+          };
+        }
+      }
+      setRows(Array.from(byEmail.values()));
     } catch (err) {
       setError(err.message || "Failed to load hotel module access");
       setRows([]);
