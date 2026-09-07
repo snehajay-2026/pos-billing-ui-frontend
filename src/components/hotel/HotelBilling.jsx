@@ -796,18 +796,32 @@ const HotelBilling = () => {
       }
       setTables(defaultHotelTables);
     };
-    loadTables();
 
     // Cross-device sync: overlay any active 'booked' dining tables from the
     // server onto the local state. The backend /api/hotel/bookings is the
     // source of truth — locally-cached state is used as a starting point
     // and any server-side booking is applied on top.
+    //
+    // SEQUENCING: this MUST run AFTER `loadTables` resolves. The legacy
+    // `/api/hotel/tables` endpoint (backed by `hotel_state.tables` JSON)
+    // returns tables without booking status — every table comes back as
+    // `status: "empty"`. If the overlay's `setTables((prev) => ...)` fires
+    // against the empty initial `[]` state first and then `loadTables`
+    // resolves later with empty-status rows, the overlay is wiped. The
+    // previous version kicked both off concurrently and was subject to
+    // exactly this race; bookings would appear immediately after creation
+    // (driven by SSE) but disappear on the next page navigation.
+    //
+    // We now sequence: seed tables first, THEN overlay. The overlay always
+    // sees a populated `prev` so the booked rows survive.
     const loadBookingsOverlay = async () => {
       try {
         const bookings = await hotelService.listBookings({ kind: "dining", status: "booked" });
         if (!Array.isArray(bookings) || bookings.length === 0) return;
         setTables((prev) => {
-          const byId = new Map(prev.map((t) => [String(t.id), t]));
+          const byId = new Map(
+            (Array.isArray(prev) ? prev : []).map((t) => [String(t.id), t])
+          );
           bookings.forEach((b) => {
             const id = String(b.tableId || b.id);
             if (!id) return;
@@ -835,7 +849,15 @@ const HotelBilling = () => {
         /* network blip on initial mount — keep local state */
       }
     };
-    loadBookingsOverlay();
+    (async () => {
+      // 1. Seed tables from the legacy /api/hotel/tables endpoint (or
+      //    localStorage / defaults as fallback). This is the FIRST source of
+      //    truth for the floor plan itself — table ids, names, seats, zones.
+      await loadTables();
+      // 2. Then overlay any active server-side bookings so a re-mount after
+      //    page navigation reconstructs the Booked state from MySQL.
+      await loadBookingsOverlay();
+    })();
     const loadDiningBills = async () => {
       try {
         const bills = await hotelService.getDiningBills();

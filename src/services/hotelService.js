@@ -127,12 +127,27 @@ export const clearDiningBill = async (tableId) =>
 // server so every other connected device in the same store receives
 // the SSE `kind:"booking", action:"checked_out"` event and frees the
 // table. Mirrors `checkoutRoom` (the Lodging equivalent).
+//
+// Uses the existing `POST /api/hotel/bookings/checkout-by-ref`
+// endpoint — the same canonical "free up" path that Lodging uses
+// (`checkoutRoom` style). The previous URL (`/api/hotel/tables/:id/checkout`)
+// had no backend route, so the call 404'd, the `hotel_bookings` row
+// stayed `status:'booked'`, and `loadBookingsOverlay` would re-mark
+// the table as Booked on the next page mount — the bug that broke
+// Clear Table persistence.
 export const checkoutTable = async (tableId, payload = {}) => {
   const { storeType, storeId } = getScope();
-  return apiPost(`/api/hotel/tables/${encodeURIComponent(tableId)}/checkout`, payload || {}, {
-    storeType,
-    storeId,
-  });
+  return apiPost(
+    "/api/hotel/bookings/checkout-by-ref",
+    {
+      kind: "dining",
+      refId: tableId,
+      storeType,
+      storeId,
+      ...(payload || {}),
+    },
+    { storeType, storeId }
+  );
 };
 
 // Hotel rooms — server-first CRUD. Mirrors the table pattern so the
