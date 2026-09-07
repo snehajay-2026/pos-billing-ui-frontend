@@ -351,6 +351,17 @@
   font-size: 1rem;
 }
 
+/* Countdown chip shown next to the "Too many login attempts" message.
+   Subtle weight bump and a monospace look so the remaining time reads
+   as a precise countdown rather than part of the prose. */
+.lg-error-countdown {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  color: #7f1d1d;
+  white-space: nowrap;
+}
+
 /* Form */
 .lg-form {
   display: flex;

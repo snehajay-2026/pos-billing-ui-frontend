@@ -33,6 +33,12 @@ const Login = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [loginError, setLoginError] = useState("");
+  // Seconds remaining on the server-side login lockout (HTTP 429). 0
+  // means no active countdown — either no lockout or it has expired.
+  // Renders next to the login error so the user knows exactly when to
+  // retry, instead of mashing the button (which is what got them
+  // locked out in the first place).
+  const [retryAfter, setRetryAfter] = useState(0);
   const [canRegisterAvailable, setCanRegisterAvailable] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [capsOn, setCapsOn] = useState(false);
@@ -49,15 +55,38 @@ const Login = () => {
     loadAvailability();
   }, []);
 
+  // Tick the retry-after countdown once per second while it's > 0.
+  // Stops itself once the lockout window expires so the UI no longer
+  // shows a stale "try again in 0s" alongside the error.
+  useEffect(() => {
+    if (!retryAfter) return undefined;
+    const id = setInterval(() => {
+      setRetryAfter((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [retryAfter]);
+
   const isValidGmail = (value) => /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(value);
   const isValidPassword = (value) =>
     /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?#&]).{8,}$/.test(value);
+
+  // "9m 12s" / "0m 42s" / "0s" — kept simple and unambiguous. We split
+  // minutes/seconds so a 14:32 lockout doesn't read as a single 872-
+  // digit number to the user.
+  const formatRetryAfter = (totalSeconds) => {
+    const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    const minutes = Math.floor(s / 60);
+    const seconds = s % 60;
+    if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+    return `${seconds}s`;
+  };
 
   const handleLogin = async () => {
     if (submitting) return;
     setLoginError("");
     setEmailError("");
     setPasswordError("");
+    setRetryAfter(0);
 
     if (!email || !password) {
       setLoginError(locale.pleaseEnterBothEmailAndPassword);
@@ -104,6 +133,17 @@ const Login = () => {
       }
     } catch (err) {
       setLoginError(toErrorMessage(err, locale.loginFailedTryAgain));
+      // If the server reports an active lockout, surface its countdown
+      // so the user can see exactly when to retry. Coerce to a non-
+      // negative integer — the server may round, the body may be
+      // missing, or the value may be a string.
+      if (err && err.status === 429) {
+        const raw = err.body && err.body.retryAfter;
+        const seconds = Math.max(0, Math.ceil(Number(raw) || 0));
+        setRetryAfter(seconds);
+      } else {
+        setRetryAfter(0);
+      }
       setSubmitting(false);
     }
   };
@@ -250,6 +290,12 @@ const Login = () => {
                   {typeof loginError === "string"
                     ? loginError
                     : toErrorMessage(loginError, locale.loginFailedTryAgain)}
+                  {retryAfter > 0 && (
+                    <span className="lg-error-countdown" aria-live="polite">
+                      {" "}
+                      ({formatRetryAfter(retryAfter)})
+                    </span>
+                  )}
                 </span>
               </div>
             )}
@@ -335,7 +381,12 @@ const Login = () => {
               )}
             </label>
 
-            <button type="button" className="lg-submit" onClick={handleLogin} disabled={submitting}>
+            <button
+              type="button"
+              className="lg-submit"
+              onClick={handleLogin}
+              disabled={submitting || retryAfter > 0}
+            >
               {submitting ? (
                 <>
                   <span className="lg-spinner" />
