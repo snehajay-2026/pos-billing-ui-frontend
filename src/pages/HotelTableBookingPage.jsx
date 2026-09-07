@@ -408,13 +408,16 @@ const HotelTableBookingPage = () => {
   const handleAssign = (entry) => {
     if (!entry) return;
     const tableId = pickAssignTableId(entry);
+    // The queue entry is intentionally NOT removed on Assign click —
+    // it stays in the waiting list so the cashier can see who was
+    // just seated, re-assign them to a different table, or remove
+    // them explicitly once the table is cleared.
     navigate("/pos", {
       state: {
         hotelDiningAutoBook: {
           tableId, // empty string when no fit — HotelBilling skips auto-open
           guestName: entry.name,
           partySize: Number(entry.seats || 1),
-          queueEntryId: entry.id,
         },
       },
     });

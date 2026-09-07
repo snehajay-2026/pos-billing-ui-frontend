@@ -988,18 +988,12 @@ const HotelBilling = () => {
   // cards, and can click Book Table manually — so the canonical
   // flow stays intact.
   const autoBookHandledRef = useRef(null);
-  // Holds the queue entry id (if any) that the auto-book was opened
-  // for. `handleDiningTableBook` consumes it on success and removes
-  // the matching waiting-queue entry so the cashier doesn't have to
-  // pop back to /hotel-tables and clean up manually.
-  const autoBookQueueEntryIdRef = useRef("");
   useEffect(() => {
     const payload = location.state?.hotelDiningAutoBook;
     if (!payload) {
       // Nothing to do — but make sure a previous run's id-keyed flag
       // is reset so the next assign doesn't get swallowed.
       autoBookHandledRef.current = null;
-      autoBookQueueEntryIdRef.current = "";
       return;
     }
     // Guard: tables may not be hydrated yet on first mount. The
@@ -1014,7 +1008,7 @@ const HotelBilling = () => {
     // Idempotency: fire exactly once per (tableId + guestName) pair
     // so a re-render (state-mutation from setTables, SSE echo, etc.)
     // doesn't re-open the modal or reset the booking inputs.
-    const signature = `${payload.tableId || ""}::${payload.guestName || ""}::${payload.queueEntryId || ""}`;
+    const signature = `${payload.tableId || ""}::${payload.guestName || ""}`;
     if (autoBookHandledRef.current === signature) return;
     const target = String(payload.tableId || "");
     if (!target) {
@@ -1064,10 +1058,7 @@ const HotelBilling = () => {
       );
       setDiningPartySize(safeSize);
     }
-    // Stash the queue entry id (if any) so `handleDiningTableBook`
-    // can drop the waiting entry after the booking is persisted.
     autoBookHandledRef.current = signature;
-    autoBookQueueEntryIdRef.current = String(payload.queueEntryId || "");
     // Clear the navigation state so a browser refresh doesn't re-open
     // the modal with stale data.
     navigate(location.pathname + location.search, { replace: true, state: null });
@@ -1665,33 +1656,10 @@ const HotelBilling = () => {
         checkInTime: resolvedCheckInTime,
         status: "booked",
       });
-      // If this booking was triggered from the Waiting Queue → Assign
-      // shortcut, remove the corresponding queue entry now that the
-      // server-side booking is confirmed. We delay this until AFTER the
-      // await so a network failure leaves the entry in the queue and
-      // the cashier can retry without losing data.
-      const queueEntryId = autoBookQueueEntryIdRef.current;
-      if (queueEntryId) {
-        autoBookQueueEntryIdRef.current = "";
-        const nextQueue = (waitingQueue || []).filter(
-          (entry) => String(entry.id) !== String(queueEntryId)
-        );
-        setWaitingQueue(nextQueue);
-        try {
-          window.localStorage.setItem(WAITING_QUEUE_KEY, JSON.stringify(nextQueue));
-          window.dispatchEvent(
-            new CustomEvent("hotel_dining_waiting_list_updated", { detail: nextQueue })
-          );
-        } catch (err) {
-          /* quota / private mode — the storage event listener on
-             /hotel-tables will pick up the change via the dispatch
-             above regardless */
-        }
-        hotelService.removeDiningWaiting(queueEntryId).catch(() => {
-          /* non-blocking: the entry is gone from local state and SSE
-             echo will let other devices catch up */
-        });
-      }
+      // Note: the waiting-queue entry is intentionally NOT removed here.
+      // The cashier wants it to stay in the queue after Assign so they
+      // can see who was just seated, re-assign to a different table, or
+      // remove the entry manually once the table clears.
     } catch (err) {
       showToast("error", "Failed to sync table booking to server.");
     }
