@@ -16,10 +16,31 @@ import {
   FaTrash,
   FaMapMarkerAlt,
   FaSearch,
+  FaUserCheck,
+  FaTimes,
 } from "react-icons/fa";
 import "./HotelTableBookingPage.css";
 import { useUi } from "../context/UiContext";
 import { formatWaitTime, getEstimatedWaitMinutes } from "../utils/diningWaitEstimate";
+
+// Mirror of HotelBilling's `formatTime12Hour` (see HotelBilling.jsx:232).
+// Used to stamp the check-in time on a booking row at Assign time so the
+// timestamp matches what the cashier would see if they booked the table
+// directly from the POS dining tab.
+const formatTime12Hour = (timeValue) => {
+  const rawTime = String(timeValue || "").trim();
+  if (!rawTime) return "";
+  if (/am|pm/i.test(rawTime)) return rawTime.toUpperCase();
+  const match = rawTime.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return rawTime;
+  const hours = Number(match[1]);
+  const minutes = match[2];
+  if (Number.isNaN(hours)) return rawTime;
+  const normalizedHour = ((hours % 24) + 24) % 24;
+  const suffix = normalizedHour >= 12 ? "PM" : "AM";
+  const hour12 = normalizedHour % 12 || 12;
+  return `${String(hour12).padStart(2, "0")}:${minutes} ${suffix}`;
+};
 
 const TABLES_STORAGE_KEY = "hotel_table_booking_state";
 const WAITING_QUEUE_KEY = "hotel_dining_waiting_list";
@@ -129,6 +150,16 @@ const HotelTableBookingPage = () => {
   const [waitingAddLoading, setWaitingAddLoading] = useState(false);
   const [waitingRemovingId, setWaitingRemovingId] = useState(null);
   const [addTableMessage, setAddTableMessage] = useState(null);
+  // Assign-waiting-guest flow — picks a table for a queued customer.
+  // `assigningEntry` is the queue entry being seated; `assignModalOpen`
+  // gates the modal; `assignTableId` is the table the cashier selected.
+  // The entry is removed from `waitingQueue` only AFTER the server-side
+  // bookTable succeeds — a partial local removal would lose the entry
+  // on a network error.
+  const [assigningEntry, setAssigningEntry] = useState(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignTableId, setAssignTableId] = useState("");
+  const [assignBusy, setAssignBusy] = useState(false);
   // Tracks whether the initial async load (server → localStorage → defaults)
   // has finished. While `false`, the persistence effect below MUST NOT write
   // to localStorage — otherwise the seed `defaultTables` would clobber a
@@ -369,6 +400,106 @@ const HotelTableBookingPage = () => {
         setWaitingRemovingId(null);
       }
     })();
+  };
+
+  // === Assign: seat a waiting customer at a chosen dining table ===
+  //
+  // Open the picker modal. The cashier selects an available table sized
+  // for the guest; confirm posts to /api/hotel/bookings via
+  // hotelService.bookTable (which fans out the SSE `kind:"booking",
+  // action:"upserted"` event so every device in the same store flips
+  // the table to Booked). On success the queue entry is removed.
+  const handleOpenAssign = (entry) => {
+    if (!entry) return;
+    setAssigningEntry(entry);
+    setAssignTableId("");
+    setAssignModalOpen(true);
+  };
+
+  const handleCloseAssign = () => {
+    if (assignBusy) return;
+    setAssignModalOpen(false);
+    setAssigningEntry(null);
+    setAssignTableId("");
+  };
+
+  const handleConfirmAssign = async () => {
+    if (assignBusy || !assigningEntry) return;
+    const entry = assigningEntry;
+    const table = tables.find((t) => String(t.id) === String(assignTableId));
+    if (!table) {
+      showToast("error", "Please select a table to assign.");
+      return;
+    }
+    if (table.status !== "empty") {
+      // Server-side upsert would still work, but we keep the UI honest
+      // by rejecting a table that became booked while the modal was open.
+      showToast("error", `${table.name} is no longer available. Pick another table.`);
+      setAssignTableId("");
+      return;
+    }
+    if (Number(table.seats || 0) < Number(entry.seats || 0)) {
+      showToast(
+        "error",
+        `${table.name} seats ${table.seats} — too small for a party of ${entry.seats}.`
+      );
+      setAssignTableId("");
+      return;
+    }
+    setAssignBusy(true);
+    const now = new Date();
+    const checkInDate = now.toISOString().slice(0, 10);
+    const checkInTime = formatTime12Hour(
+      `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+    );
+    try {
+      // Persist to MySQL via /api/hotel/bookings. The backend broadcasts
+      // an SSE booking event; HotelBilling's listener merges it into
+      // the dining tab tables state and re-renders the card as Booked.
+      await hotelService.bookTable({
+        id: table.id,
+        name: table.name,
+        zone: table.zone,
+        partySize: Number(entry.seats) || 1,
+        guest: entry.name,
+        status: "booked",
+        checkInDate,
+        checkInTime,
+      });
+      // Best-effort optimistic local flip so this page's stat tiles and
+      // the seater grid reflect the new booking without waiting on the
+      // SSE round-trip. The SSE listener in HotelBilling is the source
+      // of truth on every other device.
+      setTables((prev) =>
+        prev.map((t) =>
+          String(t.id) === String(table.id)
+            ? {
+                ...t,
+                status: "booked",
+                guest: entry.name,
+                partySize: Number(entry.seats) || 1,
+                customerMobile: "",
+                checkInDate,
+                checkInTime,
+                _persisted: true,
+              }
+            : t
+        )
+      );
+      // Drop the entry from the queue. The existing effect at line ~250
+      // mirrors this removal to the server via removeDiningWaiting().
+      setWaitingQueue((prev) => prev.filter((w) => w.id !== entry.id));
+      setAssignBusy(false);
+      setAssignModalOpen(false);
+      setAssigningEntry(null);
+      setAssignTableId("");
+      showToast("success", `${entry.name} assigned to ${table.name}.`);
+    } catch (err) {
+      setAssignBusy(false);
+      // Stay on the modal so the cashier can retry with the same or a
+      // different table. The queue entry is preserved.
+      showToast("error", err?.message || "Failed to assign table.");
+    }
   };
 
   return (
@@ -731,25 +862,37 @@ const HotelTableBookingPage = () => {
                         <div className={`htb-wait-time-pill ${waitTone}`}>
                           {formatWaitTime(estimateMinutes)}
                         </div>
-                        <button
-                          className="htb-btn htb-btn-danger"
-                          type="button"
-                          onClick={() => handleRemoveFromWaitingList(entry.id)}
-                          disabled={waitingRemovingId === entry.id}
-                          aria-busy={waitingRemovingId === entry.id}
-                        >
-                          {waitingRemovingId === entry.id ? (
-                            <>
-                              <span className="htb-spinner" aria-hidden="true" />
-                              <span>Removing…</span>
-                            </>
-                          ) : (
-                            <>
-                              <FaTrash className="htb-btn-icon" aria-hidden="true" />
-                              <span>Remove</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="htb-waiting-actions">
+                          <button
+                            className="htb-btn htb-btn-primary htb-btn-assign"
+                            type="button"
+                            onClick={() => handleOpenAssign(entry)}
+                            disabled={assignBusy}
+                            title={`Seat ${entry.name} at an available table`}
+                          >
+                            <FaUserCheck className="htb-btn-icon" aria-hidden="true" />
+                            <span>Assign</span>
+                          </button>
+                          <button
+                            className="htb-btn htb-btn-danger"
+                            type="button"
+                            onClick={() => handleRemoveFromWaitingList(entry.id)}
+                            disabled={waitingRemovingId === entry.id}
+                            aria-busy={waitingRemovingId === entry.id}
+                          >
+                            {waitingRemovingId === entry.id ? (
+                              <>
+                                <span className="htb-spinner" aria-hidden="true" />
+                                <span>Removing…</span>
+                              </>
+                            ) : (
+                              <>
+                                <FaTrash className="htb-btn-icon" aria-hidden="true" />
+                                <span>Remove</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -825,7 +968,190 @@ const HotelTableBookingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* === Assign modal ============================================
+          Opens when the cashier clicks Assign on a waiting-queue
+          entry. Shows the customer's name + party size and a grid of
+          available (status:"empty") tables sized to fit. Confirm
+          POSTs to /api/hotel/bookings via hotelService.bookTable,
+          removes the queue entry, and the existing SSE plumbing
+          flips the table to Booked on every device.
+       */}
+      {assignModalOpen && assigningEntry && (
+        <AssignTableModal
+          entry={assigningEntry}
+          queueLength={waitingQueue.length}
+          suitableTables={findSuitableTablesForSeats(assigningEntry.seats)}
+          totalAvailable={availableTableCount}
+          selectedTableId={assignTableId}
+          onSelectTable={setAssignTableId}
+          onCancel={handleCloseAssign}
+          onConfirm={handleConfirmAssign}
+          busy={assignBusy}
+        />
+      )}
     </Layout>
+  );
+};
+
+// AssignTableModal — picker for seating a waiting customer.
+// Shows the guest summary and a grid of available tables sized
+// to fit the party. The parent owns the open/close + selection state
+// and persists via hotelService.bookTable.
+const AssignTableModal = ({
+  entry,
+  queueLength,
+  suitableTables,
+  totalAvailable,
+  selectedTableId,
+  onSelectTable,
+  onCancel,
+  onConfirm,
+  busy,
+}) => {
+  const seatFor = Number(entry?.seats || 1);
+  const canConfirm = !busy && !!selectedTableId;
+
+  return (
+    <div className="htb-assign-backdrop" onClick={busy ? undefined : onCancel}>
+      <div
+        className="htb-assign-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Assign ${entry.name} to a table`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="htb-assign-header">
+          <div>
+            <div className="htb-panel-kicker queue">
+              <FaUserCheck aria-hidden="true" /> Assign to Table
+            </div>
+            <h3 className="htb-assign-title">Seat {entry.name}</h3>
+            <p className="htb-assign-sub">
+              Party of <strong>{entry.seats}</strong>
+              {queueLength > 1 ? (
+                <>
+                  {" · "}
+                  <span>
+                    {queueLength - 1} other guest{queueLength - 1 === 1 ? "" : "s"} still waiting
+                  </span>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="htb-assign-close"
+            onClick={onCancel}
+            disabled={busy}
+            aria-label="Close"
+          >
+            <FaTimes aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="htb-assign-body">
+          {suitableTables.length === 0 ? (
+            <div className="htb-assign-empty">
+              <div className="htb-assign-empty-icon">
+                <FaInfoCircle aria-hidden="true" />
+              </div>
+              <strong>No matching table available</strong>
+              <span>
+                No empty table seats at least {seatFor}. Wait for one to clear or add a larger table
+                from the floor setup before assigning this guest.
+              </span>
+              {totalAvailable > 0 ? (
+                <small>
+                  {totalAvailable} empty table{totalAvailable === 1 ? "" : "s"} on the floor, but
+                  none fit a party of {seatFor}.
+                </small>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <div className="htb-assign-hint">
+                Pick an available table sized for the party. Booking is server-authoritative — once
+                confirmed the table flips to Booked on every connected device.
+              </div>
+              <div
+                className="htb-assign-tables-grid"
+                role="radiogroup"
+                aria-label="Available tables"
+              >
+                {suitableTables.map((table) => {
+                  const isSelected = String(selectedTableId) === String(table.id);
+                  return (
+                    <button
+                      key={table.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={`htb-assign-table-card ${isSelected ? "is-selected" : ""}`}
+                      onClick={() => onSelectTable(String(table.id))}
+                      disabled={busy}
+                    >
+                      <div className="htb-assign-table-head">
+                        <span className="htb-assign-table-name">
+                          <FaChair aria-hidden="true" /> {table.name}
+                        </span>
+                        <span className="htb-assign-table-zone">
+                          <FaMapMarkerAlt aria-hidden="true" /> {table.zone || "Main"}
+                        </span>
+                      </div>
+                      <div className="htb-assign-table-meta">
+                        <span>
+                          <FaUsers aria-hidden="true" /> {table.seats} seater
+                        </span>
+                        <span className="htb-assign-table-fit">
+                          {table.seats === seatFor ? "Exact fit" : `Fits party of ${seatFor}`}
+                        </span>
+                      </div>
+                      {isSelected ? (
+                        <div className="htb-assign-table-selected-badge">
+                          <FaCheckCircle aria-hidden="true" /> Selected
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <footer className="htb-assign-footer">
+          <button
+            type="button"
+            className="htb-btn htb-btn-ghost"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            <FaTimes className="htb-btn-icon" aria-hidden="true" />
+            <span>Cancel</span>
+          </button>
+          <button
+            type="button"
+            className="htb-btn htb-btn-primary"
+            onClick={onConfirm}
+            disabled={!canConfirm || suitableTables.length === 0}
+            aria-busy={busy}
+          >
+            {busy ? (
+              <>
+                <span className="htb-spinner" aria-hidden="true" />
+                <span>Assigning…</span>
+              </>
+            ) : (
+              <>
+                <FaUserCheck className="htb-btn-icon" aria-hidden="true" />
+                <span>Confirm Assign</span>
+              </>
+            )}
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 };
 
