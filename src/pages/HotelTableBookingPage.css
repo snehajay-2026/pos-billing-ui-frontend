@@ -337,6 +337,17 @@
   color: #94a3b8;
 }
 
+/* Optional field label suffix — visual nudge that the input is not
+   required, but valid if provided. Same label color, lighter weight. */
+.htb-form-col label .htb-form-optional {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
 /* Form actions */
 .htb-form-actions {
   display: flex;

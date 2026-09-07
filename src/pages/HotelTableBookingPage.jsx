@@ -18,6 +18,8 @@ import {
   FaSearch,
   FaUserCheck,
   FaTimes,
+  FaPhoneAlt,
+  FaIdCard,
 } from "react-icons/fa";
 import "./HotelTableBookingPage.css";
 import { useUi } from "../context/UiContext";
@@ -133,6 +135,14 @@ const HotelTableBookingPage = () => {
   const [newTableZone, setNewTableZone] = useState("Main");
   const [waitingName, setWaitingName] = useState("");
   const [waitingSeats, setWaitingSeats] = useState(2);
+  // Optional booking details captured on the Add-to-Waiting form so the
+  // Assign flow can populate the resulting Dining booking card without
+  // re-asking. `waitingMobile` validates as a 10-digit number if provided.
+  // `waitingIdType` + `waitingIdNumber` are coupled — both must be set
+  // together if either is filled.
+  const [waitingMobile, setWaitingMobile] = useState("");
+  const [waitingIdType, setWaitingIdType] = useState("");
+  const [waitingIdNumber, setWaitingIdNumber] = useState("");
   const [waitingQueue, setWaitingQueue] = useState(() => {
     if (typeof window === "undefined") return [];
     const savedWaiting = window.localStorage.getItem(WAITING_QUEUE_KEY);
@@ -309,17 +319,61 @@ const HotelTableBookingPage = () => {
       return;
     }
 
-    const entry = { id: `W${Date.now()}`, name: waitingName.trim(), seats: waitingSeats };
+    // Mobile + ID proof are optional. Validate ONLY what's provided —
+    // empty fields stay empty, partial fills (only type or only number)
+    // are rejected with a clear message.
+    const normalizedMobile = String(waitingMobile || "").replace(/\D/g, "");
+    const trimmedIdType = String(waitingIdType || "").trim();
+    const trimmedIdNumber = String(waitingIdNumber || "").trim();
+    const hasMobile = normalizedMobile.length > 0;
+    const hasIdType = trimmedIdType.length > 0;
+    const hasIdNumber = trimmedIdNumber.length > 0;
+    if (hasMobile && !/^\d{10}$/.test(normalizedMobile)) {
+      setWaitingMessage({
+        type: "error",
+        text: "Mobile number must be exactly 10 digits.",
+      });
+      return;
+    }
+    if (hasIdType !== hasIdNumber) {
+      setWaitingMessage({
+        type: "error",
+        text: "Provide both ID proof type and number, or leave both blank.",
+      });
+      return;
+    }
+
+    const entry = {
+      id: `W${Date.now()}`,
+      name: waitingName.trim(),
+      seats: waitingSeats,
+      // Optional fields ride along to server + Assign modal.
+      ...(hasMobile ? { mobile: normalizedMobile } : {}),
+      ...(hasIdType && hasIdNumber
+        ? { idProof: { type: trimmedIdType, number: trimmedIdNumber } }
+        : {}),
+    };
     setWaitingAddLoading(true);
     setWaitingQueue((prev) => [...prev, entry]);
     setNewGuests((prev) => [...prev, entry.id]);
     setTimeout(() => setNewGuests((prev) => prev.filter((id) => id !== entry.id)), 1600);
     setWaitingName("");
     setWaitingSeats(2);
+    setWaitingMobile("");
+    setWaitingIdType("");
+    setWaitingIdNumber("");
     setWaitingMessage({ type: "success", text: "Customer added to the waiting queue." });
     (async () => {
       try {
-        await hotelService.addDiningWaiting({ name: entry.name, seats: entry.seats });
+        // Server-side mirror via the catch-all hotel/waiting-list slice.
+        // The backend stores arbitrary fields as JSON and we read them
+        // back verbatim, so mobile + idProof survive the round-trip.
+        await hotelService.addDiningWaiting({
+          name: entry.name,
+          seats: entry.seats,
+          ...(entry.mobile ? { mobile: entry.mobile } : {}),
+          ...(entry.idProof ? { idProof: entry.idProof } : {}),
+        });
       } catch (err) {
         // Non-blocking: keep the entry locally and let the sync effect retry later.
         console.warn("Dining waiting sync failed (src), will retry later", err);
@@ -452,6 +506,12 @@ const HotelTableBookingPage = () => {
     const checkInTime = formatTime12Hour(
       `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
     );
+    // ID proof is captured at the Add-to-Waiting form. The DB column for
+    // dining bookings doesn't have a dedicated `id_proof` field, so we
+    // stash it as JSON in the existing `notes` TEXT column — same
+    // pattern the Lodging flow uses for in-line metadata. The booking
+    // card parses it back out to render the ID-proof chip.
+    const notesValue = entry.idProof ? JSON.stringify({ idProof: entry.idProof }) : undefined;
     try {
       // Persist to MySQL via /api/hotel/bookings. The backend broadcasts
       // an SSE booking event; HotelBilling's listener merges it into
@@ -462,6 +522,8 @@ const HotelTableBookingPage = () => {
         zone: table.zone,
         partySize: Number(entry.seats) || 1,
         guest: entry.name,
+        customerMobile: entry.mobile || "",
+        notes: notesValue,
         status: "booked",
         checkInDate,
         checkInTime,
@@ -478,7 +540,8 @@ const HotelTableBookingPage = () => {
                 status: "booked",
                 guest: entry.name,
                 partySize: Number(entry.seats) || 1,
-                customerMobile: "",
+                customerMobile: entry.mobile || "",
+                notes: notesValue,
                 checkInDate,
                 checkInTime,
                 _persisted: true,
@@ -720,6 +783,58 @@ const HotelTableBookingPage = () => {
                 </select>
               </div>
             </div>
+            {/* Optional booking details — captured here so the Assign flow
+                doesn't have to re-ask. Mobile validates as 10 digits if
+                provided; ID type + number must both be set together. */}
+            <div className="htb-form-row two-col">
+              <div className="htb-form-col">
+                <label>
+                  <FaPhoneAlt aria-hidden="true" /> Mobile number{" "}
+                  <span className="htb-form-optional">(optional)</span>
+                </label>
+                <input
+                  value={waitingMobile}
+                  onChange={(e) =>
+                    setWaitingMobile(
+                      String(e.target.value || "")
+                        .replace(/\D/g, "")
+                        .slice(0, 10)
+                    )
+                  }
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                />
+              </div>
+              <div className="htb-form-col">
+                <label>
+                  <FaIdCard aria-hidden="true" /> ID proof type{" "}
+                  <span className="htb-form-optional">(optional)</span>
+                </label>
+                <select value={waitingIdType} onChange={(e) => setWaitingIdType(e.target.value)}>
+                  <option value="">None</option>
+                  <option value="Aadhar">Aadhar</option>
+                  <option value="PAN">PAN</option>
+                  <option value="Driving License">Driving License</option>
+                  <option value="Voter ID">Voter ID</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            {waitingIdType ? (
+              <div className="htb-form-row">
+                <div className="htb-form-col">
+                  <label>
+                    <FaIdCard aria-hidden="true" /> ID proof number
+                  </label>
+                  <input
+                    value={waitingIdNumber}
+                    onChange={(e) => setWaitingIdNumber(e.target.value)}
+                    placeholder="Enter ID proof number"
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="htb-form-actions">
               <button
                 className="htb-btn htb-btn-primary"

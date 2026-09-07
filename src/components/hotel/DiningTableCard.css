@@ -319,6 +319,37 @@
   transform: translateY(-1px);
 }
 
+/* ID proof chip — mirrors .dtc-phone shape but is read-only (no copy
+   button, no click handler). Distinct amber/teal tone keeps it visually
+   separate from the contact phone chip so the cashier can scan both
+   fields at a glance. */
+.dtc-idproof {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  font-weight: 700;
+  font-size: 0.76rem;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dtc-idproof svg {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+}
+
+.dtc-idproof span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------------- Empty state ---------------- */
 .dtc-empty-state {
   position: relative;
