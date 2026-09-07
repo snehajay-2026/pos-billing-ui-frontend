@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getProducts, updateProduct as updateProductStockApi } from "../../services/productService";
 import { saveInvoice } from "../../services/invoiceService";
 import { getUser } from "../../utils/auth";
@@ -720,6 +720,12 @@ const HotelBilling = () => {
   // can independently disable just the live-bill display without
   // blocking normal Lodging/Dining operation.
   const hotelModuleLock = useHotelModuleLock();
+  // React Router hooks — used by the Waiting-Queue → Assign shortcut
+  // (/hotel-tables pushes `hotelDiningAutoBook` via navigation state).
+  // We read it and auto-open the SAME Book Table modal the cashier
+  // would normally open from a Dining table card.
+  const location = useLocation();
+  const navigate = useNavigate();
   // The local `activeTab` state is restored from localStorage on mount
   // and may point to a now-locked module. Force a switch to an
   // unlocked tab on every render that detects a stale active tab.
@@ -962,6 +968,111 @@ const HotelBilling = () => {
     };
     loadRoomBookingsOverlay();
   }, [activeStore]);
+
+  // Waiting-Queue → Assign shortcut.
+  //
+  // /hotel-tables (HotelTableBookingPage) pushes a
+  // `hotelDiningAutoBook` payload through React Router navigation
+  // state when the cashier clicks Assign on a queue entry. When we
+  // detect that payload here, we auto-open the SAME Book Table modal
+  // the cashier would otherwise open by clicking "Book Table" on a
+  // Dining card. The booking form, validation, API call, and SSE
+  // fan-out are unchanged — we only pre-fill guest name + party size
+  // so the cashier doesn't retype what the queue already has.
+  //
+  // Skipped (no auto-open) when:
+  //   - the queue entry's picked tableId has no live empty match
+  //   - the dining module is locked by the Super Owner
+  //
+  // In both skip cases the cashier still lands on /pos, sees the
+  // cards, and can click Book Table manually — so the canonical
+  // flow stays intact.
+  const autoBookHandledRef = useRef(null);
+  // Holds the queue entry id (if any) that the auto-book was opened
+  // for. `handleDiningTableBook` consumes it on success and removes
+  // the matching waiting-queue entry so the cashier doesn't have to
+  // pop back to /hotel-tables and clean up manually.
+  const autoBookQueueEntryIdRef = useRef("");
+  useEffect(() => {
+    const payload = location.state?.hotelDiningAutoBook;
+    if (!payload) {
+      // Nothing to do — but make sure a previous run's id-keyed flag
+      // is reset so the next assign doesn't get swallowed.
+      autoBookHandledRef.current = null;
+      autoBookQueueEntryIdRef.current = "";
+      return;
+    }
+    // Guard: tables may not be hydrated yet on first mount. The
+    // effect re-runs when `tables` updates, so we wait until we find
+    // a real row before acting.
+    if (!Array.isArray(tables) || tables.length === 0) return;
+    if (hotelModuleLock?.diningLocked) {
+      showToast?.("error", "Dining is locked by the Super Owner.");
+      navigate(location.pathname + location.search, { replace: true, state: null });
+      return;
+    }
+    // Idempotency: fire exactly once per (tableId + guestName) pair
+    // so a re-render (state-mutation from setTables, SSE echo, etc.)
+    // doesn't re-open the modal or reset the booking inputs.
+    const signature = `${payload.tableId || ""}::${payload.guestName || ""}::${payload.queueEntryId || ""}`;
+    if (autoBookHandledRef.current === signature) return;
+    const target = String(payload.tableId || "");
+    if (!target) {
+      // No fitting table was found at the queue side — leave the
+      // cashier on /pos without auto-opening so they can free a table
+      // or pick manually with the existing "Book Table" button.
+      showToast?.(
+        "info",
+        payload.guestName
+          ? `No table fits ${payload.guestName}'s party yet — free a table and try again.`
+          : "No empty table available — clear a table and try again."
+      );
+      navigate(location.pathname + location.search, { replace: true, state: null });
+      autoBookHandledRef.current = signature;
+      return;
+    }
+    const matchingTable = tables.find((t) => String(t.id) === target);
+    if (!matchingTable) {
+      // The table id from state doesn't exist (e.g. it was removed
+      // between navigation and arrival). Don't crash — clear state and
+      // let the cashier pick manually.
+      showToast?.("error", "Selected table not found — pick another from the cards.");
+      navigate(location.pathname + location.search, { replace: true, state: null });
+      autoBookHandledRef.current = signature;
+      return;
+    }
+    if (matchingTable.status && matchingTable.status !== "empty") {
+      // The picked table became booked between Assign and arrival.
+      // Don't open the modal against a non-empty table.
+      showToast?.("error", `${matchingTable.name} is no longer available.`);
+      navigate(location.pathname + location.search, { replace: true, state: null });
+      autoBookHandledRef.current = signature;
+      return;
+    }
+    // Open the canonical modal — same code path as the cashier
+    // clicking "Book Table" on a Dining table card.
+    openDiningTableBooking(matchingTable);
+    // Prefill queue-only data (name + party size) on top of whatever
+    // openDiningTableBooking already seeded. Mobile is left empty so
+    // the cashier still has to type it through the existing form —
+    // the queue doesn't capture it (per product spec).
+    if (payload.guestName) setDiningGuestName(sanitizeGuestName(String(payload.guestName)));
+    if (payload.partySize) {
+      const safeSize = Math.max(
+        1,
+        Math.min(Number(payload.partySize || 1), Number(matchingTable.seats || 1))
+      );
+      setDiningPartySize(safeSize);
+    }
+    // Stash the queue entry id (if any) so `handleDiningTableBook`
+    // can drop the waiting entry after the booking is persisted.
+    autoBookHandledRef.current = signature;
+    autoBookQueueEntryIdRef.current = String(payload.queueEntryId || "");
+    // Clear the navigation state so a browser refresh doesn't re-open
+    // the modal with stale data.
+    navigate(location.pathname + location.search, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, tables, hotelModuleLock?.diningLocked]);
 
   // Real-time sync listener — merges incoming SSE events into the local
   // tables / rooms state so a booking made on another device shows up
@@ -1554,6 +1665,33 @@ const HotelBilling = () => {
         checkInTime: resolvedCheckInTime,
         status: "booked",
       });
+      // If this booking was triggered from the Waiting Queue → Assign
+      // shortcut, remove the corresponding queue entry now that the
+      // server-side booking is confirmed. We delay this until AFTER the
+      // await so a network failure leaves the entry in the queue and
+      // the cashier can retry without losing data.
+      const queueEntryId = autoBookQueueEntryIdRef.current;
+      if (queueEntryId) {
+        autoBookQueueEntryIdRef.current = "";
+        const nextQueue = (waitingQueue || []).filter(
+          (entry) => String(entry.id) !== String(queueEntryId)
+        );
+        setWaitingQueue(nextQueue);
+        try {
+          window.localStorage.setItem(WAITING_QUEUE_KEY, JSON.stringify(nextQueue));
+          window.dispatchEvent(
+            new CustomEvent("hotel_dining_waiting_list_updated", { detail: nextQueue })
+          );
+        } catch (err) {
+          /* quota / private mode — the storage event listener on
+             /hotel-tables will pick up the change via the dispatch
+             above regardless */
+        }
+        hotelService.removeDiningWaiting(queueEntryId).catch(() => {
+          /* non-blocking: the entry is gone from local state and SSE
+             echo will let other devices catch up */
+        });
+      }
     } catch (err) {
       showToast("error", "Failed to sync table booking to server.");
     }

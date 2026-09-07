@@ -14,42 +14,11 @@ import {
   FaCopy,
   FaCheck,
   FaPhoneAlt,
-  FaIdCard,
   FaConciergeBell,
   FaShoppingBag,
   FaListUl,
 } from "react-icons/fa";
 import "./DiningTableCard.css";
-
-// Defensive parser for `table.notes`. The Assign flow stashes ID proof
-// as JSON in the booking's `notes` column (the schema has no dedicated
-// `id_proof` column for dining); older bookings may have non-JSON notes
-// from Lodging or future features. Returns null when the payload isn't
-// the expected `{ idProof: { type, number } }` shape.
-const parseIdProofFromNotes = (notes) => {
-  if (!notes) return null;
-  const raw = String(notes).trim();
-  if (!raw || raw[0] !== "{") return null;
-  try {
-    const parsed = JSON.parse(raw);
-    const idProof = parsed && parsed.idProof;
-    if (
-      idProof &&
-      typeof idProof.type === "string" &&
-      typeof idProof.number === "string" &&
-      idProof.type.trim() &&
-      idProof.number.trim()
-    ) {
-      return {
-        type: idProof.type.trim(),
-        number: idProof.number.trim(),
-      };
-    }
-  } catch {
-    /* non-JSON; ignore */
-  }
-  return null;
-};
 
 const initialsFromName = (name = "") => {
   const cleaned = String(name || "")
@@ -158,11 +127,6 @@ const DiningTableCard = ({
 
   const checkInDateLabel = formatCheckInDate(table.checkInDate);
   const checkInTimeLabel = formatCheckInTime(table.checkInTime);
-  // ID proof (optional) — mined from the booking row's `notes` JSON
-  // envelope. Only renders for the Assign path's bookings today;
-  // safe to leave in place for any future feature that stores ID
-  // proof the same way.
-  const idProof = booked ? parseIdProofFromNotes(table.notes) : null;
   const phoneDisplay = table.customerMobile || table.guestPhone || "";
 
   const handleCopy = async (phone) => {
@@ -272,18 +236,6 @@ const DiningTableCard = ({
                   <span>{phoneDisplay}</span>
                   {copiedPhone ? <FaCheck /> : <FaCopy />}
                 </button>
-              ) : null}
-              {idProof ? (
-                <span
-                  className="dtc-idproof"
-                  title={`${idProof.type}: ${idProof.number}`}
-                  aria-label={`Identity proof ${idProof.type} ${idProof.number}`}
-                >
-                  <FaIdCard />
-                  <span>
-                    {idProof.type} · {idProof.number}
-                  </span>
-                </span>
               ) : null}
             </div>
           </div>

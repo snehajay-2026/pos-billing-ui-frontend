@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import hotelService from "../services/hotelService";
 import {
@@ -17,32 +18,10 @@ import {
   FaMapMarkerAlt,
   FaSearch,
   FaUserCheck,
-  FaTimes,
-  FaPhoneAlt,
-  FaIdCard,
 } from "react-icons/fa";
 import "./HotelTableBookingPage.css";
 import { useUi } from "../context/UiContext";
 import { formatWaitTime, getEstimatedWaitMinutes } from "../utils/diningWaitEstimate";
-
-// Mirror of HotelBilling's `formatTime12Hour` (see HotelBilling.jsx:232).
-// Used to stamp the check-in time on a booking row at Assign time so the
-// timestamp matches what the cashier would see if they booked the table
-// directly from the POS dining tab.
-const formatTime12Hour = (timeValue) => {
-  const rawTime = String(timeValue || "").trim();
-  if (!rawTime) return "";
-  if (/am|pm/i.test(rawTime)) return rawTime.toUpperCase();
-  const match = rawTime.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return rawTime;
-  const hours = Number(match[1]);
-  const minutes = match[2];
-  if (Number.isNaN(hours)) return rawTime;
-  const normalizedHour = ((hours % 24) + 24) % 24;
-  const suffix = normalizedHour >= 12 ? "PM" : "AM";
-  const hour12 = normalizedHour % 12 || 12;
-  return `${String(hour12).padStart(2, "0")}:${minutes} ${suffix}`;
-};
 
 const TABLES_STORAGE_KEY = "hotel_table_booking_state";
 const WAITING_QUEUE_KEY = "hotel_dining_waiting_list";
@@ -135,14 +114,6 @@ const HotelTableBookingPage = () => {
   const [newTableZone, setNewTableZone] = useState("Main");
   const [waitingName, setWaitingName] = useState("");
   const [waitingSeats, setWaitingSeats] = useState(2);
-  // Optional booking details captured on the Add-to-Waiting form so the
-  // Assign flow can populate the resulting Dining booking card without
-  // re-asking. `waitingMobile` validates as a 10-digit number if provided.
-  // `waitingIdType` + `waitingIdNumber` are coupled — both must be set
-  // together if either is filled.
-  const [waitingMobile, setWaitingMobile] = useState("");
-  const [waitingIdType, setWaitingIdType] = useState("");
-  const [waitingIdNumber, setWaitingIdNumber] = useState("");
   const [waitingQueue, setWaitingQueue] = useState(() => {
     if (typeof window === "undefined") return [];
     const savedWaiting = window.localStorage.getItem(WAITING_QUEUE_KEY);
@@ -160,16 +131,6 @@ const HotelTableBookingPage = () => {
   const [waitingAddLoading, setWaitingAddLoading] = useState(false);
   const [waitingRemovingId, setWaitingRemovingId] = useState(null);
   const [addTableMessage, setAddTableMessage] = useState(null);
-  // Assign-waiting-guest flow — picks a table for a queued customer.
-  // `assigningEntry` is the queue entry being seated; `assignModalOpen`
-  // gates the modal; `assignTableId` is the table the cashier selected.
-  // The entry is removed from `waitingQueue` only AFTER the server-side
-  // bookTable succeeds — a partial local removal would lose the entry
-  // on a network error.
-  const [assigningEntry, setAssigningEntry] = useState(null);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [assignTableId, setAssignTableId] = useState("");
-  const [assignBusy, setAssignBusy] = useState(false);
   // Tracks whether the initial async load (server → localStorage → defaults)
   // has finished. While `false`, the persistence effect below MUST NOT write
   // to localStorage — otherwise the seed `defaultTables` would clobber a
@@ -177,6 +138,11 @@ const HotelTableBookingPage = () => {
   // resolved. This was the root cause of "table booking disappears when I
   // open the Dining Tables page and go back".
   const [tablesHydrated, setTablesHydrated] = useState(false);
+  // Used by the Assign flow to jump into the canonical HotelBilling →
+  // Dining "Book Table" modal. Passing the queue entry's name + party
+  // size as navigation state lets HotelBilling pre-fill those fields
+  // without us duplicating the booking form.
+  const navigate = useNavigate();
   const { showToast, activeStore } = useUi();
 
   useEffect(() => {
@@ -319,39 +285,14 @@ const HotelTableBookingPage = () => {
       return;
     }
 
-    // Mobile + ID proof are optional. Validate ONLY what's provided —
-    // empty fields stay empty, partial fills (only type or only number)
-    // are rejected with a clear message.
-    const normalizedMobile = String(waitingMobile || "").replace(/\D/g, "");
-    const trimmedIdType = String(waitingIdType || "").trim();
-    const trimmedIdNumber = String(waitingIdNumber || "").trim();
-    const hasMobile = normalizedMobile.length > 0;
-    const hasIdType = trimmedIdType.length > 0;
-    const hasIdNumber = trimmedIdNumber.length > 0;
-    if (hasMobile && !/^\d{10}$/.test(normalizedMobile)) {
-      setWaitingMessage({
-        type: "error",
-        text: "Mobile number must be exactly 10 digits.",
-      });
-      return;
-    }
-    if (hasIdType !== hasIdNumber) {
-      setWaitingMessage({
-        type: "error",
-        text: "Provide both ID proof type and number, or leave both blank.",
-      });
-      return;
-    }
-
+    // The waiting queue is a shortcut into the canonical Dining "Book
+    // Table" flow in HotelBilling. It only tracks the bare minimum the
+    // queue needs (name + party size); mobile and ID proof are collected
+    // by the existing booking modal — never duplicated here.
     const entry = {
       id: `W${Date.now()}`,
       name: waitingName.trim(),
       seats: waitingSeats,
-      // Optional fields ride along to server + Assign modal.
-      ...(hasMobile ? { mobile: normalizedMobile } : {}),
-      ...(hasIdType && hasIdNumber
-        ? { idProof: { type: trimmedIdType, number: trimmedIdNumber } }
-        : {}),
     };
     setWaitingAddLoading(true);
     setWaitingQueue((prev) => [...prev, entry]);
@@ -359,20 +300,13 @@ const HotelTableBookingPage = () => {
     setTimeout(() => setNewGuests((prev) => prev.filter((id) => id !== entry.id)), 1600);
     setWaitingName("");
     setWaitingSeats(2);
-    setWaitingMobile("");
-    setWaitingIdType("");
-    setWaitingIdNumber("");
     setWaitingMessage({ type: "success", text: "Customer added to the waiting queue." });
     (async () => {
       try {
         // Server-side mirror via the catch-all hotel/waiting-list slice.
-        // The backend stores arbitrary fields as JSON and we read them
-        // back verbatim, so mobile + idProof survive the round-trip.
         await hotelService.addDiningWaiting({
           name: entry.name,
           seats: entry.seats,
-          ...(entry.mobile ? { mobile: entry.mobile } : {}),
-          ...(entry.idProof ? { idProof: entry.idProof } : {}),
         });
       } catch (err) {
         // Non-blocking: keep the entry locally and let the sync effect retry later.
@@ -456,114 +390,56 @@ const HotelTableBookingPage = () => {
     })();
   };
 
-  // === Assign: seat a waiting customer at a chosen dining table ===
+  // === Assign: route a waiting customer into the canonical Dining
+  //     "Book Table" flow in HotelBilling.
   //
-  // Open the picker modal. The cashier selects an available table sized
-  // for the guest; confirm posts to /api/hotel/bookings via
-  // hotelService.bookTable (which fans out the SSE `kind:"booking",
-  // action:"upserted"` event so every device in the same store flips
-  // the table to Booked). On success the queue entry is removed.
-  const handleOpenAssign = (entry) => {
+  // Instead of duplicating the booking modal + form + validation +
+  // API here, we hand the cashier off to the SAME modal HotelBilling
+  // already uses when a cashier clicks "Book Table" on a Dining table
+  // card. HotelBilling watches `useLocation().state.hotelDiningAutoBook`
+  // and auto-opens its existing booking modal pre-filled with the
+  // queue entry's name + party size. Mobile + ID proof (if needed) are
+  // collected by the existing modal — not by us.
+  //
+  // If no empty table is large enough to seat the party we still
+  // navigate, but pass `tableId: null` so HotelBilling skips the
+  // auto-open and shows the cashiers the live cards instead — they
+  // can free a table or add a bigger one before re-clicking Assign.
+  const handleAssign = (entry) => {
     if (!entry) return;
-    setAssigningEntry(entry);
-    setAssignTableId("");
-    setAssignModalOpen(true);
+    const tableId = pickAssignTableId(entry);
+    navigate("/pos", {
+      state: {
+        hotelDiningAutoBook: {
+          tableId, // empty string when no fit — HotelBilling skips auto-open
+          guestName: entry.name,
+          partySize: Number(entry.seats || 1),
+          queueEntryId: entry.id,
+        },
+      },
+    });
   };
 
-  const handleCloseAssign = () => {
-    if (assignBusy) return;
-    setAssignModalOpen(false);
-    setAssigningEntry(null);
-    setAssignTableId("");
+  // Pick the smallest available table that still seats the party.
+  // Mirrors the prior picker modal's "best fit" heuristic so the table
+  // picked here matches what the cashier would have selected manually.
+  const pickAssignTableId = (entry) => {
+    const partySize = Number(entry?.seats || 0);
+    if (!partySize) return "";
+    const best = tables
+      .filter((t) => t.status === "empty" && Number(t.seats || 0) >= partySize)
+      .sort((a, b) => Number(a.seats || 0) - Number(b.seats || 0))[0];
+    return best ? String(best.id) : "";
   };
 
-  const handleConfirmAssign = async () => {
-    if (assignBusy || !assigningEntry) return;
-    const entry = assigningEntry;
-    const table = tables.find((t) => String(t.id) === String(assignTableId));
-    if (!table) {
-      showToast("error", "Please select a table to assign.");
-      return;
-    }
-    if (table.status !== "empty") {
-      // Server-side upsert would still work, but we keep the UI honest
-      // by rejecting a table that became booked while the modal was open.
-      showToast("error", `${table.name} is no longer available. Pick another table.`);
-      setAssignTableId("");
-      return;
-    }
-    if (Number(table.seats || 0) < Number(entry.seats || 0)) {
-      showToast(
-        "error",
-        `${table.name} seats ${table.seats} — too small for a party of ${entry.seats}.`
-      );
-      setAssignTableId("");
-      return;
-    }
-    setAssignBusy(true);
-    const now = new Date();
-    const checkInDate = now.toISOString().slice(0, 10);
-    const checkInTime = formatTime12Hour(
-      `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  // Per-entry flag: does ANY empty table on the floor fit this party?
+  // When false, the Assign button is enabled but it lands the cashier
+  // on /pos with the auto-book *skipped*, so they can free/add a table
+  // before re-attempting — same modal, same flow, just no auto-pick.
+  const entryHasFit = (entry) =>
+    tables.some(
+      (t) => t.status === "empty" && Number(t.seats || 0) >= Number(entry?.seats || 0)
     );
-    // ID proof is captured at the Add-to-Waiting form. The DB column for
-    // dining bookings doesn't have a dedicated `id_proof` field, so we
-    // stash it as JSON in the existing `notes` TEXT column — same
-    // pattern the Lodging flow uses for in-line metadata. The booking
-    // card parses it back out to render the ID-proof chip.
-    const notesValue = entry.idProof ? JSON.stringify({ idProof: entry.idProof }) : undefined;
-    try {
-      // Persist to MySQL via /api/hotel/bookings. The backend broadcasts
-      // an SSE booking event; HotelBilling's listener merges it into
-      // the dining tab tables state and re-renders the card as Booked.
-      await hotelService.bookTable({
-        id: table.id,
-        name: table.name,
-        zone: table.zone,
-        partySize: Number(entry.seats) || 1,
-        guest: entry.name,
-        customerMobile: entry.mobile || "",
-        notes: notesValue,
-        status: "booked",
-        checkInDate,
-        checkInTime,
-      });
-      // Best-effort optimistic local flip so this page's stat tiles and
-      // the seater grid reflect the new booking without waiting on the
-      // SSE round-trip. The SSE listener in HotelBilling is the source
-      // of truth on every other device.
-      setTables((prev) =>
-        prev.map((t) =>
-          String(t.id) === String(table.id)
-            ? {
-                ...t,
-                status: "booked",
-                guest: entry.name,
-                partySize: Number(entry.seats) || 1,
-                customerMobile: entry.mobile || "",
-                notes: notesValue,
-                checkInDate,
-                checkInTime,
-                _persisted: true,
-              }
-            : t
-        )
-      );
-      // Drop the entry from the queue. The existing effect at line ~250
-      // mirrors this removal to the server via removeDiningWaiting().
-      setWaitingQueue((prev) => prev.filter((w) => w.id !== entry.id));
-      setAssignBusy(false);
-      setAssignModalOpen(false);
-      setAssigningEntry(null);
-      setAssignTableId("");
-      showToast("success", `${entry.name} assigned to ${table.name}.`);
-    } catch (err) {
-      setAssignBusy(false);
-      // Stay on the modal so the cashier can retry with the same or a
-      // different table. The queue entry is preserved.
-      showToast("error", err?.message || "Failed to assign table.");
-    }
-  };
 
   return (
     <Layout>
@@ -783,58 +659,6 @@ const HotelTableBookingPage = () => {
                 </select>
               </div>
             </div>
-            {/* Optional booking details — captured here so the Assign flow
-                doesn't have to re-ask. Mobile validates as 10 digits if
-                provided; ID type + number must both be set together. */}
-            <div className="htb-form-row two-col">
-              <div className="htb-form-col">
-                <label>
-                  <FaPhoneAlt aria-hidden="true" /> Mobile number{" "}
-                  <span className="htb-form-optional">(optional)</span>
-                </label>
-                <input
-                  value={waitingMobile}
-                  onChange={(e) =>
-                    setWaitingMobile(
-                      String(e.target.value || "")
-                        .replace(/\D/g, "")
-                        .slice(0, 10)
-                    )
-                  }
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="10-digit mobile"
-                />
-              </div>
-              <div className="htb-form-col">
-                <label>
-                  <FaIdCard aria-hidden="true" /> ID proof type{" "}
-                  <span className="htb-form-optional">(optional)</span>
-                </label>
-                <select value={waitingIdType} onChange={(e) => setWaitingIdType(e.target.value)}>
-                  <option value="">None</option>
-                  <option value="Aadhar">Aadhar</option>
-                  <option value="PAN">PAN</option>
-                  <option value="Driving License">Driving License</option>
-                  <option value="Voter ID">Voter ID</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
-            {waitingIdType ? (
-              <div className="htb-form-row">
-                <div className="htb-form-col">
-                  <label>
-                    <FaIdCard aria-hidden="true" /> ID proof number
-                  </label>
-                  <input
-                    value={waitingIdNumber}
-                    onChange={(e) => setWaitingIdNumber(e.target.value)}
-                    placeholder="Enter ID proof number"
-                  />
-                </div>
-              </div>
-            ) : null}
             <div className="htb-form-actions">
               <button
                 className="htb-btn htb-btn-primary"
@@ -981,9 +805,15 @@ const HotelTableBookingPage = () => {
                           <button
                             className="htb-btn htb-btn-primary htb-btn-assign"
                             type="button"
-                            onClick={() => handleOpenAssign(entry)}
-                            disabled={assignBusy}
-                            title={`Seat ${entry.name} at an available table`}
+                            onClick={() => handleAssign(entry)}
+                            disabled={availableTableCount === 0}
+                            title={
+                              availableTableCount === 0
+                                ? "No empty tables available right now"
+                                : entryHasFit(entry)
+                                  ? `Seat ${entry.name} at a fitting empty table`
+                                  : `No empty table fits a party of ${entry.seats}. Free or add one, then retry.`
+                            }
                           >
                             <FaUserCheck className="htb-btn-icon" aria-hidden="true" />
                             <span>Assign</span>
@@ -1083,190 +913,7 @@ const HotelTableBookingPage = () => {
           </div>
         </div>
       </div>
-
-      {/* === Assign modal ============================================
-          Opens when the cashier clicks Assign on a waiting-queue
-          entry. Shows the customer's name + party size and a grid of
-          available (status:"empty") tables sized to fit. Confirm
-          POSTs to /api/hotel/bookings via hotelService.bookTable,
-          removes the queue entry, and the existing SSE plumbing
-          flips the table to Booked on every device.
-       */}
-      {assignModalOpen && assigningEntry && (
-        <AssignTableModal
-          entry={assigningEntry}
-          queueLength={waitingQueue.length}
-          suitableTables={findSuitableTablesForSeats(assigningEntry.seats)}
-          totalAvailable={availableTableCount}
-          selectedTableId={assignTableId}
-          onSelectTable={setAssignTableId}
-          onCancel={handleCloseAssign}
-          onConfirm={handleConfirmAssign}
-          busy={assignBusy}
-        />
-      )}
     </Layout>
-  );
-};
-
-// AssignTableModal — picker for seating a waiting customer.
-// Shows the guest summary and a grid of available tables sized
-// to fit the party. The parent owns the open/close + selection state
-// and persists via hotelService.bookTable.
-const AssignTableModal = ({
-  entry,
-  queueLength,
-  suitableTables,
-  totalAvailable,
-  selectedTableId,
-  onSelectTable,
-  onCancel,
-  onConfirm,
-  busy,
-}) => {
-  const seatFor = Number(entry?.seats || 1);
-  const canConfirm = !busy && !!selectedTableId;
-
-  return (
-    <div className="htb-assign-backdrop" onClick={busy ? undefined : onCancel}>
-      <div
-        className="htb-assign-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Assign ${entry.name} to a table`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="htb-assign-header">
-          <div>
-            <div className="htb-panel-kicker queue">
-              <FaUserCheck aria-hidden="true" /> Assign to Table
-            </div>
-            <h3 className="htb-assign-title">Seat {entry.name}</h3>
-            <p className="htb-assign-sub">
-              Party of <strong>{entry.seats}</strong>
-              {queueLength > 1 ? (
-                <>
-                  {" · "}
-                  <span>
-                    {queueLength - 1} other guest{queueLength - 1 === 1 ? "" : "s"} still waiting
-                  </span>
-                </>
-              ) : null}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="htb-assign-close"
-            onClick={onCancel}
-            disabled={busy}
-            aria-label="Close"
-          >
-            <FaTimes aria-hidden="true" />
-          </button>
-        </header>
-
-        <div className="htb-assign-body">
-          {suitableTables.length === 0 ? (
-            <div className="htb-assign-empty">
-              <div className="htb-assign-empty-icon">
-                <FaInfoCircle aria-hidden="true" />
-              </div>
-              <strong>No matching table available</strong>
-              <span>
-                No empty table seats at least {seatFor}. Wait for one to clear or add a larger table
-                from the floor setup before assigning this guest.
-              </span>
-              {totalAvailable > 0 ? (
-                <small>
-                  {totalAvailable} empty table{totalAvailable === 1 ? "" : "s"} on the floor, but
-                  none fit a party of {seatFor}.
-                </small>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <div className="htb-assign-hint">
-                Pick an available table sized for the party. Booking is server-authoritative — once
-                confirmed the table flips to Booked on every connected device.
-              </div>
-              <div
-                className="htb-assign-tables-grid"
-                role="radiogroup"
-                aria-label="Available tables"
-              >
-                {suitableTables.map((table) => {
-                  const isSelected = String(selectedTableId) === String(table.id);
-                  return (
-                    <button
-                      key={table.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      className={`htb-assign-table-card ${isSelected ? "is-selected" : ""}`}
-                      onClick={() => onSelectTable(String(table.id))}
-                      disabled={busy}
-                    >
-                      <div className="htb-assign-table-head">
-                        <span className="htb-assign-table-name">
-                          <FaChair aria-hidden="true" /> {table.name}
-                        </span>
-                        <span className="htb-assign-table-zone">
-                          <FaMapMarkerAlt aria-hidden="true" /> {table.zone || "Main"}
-                        </span>
-                      </div>
-                      <div className="htb-assign-table-meta">
-                        <span>
-                          <FaUsers aria-hidden="true" /> {table.seats} seater
-                        </span>
-                        <span className="htb-assign-table-fit">
-                          {table.seats === seatFor ? "Exact fit" : `Fits party of ${seatFor}`}
-                        </span>
-                      </div>
-                      {isSelected ? (
-                        <div className="htb-assign-table-selected-badge">
-                          <FaCheckCircle aria-hidden="true" /> Selected
-                        </div>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        <footer className="htb-assign-footer">
-          <button
-            type="button"
-            className="htb-btn htb-btn-ghost"
-            onClick={onCancel}
-            disabled={busy}
-          >
-            <FaTimes className="htb-btn-icon" aria-hidden="true" />
-            <span>Cancel</span>
-          </button>
-          <button
-            type="button"
-            className="htb-btn htb-btn-primary"
-            onClick={onConfirm}
-            disabled={!canConfirm || suitableTables.length === 0}
-            aria-busy={busy}
-          >
-            {busy ? (
-              <>
-                <span className="htb-spinner" aria-hidden="true" />
-                <span>Assigning…</span>
-              </>
-            ) : (
-              <>
-                <FaUserCheck className="htb-btn-icon" aria-hidden="true" />
-                <span>Confirm Assign</span>
-              </>
-            )}
-          </button>
-        </footer>
-      </div>
-    </div>
   );
 };
 
