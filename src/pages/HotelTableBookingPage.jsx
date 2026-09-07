@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import hotelService from "../services/hotelService";
@@ -18,7 +18,9 @@ import {
   FaMapMarkerAlt,
   FaSearch,
   FaUserCheck,
+  FaTimes,
 } from "react-icons/fa";
+import DiningTableCard from "../components/hotel/DiningTableCard";
 import "./HotelTableBookingPage.css";
 import { useUi } from "../context/UiContext";
 import { formatWaitTime, getEstimatedWaitMinutes } from "../utils/diningWaitEstimate";
@@ -131,6 +133,15 @@ const HotelTableBookingPage = () => {
   const [waitingAddLoading, setWaitingAddLoading] = useState(false);
   const [waitingRemovingId, setWaitingRemovingId] = useState(null);
   const [addTableMessage, setAddTableMessage] = useState(null);
+  // Assign-waiting-guest flow: opens a picker modal that lists the
+  // available Dining table cards. The cashier picks one; confirming
+  // routes to /pos with state.hotelDiningAutoBook = { tableId, ... }
+  // so HotelBilling auto-opens the SAME existing "Book Table" modal
+  // the cashier would otherwise open from a Dining card. No booking
+  // form is duplicated here.
+  const [assigningEntry, setAssigningEntry] = useState(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignTableId, setAssignTableId] = useState("");
   // Tracks whether the initial async load (server → localStorage → defaults)
   // has finished. While `false`, the persistence effect below MUST NOT write
   // to localStorage — otherwise the seed `defaultTables` would clobber a
@@ -393,49 +404,71 @@ const HotelTableBookingPage = () => {
   // === Assign: route a waiting customer into the canonical Dining
   //     "Book Table" flow in HotelBilling.
   //
-  // Instead of duplicating the booking modal + form + validation +
-  // API here, we hand the cashier off to the SAME modal HotelBilling
-  // already uses when a cashier clicks "Book Table" on a Dining table
-  // card. HotelBilling watches `useLocation().state.hotelDiningAutoBook`
-  // and auto-opens its existing booking modal pre-filled with the
-  // queue entry's name + party size. Mobile + ID proof (if needed) are
-  // collected by the existing modal — not by us.
+  // Step 1 (this file): open a picker modal that shows the available
+  // Dining table cards. The cashier picks the table.
+  // Step 2 (this file): confirm → navigate to /pos with
+  //   state.hotelDiningAutoBook = { tableId, guestName, partySize }.
+  // Step 3 (HotelBilling): the auto-book useEffect detects the state,
+  //   calls openDiningTableBooking(matchingTable) — the SAME function
+  //   the cashier invokes from a Dining table card — and prefills the
+  //   queue's name + party size. The cashier then fills the existing
+  //   form's mobile field and clicks Book.
   //
-  // If no empty table is large enough to seat the party we still
-  // navigate, but pass `tableId: null` so HotelBilling skips the
-  // auto-open and shows the cashiers the live cards instead — they
-  // can free a table or add a bigger one before re-clicking Assign.
-  const handleAssign = (entry) => {
+  // No booking form, validation, or API is duplicated here. The
+  // booking is server-authoritative (POST /api/hotel/bookings), the
+  // SSE layer fans out the status to every device, and
+  // loadBookingsOverlay on remount reloads it from MySQL — so
+  // refresh / navigate-away-then-back all see the same Booked state.
+  const handleOpenAssign = (entry) => {
     if (!entry) return;
-    const tableId = pickAssignTableId(entry);
+    setAssigningEntry(entry);
+    setAssignTableId("");
+    setAssignModalOpen(true);
+  };
+
+  const handleCloseAssign = () => {
+    setAssignModalOpen(false);
+    setAssigningEntry(null);
+    setAssignTableId("");
+  };
+
+  const handleConfirmAssign = () => {
+    if (!assigningEntry) return;
+    const table = tables.find((t) => String(t.id) === String(assignTableId));
+    if (!table) {
+      showToast("error", "Please select a table to assign.");
+      return;
+    }
+    if (table.status && table.status !== "empty") {
+      showToast("error", `${table.name} is no longer available.`);
+      setAssignTableId("");
+      return;
+    }
+    if (Number(table.seats || 0) < Number(assigningEntry.seats || 0)) {
+      // Defense-in-depth — the canonical modal also rejects this.
+      showToast(
+        "error",
+        `${table.name} seats ${table.seats} — too small for a party of ${assigningEntry.seats}.`
+      );
+      setAssignTableId("");
+      return;
+    }
+    handleCloseAssign();
     navigate("/pos", {
       state: {
         hotelDiningAutoBook: {
-          tableId, // empty string when no fit — HotelBilling skips auto-open
-          guestName: entry.name,
-          partySize: Number(entry.seats || 1),
-          queueEntryId: entry.id,
+          tableId: String(table.id),
+          guestName: assigningEntry.name,
+          partySize: Number(assigningEntry.seats || 1),
         },
       },
     });
   };
 
-  // Pick the smallest available table that still seats the party.
-  // Mirrors the prior picker modal's "best fit" heuristic so the table
-  // picked here matches what the cashier would have selected manually.
-  const pickAssignTableId = (entry) => {
-    const partySize = Number(entry?.seats || 0);
-    if (!partySize) return "";
-    const best = tables
-      .filter((t) => t.status === "empty" && Number(t.seats || 0) >= partySize)
-      .sort((a, b) => Number(a.seats || 0) - Number(b.seats || 0))[0];
-    return best ? String(best.id) : "";
-  };
-
   // Per-entry flag: does ANY empty table on the floor fit this party?
-  // When false, the Assign button is enabled but it lands the cashier
-  // on /pos with the auto-book *skipped*, so they can free/add a table
-  // before re-attempting — same modal, same flow, just no auto-pick.
+  // When false, the picker will still open but show its empty-state
+  // (no fitting tables) and the Assign button there is disabled. The
+  // cashier can still free a table and retry.
   const entryHasFit = (entry) =>
     tables.some(
       (t) => t.status === "empty" && Number(t.seats || 0) >= Number(entry?.seats || 0)
@@ -805,7 +838,7 @@ const HotelTableBookingPage = () => {
                           <button
                             className="htb-btn htb-btn-primary htb-btn-assign"
                             type="button"
-                            onClick={() => handleAssign(entry)}
+                            onClick={() => handleOpenAssign(entry)}
                             disabled={availableTableCount === 0}
                             title={
                               availableTableCount === 0
@@ -913,7 +946,132 @@ const HotelTableBookingPage = () => {
           </div>
         </div>
       </div>
+
+      {assignModalOpen && assigningEntry && (
+        <AssignTableModal
+          entry={assigningEntry}
+          tables={tables}
+          selectedTableId={assignTableId}
+          onSelectTable={setAssignTableId}
+          onClose={handleCloseAssign}
+          onConfirm={handleConfirmAssign}
+        />
+      )}
     </Layout>
+  );
+};
+
+const AssignTableModal = ({
+  entry,
+  tables,
+  selectedTableId,
+  onSelectTable,
+  onClose,
+  onConfirm,
+}) => {
+  const partySize = Number(entry?.seats || 0);
+
+  // Tables that can physically seat this party: empty AND seats >= party.
+  // These are the only cards shown in the picker — the cashier cannot
+  // assign a queue entry to a booked table, and a 2-seater can't host 4.
+  const fittingTables = useMemo(
+    () =>
+      (Array.isArray(tables) ? tables : [])
+        .filter((t) => t.status === "empty" && Number(t.seats || 0) >= partySize)
+        .sort((a, b) => Number(a.seats || 0) - Number(b.seats || 0)),
+    [tables, partySize]
+  );
+
+  useEffect(() => {
+    // Auto-focus the modal so Escape closes it predictably.
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const canConfirm = !!selectedTableId && fittingTables.some(
+    (t) => String(t.id) === String(selectedTableId)
+  );
+
+  return (
+    <div className="htb-assign-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
+      <div
+        className="htb-assign-modal"
+        role="document"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="htb-assign-header">
+          <div>
+            <h2 className="htb-assign-title">
+              <FaUserCheck aria-hidden="true" /> Assign {entry?.name || "guest"} to a table
+            </h2>
+            <p className="htb-assign-sub">
+              Party of <strong>{partySize}</strong> · pick an available table below.
+              After confirming, the existing Book Table flow in Hotel Billing will open
+              pre-filled with this guest.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="htb-assign-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <FaTimes />
+          </button>
+        </header>
+
+        <div className="htb-assign-body">
+          <div className="htb-assign-hint">
+            <FaInfoCircle aria-hidden="true" />
+            <span>
+              Only tables that can seat your party are shown. Empty tables that are too small
+              are hidden — clear or reassign them first.
+            </span>
+          </div>
+
+          {fittingTables.length === 0 ? (
+            <div className="htb-assign-empty">
+              <div className="htb-assign-empty-icon">
+                <FaChair />
+              </div>
+              <h3>No fitting table available</h3>
+              <p>
+                No empty table on the floor seats {partySize || "this party"}. Free or add a
+                larger table, then come back and click Assign again.
+              </p>
+            </div>
+          ) : (
+            <div className="htb-assign-tables-grid">
+              {fittingTables.map((table) => (
+                <DiningTableCard
+                  key={table.id}
+                  table={table}
+                  isSelected={String(selectedTableId) === String(table.id)}
+                  onSelect={(t) => onSelectTable(String(t.id))}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <footer className="htb-assign-footer">
+          <button type="button" className="htb-btn htb-btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="htb-btn htb-btn-primary"
+            onClick={onConfirm}
+            disabled={!canConfirm}
+          >
+            <FaArrowRight aria-hidden="true" /> Continue to Book Table
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 };
 
