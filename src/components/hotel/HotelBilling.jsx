@@ -890,15 +890,38 @@ const HotelBilling = () => {
           if (attempt === 1) {
             // Final failure — log so the bug is investigable, keep the
             // existing local state so the UI doesn't blank out.
-            // eslint-disable-next-line no-console
-            console.warn("[hotel/bookings] overlay failed:", err && err.message);
+            if (typeof window !== "undefined" && window.console) {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[hotel/bookings] dining overlay fetch failed (kept local state):",
+                err && err.message
+              );
+            }
             return;
           }
           // Tiny backoff before retrying.
           await new Promise((r) => setTimeout(r, 250));
         }
       }
-      if (!Array.isArray(bookings) || bookings.length === 0) return;
+      if (!Array.isArray(bookings) || bookings.length === 0) {
+        if (typeof window !== "undefined" && window.console) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "[hotel/bookings] dining overlay returned 0 bookings — server has no active booking for the current store scope"
+          );
+        }
+        return;
+      }
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[hotel/bookings] dining overlay applying " +
+            bookings.length +
+            " booking(s): " +
+            bookings.map((b) => b.tableId || b.id).join(",")
+        );
+      }
+      let nextTablesSnapshot = null;
       setTables((prev) => {
         const byId = new Map((Array.isArray(prev) ? prev : []).map((t) => [String(t.id), t]));
         bookings.forEach((b) => {
@@ -922,8 +945,31 @@ const HotelBilling = () => {
             _bookedAt: b.updatedAt || b.createdAt,
           });
         });
-        return Array.from(byId.values());
+        const nextTables = Array.from(byId.values());
+        // Stash the resolved snapshot for the localStorage write below.
+        // Doing the cache write here would be wrong — React strict mode
+        // runs the updater twice and would double-fire the storage event.
+        nextTablesSnapshot = nextTables;
+        return nextTables;
       });
+      // Persist the server-truth overlay to localStorage so subsequent
+      // remounts (navigate to /dashboard and back) see the same booked
+      // state without depending on the network or the timing of the
+      // remount's own overlay fetch. Server is still the source of
+      // truth — this is just a cache write so the cascade of optimistic
+      // + overlay updates doesn't rely on two race-sensitive requests
+      // on every mount.
+      if (Array.isArray(nextTablesSnapshot)) {
+        try {
+          const normalized = normalizeDiningTables(nextTablesSnapshot);
+          window.localStorage.setItem(TABLES_STORAGE_KEY, JSON.stringify(normalized));
+          window.dispatchEvent(
+            new CustomEvent("hotel_table_booking_updated", { detail: normalized })
+          );
+        } catch (err) {
+          /* quota / private mode — non-fatal, overlay is still in state */
+        }
+      }
     };
     (async () => {
       // 1. Seed tables from the legacy /api/hotel/tables endpoint (or
@@ -1805,11 +1851,20 @@ const HotelBilling = () => {
       text: `${(isEditingDiningTable ? editDiningTableName : selectedDiningTable.name) || selectedDiningTable.name} booked for ${sanitizedDiningGuestName}.`,
     });
     closeDiningTableBooking();
+
+    // Snapshot the previous local state so we can roll back if the
+    // server-side POST /api/hotel/bookings fails. The MySQL row is the
+    // source of truth (see the [hotel/bookings] overlay path used on
+    // remount) — letting the local UI claim "booked" while the server
+    // has no booking is what produced the "table flips back to Available
+    // after page navigation" bug.
+    const previousTables = tables;
+
     try {
       // Persist the booking to MySQL via /api/hotel/bookings (the legacy
       // PUT /api/hotel/tables/:id endpoint was a 501 catch-all — this
       // call now reaches the real backend).
-      await hotelService.bookTable({
+      const persistedBooking = await hotelService.bookTable({
         id: selectedDiningTable.id,
         name: isEditingDiningTable ? editDiningTableName : selectedDiningTable.name,
         zone: isEditingDiningTable ? editDiningTableZone : selectedDiningTable.zone,
@@ -1822,6 +1877,17 @@ const HotelBilling = () => {
         checkInTime: resolvedCheckInTime,
         status: "booked",
       });
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[hotel/bookings] POST dining refId=" +
+            selectedDiningTableId +
+            " status=" +
+            (persistedBooking && persistedBooking.status) +
+            " id=" +
+            (persistedBooking && persistedBooking.id)
+        );
+      }
       // If this booking was triggered from the Waiting Queue → Assign
       // shortcut, remove the corresponding queue entry now that the
       // server-side booking is confirmed. We delay this until AFTER the
@@ -1850,7 +1916,32 @@ const HotelBilling = () => {
         });
       }
     } catch (err) {
-      showToast("error", "Failed to sync table booking to server.");
+      // Server-side persistence failed. Roll the optimistic local update
+      // back so the table does NOT claim "Booked" while MySQL has no row
+      // for it. Without this rollback, the cashier would see the table as
+      // booked locally, walk away, and on remount the
+      // loadBookingsOverlay (which queries /api/hotel/bookings) would
+      // return empty and the table would flip to Available — the exact
+      // "booked → navigate → Available" bug we're fixing.
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[hotel/bookings] POST dining refId=" +
+            selectedDiningTableId +
+            " failed; rolling back local state:",
+          err && err.message
+        );
+      }
+      syncDiningTables(previousTables);
+      setActiveDiningTableId(null);
+      setMessage({
+        type: "error",
+        text: `Could not save booking to server. ${err && err.message ? err.message : "Please try again."}`,
+      });
+      showToast(
+        "error",
+        "Failed to sync table booking to server. Reverted local change so the table shows as Available."
+      );
     }
   };
 
@@ -2002,6 +2093,7 @@ const HotelBilling = () => {
     }
 
     const hasPendingDiningBill = nextDiningItems.length > 0;
+    const previousTables = tables;
     const nextTables = tables.map((table) =>
       String(table.id) === normalizedTableId
         ? {
@@ -2054,8 +2146,34 @@ const HotelBilling = () => {
       // `loadBookingsOverlay` (on any mount) would re-mark the table
       // as Occupied.
       await hotelService.checkoutTable(tableId, { checkOutTime });
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.log("[hotel/bookings] POST checkout-by-ref refId=" + normalizedTableId);
+      }
     } catch (err) {
-      showToast("error", "Failed to sync table clear to server.");
+      // Server-side checkout failed. Roll the optimistic clear back so
+      // the table does NOT claim "Available" while MySQL still has a
+      // `status:'booked'` row for it. Without this rollback, the next
+      // remount's `loadBookingsOverlay` would re-overlay the table as
+      // Booked — the symmetric counterpart of the Book bug.
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[hotel/bookings] POST checkout-by-ref refId=" +
+            normalizedTableId +
+            " failed; rolling back local state:",
+          err && err.message
+        );
+      }
+      syncDiningTables(previousTables);
+      setMessage({
+        type: "error",
+        text: `Could not clear table on server. ${err && err.message ? err.message : "Please try again."}`,
+      });
+      showToast(
+        "error",
+        "Failed to sync table clear to server. Reverted local change so the table still shows as Booked."
+      );
     }
   };
 
