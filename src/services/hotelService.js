@@ -268,6 +268,16 @@ export const updateCoupon = async (id, patch) => {
 };
 
 export default {
+  // Bookings — must be reachable through the default import too because
+  // HotelBilling, HotelTableBookingPage, etc. consume the service as
+  // `import hotelService from "../../services/hotelService"`. Without
+  // these entries here, webpack bundled earlier builds where they
+  // were absent and every booking call threw `le.Ay.listBookings is
+  // not a function` / `... bookTable is not a function` at runtime.
+  listBookings,
+  bookTable,
+  bookRoom,
+  checkoutBooking,
   getTables,
   createTable,
   updateTable,

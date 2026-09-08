@@ -806,8 +806,14 @@ const HotelBilling = () => {
         serverResp.forEach((t) => {
           if (!t || !t.id) return;
           const id = String(t.id);
+          // Defensive: skip rows whose `id` is empty / whitespace / an
+          // object — these can appear if the legacy `hotel_state.tables`
+          // JSON was edited out-of-band and got a malformed row. Without
+          // this, the merge would inject an id-less entry that surfaces
+          // as `[object Object]` in logs and confuses downstream renders.
+          if (!id || id === "[object Object]") return;
           if (!baseById.has(id)) {
-            baseById.set(id, { ...t });
+            baseById.set(id, { ...t, id });
           }
         });
       }
@@ -827,6 +833,7 @@ const HotelBilling = () => {
         savedTables.forEach((t) => {
           if (!t || !t.id) return;
           const id = String(t.id);
+          if (!id || id === "[object Object]") return;
           const existing = baseById.get(id);
           if (existing) {
             baseById.set(id, { ...existing, ...t, id });
@@ -841,7 +848,16 @@ const HotelBilling = () => {
           "[hotel/tables] merged count=" +
             merged.length +
             " ids=" +
-            merged.map((t) => (t && (t.id || t.name)) || "?").join(",") +
+            merged
+              .map((t) => {
+                if (!t) return "?";
+                const id = t.id;
+                if (typeof id === "string" && id) return id;
+                if (typeof id === "number") return String(id);
+                const name = typeof t.name === "string" ? t.name : "";
+                return name || "?";
+              })
+              .join(",") +
             " (serverCount=" +
             serverCount +
             " savedCount=" +
