@@ -780,28 +780,77 @@ const HotelBilling = () => {
     load();
 
     const loadTables = async () => {
+      let serverResp = null;
+      let serverError = null;
       try {
-        const resp = await hotelService.getTables();
-        if (Array.isArray(resp) && resp.length > 0) {
-          setTables(normalizeDiningTables(resp));
-          return;
-        }
+        serverResp = await hotelService.getTables();
       } catch (error) {
-        // fallback to local storage
+        serverError = error && error.message ? error.message : String(error);
       }
-      const savedTables = window.localStorage.getItem(TABLES_STORAGE_KEY);
-      if (savedTables) {
-        try {
-          const parsed = JSON.parse(savedTables);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setTables(normalizeDiningTables(parsed));
-            return;
+
+      // 1. Start from the canonical default layout (T1–T6). This is the
+      //    documented fallback and guarantees the cashier always sees the
+      //    standard 6 tables on the Dining tab — regardless of what the
+      //    legacy `hotel_state.tables` JSON mirror happens to contain
+      //    (which is a singleton column with no per-store scoping, so a
+      //    truncated/partial value there would otherwise hide the rest of
+      //    the standard tables).
+      const baseById = new Map(defaultHotelTables.map((t) => [String(t.id), { ...t }]));
+
+      // 2. Overlay custom tables from the DB that are NOT already in the
+      //    base (e.g. T7+ added via /hotel-tables). Existing IDs are left
+      //    alone so DB-side drift can't remove a default.
+      let serverCount = 0;
+      if (Array.isArray(serverResp)) {
+        serverCount = serverResp.length;
+        serverResp.forEach((t) => {
+          if (!t || !t.id) return;
+          const id = String(t.id);
+          if (!baseById.has(id)) {
+            baseById.set(id, { ...t });
           }
-        } catch (error) {
-          // ignore and fallback
-        }
+        });
       }
-      setTables(defaultHotelTables);
+
+      // 3. Merge in any local-storage persistence for entries that already
+      //    exist (just status / optimistic UI overlays). localStorage is
+      //    never allowed to introduce new table IDs — that's the
+      //    admin-page's job, not the runtime cashier view.
+      let savedTables = null;
+      try {
+        const raw = window.localStorage.getItem(TABLES_STORAGE_KEY);
+        if (raw) savedTables = JSON.parse(raw);
+      } catch (error) {
+        // ignore parse errors
+      }
+      if (Array.isArray(savedTables)) {
+        savedTables.forEach((t) => {
+          if (!t || !t.id) return;
+          const id = String(t.id);
+          const existing = baseById.get(id);
+          if (existing) {
+            baseById.set(id, { ...existing, ...t, id });
+          }
+        });
+      }
+
+      const merged = Array.from(baseById.values());
+      if (typeof window !== "undefined" && window.console) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[hotel/tables] merged count=" +
+            merged.length +
+            " ids=" +
+            merged.map((t) => (t && (t.id || t.name)) || "?").join(",") +
+            " (serverCount=" +
+            serverCount +
+            " savedCount=" +
+            (Array.isArray(savedTables) ? savedTables.length : 0) +
+            (serverError ? " serverError=" + serverError : "") +
+            ")"
+        );
+      }
+      setTables(merged);
     };
 
     // Cross-device sync: overlay any active 'booked' dining tables from the
