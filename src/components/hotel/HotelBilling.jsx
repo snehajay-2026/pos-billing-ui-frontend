@@ -745,6 +745,13 @@ const HotelBilling = () => {
   // Same pattern as POSBilling — we re-run the save after the shift opens.
   const pendingInvoiceRef = useRef(null);
 
+  // Bridge for re-invoking the dining-bookings overlay from effects
+  // triggered after the initial mount (activeTab change, visibility,
+  // focus). Without this, "navigate to /dashboard, come back, open
+  // Dining" could land on a fresh component where the overlay either
+  // never ran or ran with a transient network failure.
+  const loadBookingsOverlayRef = useRef(null);
+
   // persist last active POS tab across reloads
   useEffect(() => {
     try {
@@ -814,40 +821,60 @@ const HotelBilling = () => {
     //
     // We now sequence: seed tables first, THEN overlay. The overlay always
     // sees a populated `prev` so the booked rows survive.
+    // loadBookingsOverlay runs as part of mount AND can be re-invoked
+    // (by the activeTab / visibilitychange / focus listeners below) so
+    // a booking persisted in MySQL survives component remount, tab
+    // switch, and module navigation. Source of truth is the backend;
+    // local state is just the cache.
     const loadBookingsOverlay = async () => {
-      try {
-        const bookings = await hotelService.listBookings({ kind: "dining", status: "booked" });
-        if (!Array.isArray(bookings) || bookings.length === 0) return;
-        setTables((prev) => {
-          const byId = new Map(
-            (Array.isArray(prev) ? prev : []).map((t) => [String(t.id), t])
-          );
-          bookings.forEach((b) => {
-            const id = String(b.tableId || b.id);
-            if (!id) return;
-            const existing = byId.get(id) || { id: b.tableId, name: b.tableName || id };
-            byId.set(id, {
-              ...existing,
-              id: b.tableId,
-              name: b.tableName || existing.name,
-              zone: b.zone || existing.zone,
-              guest: b.guestName || existing.guest,
-              customerMobile: b.customerMobile || existing.customerMobile,
-              partySize: b.partySize || existing.partySize,
-              orderSummary: b.orderSummary || existing.orderSummary,
-              orderedMenuItems: b.orderedMenuItems || existing.orderedMenuItems,
-              checkInDate: b.checkInDate || existing.checkInDate,
-              checkInTime: b.checkInTime || existing.checkInTime,
-              status: "booked",
-              _persisted: true,
-              _bookedAt: b.updatedAt || b.createdAt,
-            });
-          });
-          return Array.from(byId.values());
-        });
-      } catch {
-        /* network blip on initial mount — keep local state */
+      // Two attempts maximum: a transient network blip on first paint
+      // shouldn't leave the table looking Available. The original
+      // version silently swallowed the error and skipped the overlay
+      // — which is fine for a flicker, not fine for the user's
+      // "table disappears after nav" bug.
+      let bookings;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          bookings = await hotelService.listBookings({ kind: "dining", status: "booked" });
+          break;
+        } catch (err) {
+          if (attempt === 1) {
+            // Final failure — log so the bug is investigable, keep the
+            // existing local state so the UI doesn't blank out.
+            // eslint-disable-next-line no-console
+            console.warn("[hotel/bookings] overlay failed:", err && err.message);
+            return;
+          }
+          // Tiny backoff before retrying.
+          await new Promise((r) => setTimeout(r, 250));
+        }
       }
+      if (!Array.isArray(bookings) || bookings.length === 0) return;
+      setTables((prev) => {
+        const byId = new Map((Array.isArray(prev) ? prev : []).map((t) => [String(t.id), t]));
+        bookings.forEach((b) => {
+          const id = String(b.tableId || b.id);
+          if (!id) return;
+          const existing = byId.get(id) || { id: b.tableId, name: b.tableName || id };
+          byId.set(id, {
+            ...existing,
+            id: b.tableId,
+            name: b.tableName || existing.name,
+            zone: b.zone || existing.zone,
+            guest: b.guestName || existing.guest,
+            customerMobile: b.customerMobile || existing.customerMobile,
+            partySize: b.partySize || existing.partySize,
+            orderSummary: b.orderSummary || existing.orderSummary,
+            orderedMenuItems: b.orderedMenuItems || existing.orderedMenuItems,
+            checkInDate: b.checkInDate || existing.checkInDate,
+            checkInTime: b.checkInTime || existing.checkInTime,
+            status: "booked",
+            _persisted: true,
+            _bookedAt: b.updatedAt || b.createdAt,
+          });
+        });
+        return Array.from(byId.values());
+      });
     };
     (async () => {
       // 1. Seed tables from the legacy /api/hotel/tables endpoint (or
@@ -858,6 +885,15 @@ const HotelBilling = () => {
       //    page navigation reconstructs the Booked state from MySQL.
       await loadBookingsOverlay();
     })();
+
+    // Bridge: stash the overlay on a ref so the activeTab +
+    // visibilitychange + focus effects below can re-invoke it after
+    // mount. The original implementation only ran the overlay once per
+    // mount, so a "navigate to /dashboard, come back, open Dining"
+    // round-trip that landed on a fresh `tables=[]` and then hit a
+    // network blip would leave the booked table looking Available
+    // forever for that session.
+    loadBookingsOverlayRef.current = loadBookingsOverlay;
     const loadDiningBills = async () => {
       try {
         const bills = await hotelService.getDiningBills();
@@ -1250,6 +1286,56 @@ const HotelBilling = () => {
       }
     });
     return unsub;
+  }, []);
+
+  // Re-overlay active dining bookings whenever the cashier (re)opens
+  // the Dining tab. The initial mount already runs `loadBookingsOverlay`
+  // once; this effect covers the cases the mount path misses:
+  //   - The user navigated from /pos to /dashboard and back; the
+  //     component remounted but the previous overlay attempt errored
+  //     and the table is now stuck at "Available".
+  //   - The user clicked the Lodging tab and back to Dining without
+  //     unmounting; the existing state was preserved, but a booking
+  //     made by another device on the Lodging tab may have flipped
+  //     a dining table without firing the SSE path.
+  //
+  // Backend is the source of truth — we re-query every time the tab
+  // becomes visible. The query is cheap (single SELECT with three
+  // indexed filters), and the overlay uses the functional `setTables`
+  // updater so it never overwrites a fresher local edit.
+  useEffect(() => {
+    if (activeTab !== "dining") return undefined;
+    if (!Array.isArray(tables) || tables.length === 0) return undefined;
+    const overlay = loadBookingsOverlayRef.current;
+    if (overlay) overlay();
+    return undefined;
+    // `tables.length` is intentional: we want to fire once when the
+    // floor hydrates, not on every per-row mutation. The overlay
+    // itself uses `setTables(prev => ...)` so a fresher local edit
+    // can never be clobbered by an in-flight overlay.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, tables.length]);
+
+  // Browser-tab focus / visibility: when the cashier switches back to
+  // this tab (or wakes the laptop), refresh the dining overlay so a
+  // booking made by another device while we were away shows up
+  // immediately. The SSE replay buffer normally covers this but only
+  // for the last ~100 events; a tab left in the background for an
+  // hour could miss its window.
+  useEffect(() => {
+    const refresh = () => {
+      const overlay = loadBookingsOverlayRef.current;
+      if (overlay) overlay();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   useEffect(() => {
