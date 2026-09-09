@@ -259,24 +259,13 @@ const ServiceBilling = () => {
     }
 
     // Mandatory-shift gate: for cash sales in a cash-vertical store, the
-    // cashier must have an open shift. If the user lands here without one,
-    // show the OpenShiftDialog first; once they open a shift, the success
-    // handler re-runs the save. Same flow as Retail POSBilling.
-    //
-    // Service-Store exception: the Service Store does not operate a cash
-    // drawer — it bills professional services (consulting, repairs,
-    // AMC, etc.) and the cashier is not expected to reconcile cash at
-    // end-of-shift. Enforcing the shift gate here means a single Cash
-    // click on a service bill silently opens the OpenShiftDialog and
-    // skips the save, so Online-mode users see invoices generated while
-    // Cash-mode users see nothing. The user explicitly requires Cash to
-    // work the same as Online for the Service Store, so we skip the
-    // gate whenever the active store is `service` or `msme-service`.
-    // Retail / Hotel / Laundry / Inventory keep the existing behaviour.
-    const shiftGateApplies =
-      activeBill.paymentMode === "Cash" &&
-      currentStoreNeedsShift() &&
-      !["service", "msme-service"].includes(String(getUser()?.storeType || "").toLowerCase());
+    // cashier must have an open shift. The hook (useShiftGate) drives
+    // the auto-pop on first load; this guard short-circuits the save if
+    // the store type doesn't run a drawer at all. Every cash vertical in
+    // CASH_STORE_TYPES (retail | hotel | laundry | service | msme-service
+    // | inventory) flows through the same gate — there is intentionally
+    // no per-store bypass here.
+    const shiftGateApplies = activeBill.paymentMode === "Cash" && currentStoreNeedsShift();
     if (shiftGateApplies) {
       const shift = await refreshActiveShift();
       if (!shift) {
@@ -361,13 +350,10 @@ const ServiceBilling = () => {
     // For cash sales in a cash-vertical store, record the sale against
     // the cashier's currently-open shift so the variance at end-of-shift
     // is accurate. Fire-and-forget — the invoice is already saved.
-    // Service Store is excluded for the same reason the pre-save gate is
-    // skipped above: no cash drawer, no shift to record against.
-    if (
-      invoice.paymentMode === "Cash" &&
-      currentStoreNeedsShift() &&
-      !["service", "msme-service"].includes(String(getUser()?.storeType || "").toLowerCase())
-    ) {
+    // Applies to every store in CASH_STORE_TYPES (retail | hotel |
+    // laundry | service | msme-service | inventory); no per-store
+    // exclusion.
+    if (invoice.paymentMode === "Cash" && currentStoreNeedsShift()) {
       recordCashSaleForShift({
         invoiceNo: invoice.invoiceNo,
         amount: invoice.grandTotal,

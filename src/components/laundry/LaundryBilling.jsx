@@ -406,24 +406,13 @@ const LaundryBilling = () => {
     }
 
     // Mandatory-shift gate: for cash sales in a cash-vertical store, the
-    // cashier must have an open shift. The Service Store was previously
-    // excluded from this gate (see ServiceBilling.jsx) — it isn't a
-    // physical cash-vertical store, so the shift dialog was wrongly
-    // intercepting every Cash sale and silently dropping the invoice.
-    // The Laundry Store has the same operational shape: the cashier's
-    // "Cash" button is just a payment-mode selector, not a cash-drawer
-    // event. Without this exclusion, clicking Generate Invoice on a
-    // Cash bill silently opens the OpenShiftDialog and the invoice is
-    // never saved. Online / UPI / Card flows already work because the
-    // `paymentMode === "Cash"` test short-circuits them. Excluding
-    // `laundry` here matches that behaviour for Cash too.
-    //
-    // Retail / Hotel / Service (already excluded) / Inventory keep the
-    // existing shift discipline.
-    const shiftGateApplies =
-      activeBill.paymentMode === "Cash" &&
-      currentStoreNeedsShift() &&
-      !["laundry"].includes(String(getUser()?.storeType || "").toLowerCase());
+    // cashier must have an open shift. The hook (useShiftGate) drives
+    // the auto-pop on first load; this guard short-circuits the save if
+    // the store type doesn't run a drawer at all. Every cash vertical in
+    // CASH_STORE_TYPES (retail | hotel | laundry | service | msme-service
+    // | inventory) flows through the same gate — there is intentionally
+    // no per-store bypass here.
+    const shiftGateApplies = activeBill.paymentMode === "Cash" && currentStoreNeedsShift();
     if (shiftGateApplies) {
       const shift = await refreshActiveShift();
       if (!shift) {
@@ -469,15 +458,10 @@ const LaundryBilling = () => {
       // For cash sales in a cash-vertical store, record the sale against
       // the cashier's currently-open shift so the variance at end-of-shift
       // is accurate. Fire-and-forget — the invoice is already saved.
-      // The Laundry Store is excluded for the same reason the pre-save
-      // gate is skipped above: it isn't a physical cash-vertical store,
-      // so there's no shift ledger to attribute the sale to. Retail /
-      // Hotel / Inventory keep the existing shift-recording behaviour.
-      if (
-        invoice.paymentMode === "Cash" &&
-        currentStoreNeedsShift() &&
-        !["laundry"].includes(String(getUser()?.storeType || "").toLowerCase())
-      ) {
+      // Applies to every store in CASH_STORE_TYPES (retail | hotel |
+      // laundry | service | msme-service | inventory); no per-store
+      // exclusion.
+      if (invoice.paymentMode === "Cash" && currentStoreNeedsShift()) {
         recordCashSaleForShift({
           invoiceNo: finalInvoice.invoiceNo,
           amount: finalInvoice.grandTotal,
