@@ -472,6 +472,20 @@ const LaundryBilling = () => {
       navigate(`/invoice/${encodeURIComponent(finalInvoice.invoiceNo)}/preview`);
     } catch (err) {
       console.error("Failed to save invoice:", err);
+      // Backend signals a missing shift with code:"NO_ACTIVE_SHIFT"
+      // (see backend attachShiftContext + POST /api/invoices). The
+      // App-level GlobalShiftGate owns the auto-pop; we surface a
+      // clear message and trigger the hook's manual-open path so
+      // either the global or the local dialog appears.
+      if (err && err.status === 409 && err.body && err.body.code === "NO_ACTIVE_SHIFT") {
+        showToast(
+          "error",
+          "Your shift is closed or was never opened. Open a shift to record this sale."
+        );
+        pendingInvoiceRef.current = { kind: "laundry", invoice: buildInvoice() };
+        openShiftDialog();
+        return;
+      }
       showToast("error", "Unable to save invoice. Please try again.");
     }
   };

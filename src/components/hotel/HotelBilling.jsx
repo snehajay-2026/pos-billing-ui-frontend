@@ -701,7 +701,10 @@ const HotelBilling = () => {
   // Mandatory shift gate: Branch Admin / Cashier must open a shift before
   // they can take cash sales in a cash-vertical store. SUPER_OWNER / ADMIN
   // bypass the gate. Hook also handles polling + auth events so the chip
-  // stays in sync across tabs / sessions.
+  // stays in sync across tabs / sessions. The App-level GlobalShiftGate
+  // also auto-pops on this route; OpenShiftDialog itself checks
+  // window.__GLOBAL_SHIFT_GATE_OPEN__ and short-circuits its per-page
+  // mount to prevent two dialogs stacking on /pos.
   const { openShiftDialog, refreshActiveShift, useMandatoryShiftDialogProps } = useShiftGate({
     force: true,
   });
@@ -3819,6 +3822,19 @@ const HotelBilling = () => {
       }
     } catch (err) {
       console.error("Save invoice failed", err);
+      // Backend signals a missing shift with code:"NO_ACTIVE_SHIFT"
+      // (see backend attachShiftContext + POST /api/invoices). Surface
+      // a clear message and trigger the shift gate (the global gate
+      // also auto-pops and the dialog component deduplicates via
+      // window.__GLOBAL_SHIFT_GATE_OPEN__).
+      if (err && err.status === 409 && err.body && err.body.code === "NO_ACTIVE_SHIFT") {
+        setMessage({
+          type: "error",
+          text: "Your shift is closed or was never opened. Open a shift to record this sale.",
+        });
+        openShiftDialog();
+        return;
+      }
       setMessage({
         type: "error",
         text: "Failed to save invoice to server — opening preview only.",

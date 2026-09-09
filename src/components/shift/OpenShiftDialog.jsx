@@ -4,6 +4,34 @@ import { FaCheck, FaTimes, FaSignOutAlt } from "react-icons/fa";
 import { openShift } from "../../services/shiftService";
 import "./shiftDialogs.css";
 
+// OpenShiftDialog — shared modal used by ShiftsPage (admin workflow)
+// and POSBilling (cash-sale preflight + mandatory gate).
+//
+// Props:
+//  - open:                visibility toggle.
+//  - onClose:             cancel handler (skipped when mandatory=true).
+//  - onOpened(shift):     called with the freshly-opened shift object.
+//  - title, message:       customizable copy.
+//  - defaultBranchName:    prefills the Branch / counter field.
+//  - mandatory:            when true, the X button and Cancel button
+//                          are hidden, and clicking the backdrop does
+//                          not close the dialog. The only way to dismiss
+//                          is by opening the shift or logging out. A
+//                          "Log out" link appears in the footer.
+//  - inescapable:          stricter than mandatory. Hides the × button
+//                          unconditionally, traps Escape key, and
+//                          disables the backdrop entirely (no
+//                          pointer-events). Used by the global
+//                          post-login gate so the cashier cannot
+//                          dismiss the dialog through ANY client-side
+//                          path — only opening the shift or logging
+//                          out works. Server-side shift enforcement
+//                          (attachShiftContext) is the final line of
+//                          defense.
+//  - user, storeLabel:     read-only display fields shown in mandatory
+//                          mode (User name + Branch name + current
+//                          date/time).
+
 /**
  * OpenShiftDialog — shared modal used by ShiftsPage (admin workflow)
  * and POSBilling (cash-sale preflight + mandatory gate).
@@ -32,6 +60,7 @@ const OpenShiftDialog = ({
   message,
   defaultBranchName = "",
   mandatory = false,
+  inescapable = false,
   user = null,
   storeLabel = null,
 }) => {
@@ -89,13 +118,46 @@ const OpenShiftDialog = ({
     };
   }, [open]);
 
+  // Escape-key trap for inescapable mode. Without this, a cashier
+  // could press Escape to silently dismiss the dialog. The hook only
+  // runs while `open` is true; `preventDefault` blocks the default
+  // browser behavior (e.g. closing a containing modal in another
+  // library). `stopPropagation` keeps the event from reaching the
+  // page underneath. We intentionally do NOT register a `keydown`
+  // listener for non-inescapable mode — the existing × and Cancel
+  // buttons remain the supported dismissals there.
+  useEffect(() => {
+    if (!open || !inescapable) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open, inescapable]);
+
   if (!open) return null;
 
-  // In mandatory mode, prevent backdrop clicks from closing the dialog
-  // — the only way to dismiss is to open the shift (success path) or
-  // log out.
+  // Cross-component de-duplication: if the App-level GlobalShiftGate
+  // is currently rendering its own <OpenShiftDialog>, any per-page
+  // dialog must NOT also render — two stacked modals would be
+  // disorienting. GlobalShiftGate sets the flag while its dialog is
+  // mounted and clears it on unmount; per-page dialogs check it on
+  // every render.
+  if (typeof window !== "undefined" && window.__GLOBAL_SHIFT_GATE_OPEN__ && !inescapable) {
+    return null;
+  }
+
+  // In mandatory or inescapable mode, prevent backdrop clicks from
+  // closing the dialog — the only way to dismiss is to open the shift
+  // (success path) or log out. Inescapable takes precedence if both
+  // flags are set (the global gate passes both).
   function handleOverlayClick(e) {
-    if (mandatory) {
+    if (mandatory || inescapable) {
       e.stopPropagation();
       return;
     }
@@ -111,37 +173,52 @@ const OpenShiftDialog = ({
   // parent.
   const overlay = (
     <div
-      className={`sh-overlay ${mandatory ? "sh-overlay-mandatory" : ""}`}
+      className={`sh-overlay ${mandatory ? "sh-overlay-mandatory" : ""} ${
+        inescapable ? "sh-overlay-inescapable" : ""
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label={title}
       onClick={handleOverlayClick}
+      // In inescapable mode, disable pointer events on the overlay
+      // (the backdrop area around the modal) so even if a click
+      // reaches it nothing happens. The modal itself restores
+      // pointer-events via the .sh-modal rule in shiftDialogs.css.
+      // This is a defense-in-depth alongside the `mandatory` flag.
+      style={inescapable ? { cursor: "default" } : undefined}
     >
       <div className="sh-modal" onClick={(e) => e.stopPropagation()}>
         <header className="sh-modal-header">
           <h2>{title}</h2>
           {/*
-            Close (×) button. Visible in both modes:
+            Close (×) button.
+              - Inescapable: HIDDEN. There is no client-side escape —
+                            only opening a shift or logging out works.
+                            Server-side attachShiftContext enforces
+                            anything that slips through.
+              - Mandatory:   visible as an explicit dismiss for the
+                            legacy mandatory path (the hook's optOut
+                            is honored). Billing attempts are
+                            independently re-gated at the save path.
               - Non-mandatory: standard dismiss.
-              - Mandatory:    an explicit dismiss. The dialog's purpose
-                              is to remind the cashier to open a shift;
-                              closing it lets them navigate / inspect the
-                              page (e.g. a manager who doesn't need to
-                              open a shift just wants to peek at /pos).
-                              Billing attempts are independently re-gated
-                              at generateAndPreview, so closing the dialog
-                              does not let a cashier record a cash sale
-                              without a shift.
+
+            The `mandatory && !inescapable` ternary preserves the
+            historical "manager peeks at /pos" escape hatch on pages
+            that pass `mandatory` without `inescapable`. The global
+            gate (new component) passes `inescapable: true`, which
+            collapses this branch to the no-× render.
           */}
-          <button
-            type="button"
-            className="sh-modal-close"
-            onClick={onClose}
-            aria-label="Close"
-            title={mandatory ? "Close (billing is blocked without an open shift)" : "Close"}
-          >
-            <FaTimes />
-          </button>
+          {!inescapable && (
+            <button
+              type="button"
+              className="sh-modal-close"
+              onClick={onClose}
+              aria-label="Close"
+              title={mandatory ? "Close (billing is blocked without an open shift)" : "Close"}
+            >
+              <FaTimes />
+            </button>
+          )}
         </header>
         <div className="sh-modal-body">
           {error && <div className="sh-banner sh-banner-error">{error}</div>}
@@ -242,7 +319,7 @@ const OpenShiftDialog = ({
           </div>
         </div>
         <footer className="sh-modal-footer">
-          {mandatory ? (
+          {mandatory || inescapable ? (
             <button
               type="button"
               className="sh-btn sh-btn-secondary sh-btn-logout"

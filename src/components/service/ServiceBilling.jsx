@@ -344,7 +344,24 @@ const ServiceBilling = () => {
       remarks: activeBill.remarks,
     };
 
-    saveInvoice(invoice);
+    try {
+      await saveInvoice(invoice);
+    } catch (err) {
+      // Backend signals a missing shift with code:"NO_ACTIVE_SHIFT"
+      // (see backend attachShiftContext + POST /api/invoices). Block
+      // navigation — without this handler the cashier would land on
+      // the invoice preview of a bill that was never persisted.
+      if (err && err.status === 409 && err.body && err.body.code === "NO_ACTIVE_SHIFT") {
+        showToast(
+          "error",
+          "Your shift is closed or was never opened. Open a shift to record this sale."
+        );
+        openShiftDialog();
+        return;
+      }
+      showToast("error", `Failed to save invoice: ${err.message || "unknown error"}`);
+      return;
+    }
     setLastInvoice(invoice);
 
     // For cash sales in a cash-vertical store, record the sale against

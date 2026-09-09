@@ -256,23 +256,30 @@ const POSBilling = () => {
     };
   }, [refreshActiveShift]);
 
-  // Mandatory-shift gate: for Branch Admin / Cashier users in a
-  // cash-vertical store, we auto-open the OpenShiftDialog the moment
-  // we discover there's no active shift. SUPER_OWNER and ADMIN bypass
-  // the gate entirely.
+  // Mandatory-shift gate: the App-level GlobalShiftGate owns the
+  // post-login auto-pop for every authenticated route (this page
+  // included). When the cashier clicks Generate Invoice with no
+  // active shift, this page stashes the pending invoice in
+  // pendingInvoiceRef, sets shiftDialogOpen=true, and the page-level
+  // <OpenShiftDialog> below mounts. To avoid two dialogs stacking
+  // (one from the global gate, one from the page), the page-level
+  // dialog checks window.__GLOBAL_SHIFT_GATE_OPEN__ and skips its
+  // own mount when the global gate is already showing the same
+  // modal — the global gate dispatches `globalShiftOpened` on the
+  // window when a shift is opened, which we listen for below to
+  // resume the pending invoice.
   useEffect(() => {
-    if (!user) return;
-    const role = String(user.role || "").toUpperCase();
-    if (role === "SUPER_OWNER" || role === "ADMIN") return;
-    if (!currentStoreNeedsShift()) return;
-    if (activeShift) return;
-    if (shiftDialogOpen) return;
-    // Small delay so the page can settle before popping the dialog.
-    const t = setTimeout(() => {
-      if (!activeShift) setShiftDialogOpen(true);
-    }, 200);
-    return () => clearTimeout(t);
-  }, [user, activeShift, shiftDialogOpen]);
+    const handler = () => {
+      if (!pendingInvoiceRef.current) return;
+      setShiftDialogOpen(false);
+      const pending = pendingInvoiceRef.current;
+      pendingInvoiceRef.current = null;
+      refreshActiveShift();
+      persistInvoiceAfterCheckout(pending);
+    };
+    window.addEventListener("globalShiftOpened", handler);
+    return () => window.removeEventListener("globalShiftOpened", handler);
+  }, [refreshActiveShift]);
 
   // Item-removal UX: filter long bills + click-the-row-to-confirm (10s window)
   const [billSearch, setBillSearch] = useState("");
@@ -1188,6 +1195,24 @@ const POSBilling = () => {
       result = await checkoutInvoice(invoice);
     } catch (err) {
       if (err && err.status === 409) {
+        // Backend signals a missing shift with code:"NO_ACTIVE_SHIFT"
+        // (see backend attachShiftContext + POST /api/invoices/checkout).
+        // Surface a clear error and re-open the shift gate so the
+        // cashier can open a shift and the pre-flight will resume
+        // the pending invoice via the globalShiftOpened listener.
+        if (err.body && err.body.code === "NO_ACTIVE_SHIFT") {
+          pendingInvoiceRef.current = invoice;
+          setShiftDialogOpen(true);
+          // The global gate (if mounted) will pop on its own; we
+          // additionally trigger a manual open so the local dialog
+          // also fires when the global gate is suppressed for some
+          // reason. The two are mutually exclusive at render time
+          // (window.__GLOBAL_SHIFT_GATE_OPEN__ gate above).
+          alert(
+            "Your shift has closed or was never opened. " + "Open a shift to record this sale."
+          );
+          return;
+        }
         const { productName, available, requested } = err.body || {};
         alert(
           `Insufficient stock for ${productName || "an item"}.\n` +
@@ -2499,7 +2524,7 @@ const POSBilling = () => {
           />
         )}
 
-        {shiftDialogOpen && (
+        {shiftDialogOpen && !window.__GLOBAL_SHIFT_GATE_OPEN__ && (
           <OpenShiftDialog
             open={shiftDialogOpen}
             title="Open a shift before recording a cash sale"

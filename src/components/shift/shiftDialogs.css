@@ -26,6 +26,24 @@
   cursor: not-allowed;
 }
 
+/* Inescapable gate: the global post-login shift gate. No client-side
+ * dismiss path at all — the × button is hidden, backdrop clicks are
+ * swallowed, Escape is trapped, and the only way out is to open a
+ * shift or log out. `pointer-events: none` on the overlay makes the
+ * backdrop area completely transparent to clicks; the modal child
+ * restores pointer-events via .sh-modal above (its own rule sets
+ * `pointer-events: auto`). Combined with the keydown trap inside
+ * OpenShiftDialog, this leaves only the "Open shift" / "Log out"
+ * buttons as interactive surfaces. */
+.sh-overlay-inescapable {
+  cursor: default;
+}
+.sh-overlay-inescapable .sh-modal-close {
+  /* Belt-and-braces: even if a future render reintroduces the close
+   * button in inescapable mode, hide it via CSS. */
+  display: none !important;
+}
+
 .sh-modal {
   background: var(--surface, #fff);
   border-radius: 0.85rem;

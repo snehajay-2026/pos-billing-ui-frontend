@@ -22,6 +22,7 @@ import Toasts from "./components/common/Toasts";
 import WelcomeSplash from "./components/common/WelcomeSplash";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import RouteFallback from "./components/common/RouteFallback";
+import GlobalShiftGate from "./components/shift/GlobalShiftGate";
 import { getStoreSettings, loadStoreSettings } from "./services/storeSettingsService";
 
 // Routes below are eagerly loaded because they're small, on the critical
@@ -355,6 +356,11 @@ function App() {
     >
       <ThemeListener />
       <SessionExpiredListener />
+      {/* Global mandatory shift gate — pops Open Shift on every
+          authenticated route for cashiers in cash-vertical stores
+          with no active shift. See GlobalShiftGate.jsx for the role
+          policy. */}
+      <GlobalShiftGate />
       <Toasts />
       <WelcomeSplash />
       <AppErrorBoundaryWithLocation>
