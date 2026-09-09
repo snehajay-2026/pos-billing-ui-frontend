@@ -37,6 +37,11 @@ const OpenShiftDialog = ({
 }) => {
   const [openingFloat, setOpeningFloat] = useState("");
   const [notes, setNotes] = useState("");
+  // Customer email is optional metadata the cashier may want to stamp
+  // onto this shift (e.g. the supervisor/business owner who'll be
+  // reviewing the day's totals). When empty, the backend stores NULL
+  // and the ShiftsPage renders "—".
+  const [customerEmail, setCustomerEmail] = useState("");
   const [branchName, setBranchName] = useState(defaultBranchName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -218,6 +223,15 @@ const OpenShiftDialog = ({
             />
           </div>
           <div className="sh-form-row">
+            <label>Customer / supervisor email (optional)</label>
+            <input
+              type="email"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              placeholder="e.g. owner@business.com"
+            />
+          </div>
+          <div className="sh-form-row">
             <label>Notes (optional)</label>
             <textarea
               rows={2}
@@ -255,7 +269,12 @@ const OpenShiftDialog = ({
               }
               setBusy(true);
               try {
-                const s = await openShift({ openingFloat: v, notes, branchName });
+                const s = await openShift({
+                  openingFloat: v,
+                  notes,
+                  branchName,
+                  customerEmail: customerEmail.trim() || "",
+                });
                 // Wait for the page's onOpened to finish — for the
                 // mandatory gate that means refreshing the active-shift
                 // state — so the dialog only closes AFTER the shift is

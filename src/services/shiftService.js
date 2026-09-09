@@ -41,10 +41,19 @@ export const getActiveShift = async () => {
   }
 };
 
-export const openShift = ({ openingFloat = 0, notes = "" } = {}) => {
+export const openShift = ({
+  openingFloat = 0,
+  notes = "",
+  branchName = "",
+  customerEmail = "",
+} = {}) => {
   if (!isAuthed()) throw new Error("Not signed in");
   const { storeType, storeId } = getScope();
-  return apiPost("/api/shifts", { openingFloat, notes }, { storeType, storeId });
+  return apiPost(
+    "/api/shifts",
+    { openingFloat, notes, branchName, customerEmail },
+    { storeType, storeId }
+  );
 };
 
 export const closeShift = ({ shiftId, closingCash, closeNotes = "" }) => {
@@ -110,14 +119,45 @@ export const getShift = (shiftId) => {
 // Hook called by the POS when a cash sale completes — records a 'sale'
 // cash_movement against the cashier's currently-open shift. Returns
 // null when there's no active shift or the store type doesn't use shifts.
-export const recordCashSaleForShift = ({ invoiceNo, amount }) => {
-  if (!isAuthed()) return Promise.resolve(null);
-  const { storeType, storeId } = getScope();
-  return apiPost(
-    `/api/invoices/checkout/shift/${encodeURIComponent(invoiceNo)}`,
-    { paymentMode: "Cash", amount },
-    { storeType, storeId }
-  ).catch(() => null);
+//
+// Implementation: the backend already auto-stamps `invoices.shift_id`
+// from the cashier's active session at INSERT time, so the summary
+// endpoint will pick up the sale via the invoice → shift FK regardless
+// of whether we POST a movement. We additionally push a `cash_in`
+// movement row to the shift's cash_movements ledger so the close-shift
+// reconciliation (which sums `opening_float + cash_in - cash_out`) bumps
+// the expected closing cash — without it the close dialog would always
+// show "expected = opening_float" because nothing ever moves.
+//
+// The previous implementation POSTed to /api/invoices/checkout/shift/:no
+// which doesn't exist (the backend never had that endpoint), so the
+// movement was silently swallowed and every close-shift "expected cash"
+// equaled opening float. That's the bug we're fixing here.
+export const recordCashSaleForShift = async ({ invoiceNo, amount }) => {
+  if (!isAuthed()) return null;
+  // Look up the active shift first so we can return null cleanly when
+  // the store type doesn't run a drawer (avoids a guaranteed 409).
+  let active;
+  try {
+    active = await getActiveShift();
+  } catch (e) {
+    return null;
+  }
+  if (!active || !active.id) return null;
+  try {
+    return await recordShiftMovement({
+      shiftId: Number(active.id),
+      type: "cash_in",
+      amount: Number(amount) || 0,
+      reason: "sale",
+      refType: "invoice",
+      refId: invoiceNo ? String(invoiceNo) : null,
+    });
+  } catch (e) {
+    // Don't break the POS flow on a shift-write failure — the invoice
+    // is already saved and the summary will still see it via the FK.
+    return null;
+  }
 };
 
 // Store types that physically take cash and need a shift. Mirrors
