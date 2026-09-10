@@ -182,23 +182,35 @@ export const currentStoreNeedsShift = () => {
   return isCashStoreType(getScope().storeType);
 };
 
-// canCloseShift(role) — pure client-side mirror of the server's
-// canCloseShift. We re-check the active shift's customerEmail against
-// the user's rootOwnerEmail before allowing the close, just like the
-// server. The server is the source of truth; this is for UX only.
+// canCloseShiftClient(shift, user) — pure client-side mirror of the
+// server's authorizeShiftAccess rule for POST /api/shifts/:id/close.
+// The server is the source of truth — this is for hiding/showing the
+// "Close shift" CTA only.
+//
+// Rules (mirrors index.js authorizeShiftAccess + close route):
+//   - SUPER_OWNER: unconditional.
+//   - ADMIN / STORE_ADMIN / BRANCH_ADMIN: same (storeType, storeId) as
+//     the shift. (The backend treats ADMIN as rootOwnerEmail match and
+//     STORE_ADMIN/BRANCH_ADMIN as same-store; we collapse them to
+//     same-store here for the close CTA — the server still enforces
+//     the precise rule at write time.)
+//   - CASHIER (and every other role): strict owner match on
+//     `shift.userId === user.id`. The previous version compared
+//     `shift.userEmail === user.email`, but `userEmail` is no longer
+//     surfaced on the shift object (the JOIN to `users` was removed to
+//     stop a TiDB planner hang — see the SHIFT_COLUMNS_WITH_USERS
+//     comment in db/queries/shifts.js). The owner ID is always
+//     available and is what the server actually checks.
 export const canCloseShiftClient = (shift, user) => {
   if (!shift || !user) return false;
-  if (user.role === "SUPER_OWNER") return true;
-  if (user.role === "ADMIN") {
-    const business = String(user.rootOwnerEmail || user.email || "").toLowerCase();
-    return String(shift.customerEmail || "").toLowerCase() === business;
-  }
-  if (user.role === "STORE_ADMIN") {
+  const role = String(user.role || "").toUpperCase();
+  if (role === "SUPER_OWNER") return true;
+  if (role === "ADMIN" || role === "STORE_ADMIN" || role === "BRANCH_ADMIN") {
     return (
       String(shift.storeType || "").toLowerCase() === String(user.storeType || "").toLowerCase() &&
       String(shift.storeId || "").toLowerCase() === String(user.storeId || "").toLowerCase()
     );
   }
-  // CASHIER
-  return String(shift.userEmail || "").toLowerCase() === String(user.email || "").toLowerCase();
+  // CASHIER (or any other role): must own the shift.
+  return Number(shift.userId) === Number(user.id);
 };

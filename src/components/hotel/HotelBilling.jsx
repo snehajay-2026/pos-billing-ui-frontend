@@ -52,6 +52,7 @@ import { mergeSharedItemsIntoCart, replaceLodgingBillItem } from "./sharedCart";
 import { recordCashSaleForShift, currentStoreNeedsShift } from "../../services/shiftService";
 import OpenShiftDialog from "../shift/OpenShiftDialog";
 import ShiftStatusBanner from "../shift/ShiftStatusBanner";
+import CloseShiftDialog from "../shift/CloseShiftDialog";
 import { useShiftGate } from "../../hooks/useShiftGate";
 import { useHotelModuleLock } from "../../hooks/useHotelModuleLock";
 import HotelModuleLockScreen from "./HotelModuleLockScreen";
@@ -705,9 +706,14 @@ const HotelBilling = () => {
   // also auto-pops on this route; OpenShiftDialog itself checks
   // window.__GLOBAL_SHIFT_GATE_OPEN__ and short-circuits its per-page
   // mount to prevent two dialogs stacking on /pos.
-  const { openShiftDialog, refreshActiveShift, useMandatoryShiftDialogProps } = useShiftGate({
-    force: true,
-  });
+  const { activeShift, openShiftDialog, refreshActiveShift, useMandatoryShiftDialogProps } =
+    useShiftGate({
+      force: true,
+    });
+  // Close-shift dialog state. The cashier (or any other user who owns
+  // an active shift in this store) can close it directly from the
+  // billing page — see ShiftStatusBanner's onClose handler below.
+  const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false);
 
   // Compute the dialog props once per render. HotelBilling has no early
   // return before JSX so this is safe to call inline, but we pull it out
@@ -4048,7 +4054,12 @@ const HotelBilling = () => {
 
   return (
     <div className="hotel-billing-page">
-      <ShiftStatusBanner onOpen={() => openShiftDialog()} />
+      <ShiftStatusBanner
+        onOpen={() => openShiftDialog()}
+        onClose={() => {
+          if (activeShift) setCloseShiftDialogOpen(true);
+        }}
+      />
 
       {showSyncToast && (
         <div
@@ -6249,6 +6260,15 @@ const HotelBilling = () => {
             // Resume the original save flow now that a shift is open.
             generateAndPreview();
           }
+        }}
+      />
+      <CloseShiftDialog
+        open={closeShiftDialogOpen}
+        shift={activeShift}
+        onClose={() => setCloseShiftDialogOpen(false)}
+        onClosed={async () => {
+          setCloseShiftDialogOpen(false);
+          await refreshActiveShift();
         }}
       />
     </div>
