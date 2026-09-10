@@ -34,6 +34,14 @@ const CloseShiftDialog = ({ open, shift, onClose, onClosed, title = "Close shift
   const counted = Number(closingCash) || 0;
   const expected = summary?.closing?.expected ?? 0;
   const variance = closingCash ? Number((counted - expected).toFixed(2)) : null;
+  // Zero-difference rule. The shift can close ONLY when the counted
+  // cash matches the expected physical cash to the cent. The server
+  // enforces this independently (returns 409 CASH_VARIANCE_NOT_ZERO);
+  // we mirror the rule on the button so the cashier gets immediate
+  // feedback instead of a round-trip failure.
+  const varianceIsZero = variance != null && Math.abs(variance) < 0.005;
+  const canSubmit =
+    !busy && closingCash !== "" && Number.isFinite(Number(closingCash)) && varianceIsZero;
   const openedAt = summary?.openedAt ? new Date(summary.openedAt) : null;
   const closedAt = closingCash ? new Date() : null;
   const durationMin =
@@ -50,6 +58,19 @@ const CloseShiftDialog = ({ open, shift, onClose, onClosed, title = "Close shift
         </header>
         <div className="sh-modal-body">
           {error && <div className="sh-banner sh-banner-error">{error}</div>}
+          {/* Zero-difference gate: a non-zero variance blocks the close.
+             The button below also disables itself when canSubmit is
+             false, but showing the message inline makes the rule
+             obvious to the cashier without forcing them to hover the
+             button. */}
+          {variance != null && !varianceIsZero && (
+            <div className="sh-banner sh-banner-error">
+              <strong>Shift cannot be closed until the cash difference is exactly ₹0.</strong> You
+              entered ₹{counted.toFixed(2)} but the expected cash is ₹{expected.toFixed(2)}{" "}
+              (difference {variance < 0 ? "−" : "+"}₹{Math.abs(variance).toFixed(2)}). Please
+              reconcile the cash balance and re-enter the counted amount.
+            </div>
+          )}
           {loadingSummary && <div className="sh-help">Loading shift activity...</div>}
           {!loadingSummary && summary && (
             <>
@@ -213,6 +234,19 @@ const CloseShiftDialog = ({ open, shift, onClose, onClosed, title = "Close shift
                 setError("Please enter the counted cash");
                 return;
               }
+              // Belt-and-braces: even if the cashier disabled JS or
+              // bypassed the disabled attribute, refuse to call close
+              // when variance is non-zero. The backend will reject it
+              // anyway (CASH_VARIANCE_NOT_ZERO), but blocking here
+              // saves a round-trip and keeps the UI honest.
+              if (!varianceIsZero) {
+                setError(
+                  `Cash difference is ${variance < 0 ? "−" : "+"}₹${Math.abs(variance).toFixed(
+                    2
+                  )}. The shift can only be closed when the difference is exactly ₹0.`
+                );
+                return;
+              }
               setBusy(true);
               try {
                 await closeShift({
@@ -223,12 +257,31 @@ const CloseShiftDialog = ({ open, shift, onClose, onClosed, title = "Close shift
                 onClosed && onClosed(shift);
                 onClose();
               } catch (err) {
+                // Surface the backend's structured 409 with the same
+                // language the cashier sees in the inline banner so the
+                // error is consistent across client + server.
+                if (err && err.body && err.body.code === "CASH_VARIANCE_NOT_ZERO") {
+                  const v = Number(err.body.variance || 0);
+                  setError(
+                    `Shift cannot be closed — cash difference must be ₹0.00 (counted ₹${Number(
+                      err.body.closingCash || 0
+                    ).toFixed(2)} vs expected ₹${Number(err.body.expected || 0).toFixed(
+                      2
+                    )}, variance ${v < 0 ? "−" : "+"}₹${Math.abs(v).toFixed(2)}).`
+                  );
+                  return;
+                }
                 setError(err?.body?.error || err.message);
               } finally {
                 setBusy(false);
               }
             }}
-            disabled={busy}
+            disabled={busy || !canSubmit}
+            title={
+              !canSubmit
+                ? "Cash difference must be exactly ₹0 before the shift can close"
+                : undefined
+            }
           >
             <FaCheck /> {busy ? "Closing..." : "Close shift"}
           </button>
