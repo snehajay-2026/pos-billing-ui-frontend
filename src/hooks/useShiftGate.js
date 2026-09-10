@@ -169,14 +169,24 @@ export function useShiftGate(options = {}) {
     return true;
   }, [user, options.force, options.global]);
 
+  // Dialog visibility is *user intent first, loading gate second*.
+  //   - If the user explicitly clicked "Start my shift" (manualOpen =
+  //     true), the dialog opens right away — even mid-load — so the
+  //     "Start my shift" banner CTA on the billing pages is never a
+  //     dead button during the first /api/shifts/active poll. The per-page
+  //     dialog renders for that window because the global gate hasn't
+  //     yet had a chance to set __GLOBAL_SHIFT_GATE_OPEN__; the two
+  //     resolve to the same outcome once the poll lands.
+  //   - Otherwise (auto-pop), the dialog waits for the first poll so we
+  //     don't flash the modal for cashiers who already have an active
+  //     shift and would have dismissed it.
   const shiftDialogOpen =
-    hasInitiallyLoaded &&
     needsShiftGate &&
     // In global mode, the opt-out flag is ignored — the cashier must
     // either open a shift or log out. The × button is hidden so optOut
     // is never set in this branch, but we defend in depth.
     (options.global || !optOut) &&
-    (manualOpen || !activeShift);
+    (manualOpen || (hasInitiallyLoaded && !activeShift));
 
   // The hook intentionally does NOT use a setTimeout to defer the popup.
   // Visibility is computed synchronously from state on every render, so
