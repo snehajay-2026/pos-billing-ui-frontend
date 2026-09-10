@@ -169,24 +169,54 @@ export function useShiftGate(options = {}) {
     return true;
   }, [user, options.force, options.global]);
 
-  // Dialog visibility is *user intent first, loading gate second*.
-  //   - If the user explicitly clicked "Start my shift" (manualOpen =
-  //     true), the dialog opens right away — even mid-load — so the
-  //     "Start my shift" banner CTA on the billing pages is never a
-  //     dead button during the first /api/shifts/active poll. The per-page
-  //     dialog renders for that window because the global gate hasn't
-  //     yet had a chance to set __GLOBAL_SHIFT_GATE_OPEN__; the two
-  //     resolve to the same outcome once the poll lands.
-  //   - Otherwise (auto-pop), the dialog waits for the first poll so we
-  //     don't flash the modal for cashiers who already have an active
-  //     shift and would have dismissed it.
+  // Dialog visibility is the OR of two paths:
+  //
+  //   1. USER-INITIATED — the cashier (or any role) clicked the
+  //      "Start my shift" CTA on the per-page ShiftStatusBanner.
+  //      `manualOpen=true` is an unambiguous signal of intent, so it
+  //      bypasses BOTH:
+  //        - the role gate (needsShiftGate is false for managers /
+  //          owners in cash-vertical stores by design), and
+  //        - the loading gate (the banner button must respond before
+  //          the first /api/shifts/active poll lands — see the file
+  //          header "Why the previous design had a race").
+  //      Without this, the banner would advertise a CTA that silently
+  //      does nothing for managers / owners, which is exactly what
+  //      bit the Service / Laundry / Hotel admin tests before commit
+  //      359d3c2.
+  //
+  //   2. AUTO-POP — the post-login global gate or a per-page role-aware
+  //      hook wants to summon the dialog because no shift is open and
+  //      the user is the kind of user the gate targets. This path
+  //      still respects:
+  //        - needsShiftGate (role + store gate — managers don't get
+  //          auto-popped on /dashboard),
+  //        - optOut (the × button a cashier clicked to dismiss the
+  //          dialog silences auto-pop until a fresh shift closes),
+  //        - the loading gate (don't flash the modal for a cashier
+  //          who already has an active shift and would have dismissed
+  //          it).
+  //
+  // The two paths OR together because they produce the same UI — the
+  // dialog opens. They never produce contradictory states.
   const shiftDialogOpen =
-    needsShiftGate &&
-    // In global mode, the opt-out flag is ignored — the cashier must
-    // either open a shift or log out. The × button is hidden so optOut
-    // is never set in this branch, but we defend in depth.
-    (options.global || !optOut) &&
-    (manualOpen || (hasInitiallyLoaded && !activeShift));
+    // Path 1: explicit user click. ALWAYS opens the dialog,
+    // regardless of role or current-load state. Note the absence of
+    // any needsShiftGate / optOut check — the dialog will render even
+    // if the store doesn't technically require a shift (e.g. service
+    // admin manually opening a shift for the day's audit). The
+    // per-page OpenShiftDialog has its own visibility short-circuit
+    // via window.__GLOBAL_SHIFT_GATE_OPEN__ so this never stacks on
+    // top of the inescapable global dialog.
+    manualOpen ||
+    // Path 2: auto-pop policy.
+    (needsShiftGate &&
+      // In global mode, the opt-out flag is ignored — the cashier must
+      // either open a shift or log out. The × button is hidden so
+      // optOut is never set in this branch, but we defend in depth.
+      (options.global || !optOut) &&
+      hasInitiallyLoaded &&
+      !activeShift);
 
   // The hook intentionally does NOT use a setTimeout to defer the popup.
   // Visibility is computed synchronously from state on every render, so
