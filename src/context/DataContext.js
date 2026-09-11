@@ -253,6 +253,28 @@ export const DataProvider = ({ children }) => {
         }
       }
 
+      // F2: orders + services changes elsewhere in the store → refresh the
+      // orders list and the services catalog in any open tab. We dispatch
+      // BOTH the generic `dataUpdated` event and the per-app event
+      // (`servicesUpdated` for the catalog, `ordersUpdated` if any future
+      // listener wants it) so existing polling listeners wake up
+      // immediately instead of waiting for the next refresh cycle.
+      if (kind === "order") {
+        try {
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
+        } catch {
+          /* SSR */
+        }
+      }
+      if (kind === "service") {
+        try {
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "services" }));
+          window.dispatchEvent(new CustomEvent("servicesUpdated"));
+        } catch {
+          /* SSR */
+        }
+      }
+
       // Pull fresh products so the bell badge updates without a 60s wait.
       refresh();
     });
