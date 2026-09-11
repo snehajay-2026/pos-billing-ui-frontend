@@ -1,12 +1,27 @@
 // Shared visual tones + helpers for service-industry pages.
 // Keeps status pills, category badges, and avatar gradients in sync.
 
+// Status pipeline for service orders:
+//   pending     → customer just scheduled
+//   in_progress → technician working on the job
+//   completed   → work done, awaiting billing
+//   invoiced    → F1: a bill has been generated from this order; the row
+//                 is now a permanent pointer to orders.invoice_no and the
+//                 status filter should hide it from "still actionable" lists.
+//
+// `invoiced` is appended (not inserted into the flow) so pending →
+// in_progress → completed remain a forward-only pipeline. Once invoiced
+// the row stays visible in the All filter so the link back to the bill
+// remains accessible from the orders list.
 export const STATUS_FLOW = ["pending", "in_progress", "completed"];
+
+export const ACTIONABLE_STATUSES = ["pending", "in_progress", "completed"];
 
 export const STATUS_LABEL = {
   pending: "Pending",
   in_progress: "In Progress",
   completed: "Completed",
+  invoiced: "Invoiced",
 };
 
 export const STATUS_TONES = {
@@ -30,6 +45,16 @@ export const STATUS_TONES = {
     dot: "#10b981",
     solid: "#10b981",
     halo: "rgba(16, 185, 129, 0.18)",
+  },
+  // F1: violet chip = the job is closed and a bill exists. Distinct from
+  // `completed` so the orders list visually separates "service finished"
+  // from "bill generated" — the latter is the source of truth for revenue.
+  invoiced: {
+    bg: "rgba(124, 58, 237, 0.14)",
+    color: "#5b21b6",
+    dot: "#7c3aed",
+    solid: "#7c3aed",
+    halo: "rgba(124, 58, 237, 0.18)",
   },
 };
 

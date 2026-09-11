@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaUserTie,
   FaPlus,
@@ -16,22 +17,43 @@ import {
   FaSpinner,
   FaCheckCircle,
   FaHourglassHalf,
+  FaFileInvoiceDollar,
+  FaExternalLinkAlt,
+  FaTimes,
+  FaReceipt,
 } from "react-icons/fa";
 import { useUi } from "../context/UiContext";
 import Layout from "../components/layout/Layout";
-import { getOrders, createOrder, updateOrder, deleteOrder } from "../services/orderService";
+import {
+  getOrders,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+  createInvoiceFromOrder,
+} from "../services/orderService";
 import { loadServices } from "../services/serviceService";
 import {
   STATUS_LABEL,
   STATUS_TONES,
   STATUS_FLOW,
+  ACTIONABLE_STATUSES,
   initialsFromName,
   formatDateTime,
   formatTime,
+  formatCurrency,
 } from "../utils/serviceTones";
 import "./ServiceOrderPage.css";
 
 const STATUS_OPTIONS = STATUS_FLOW.map((v) => ({ value: v, label: STATUS_LABEL[v] }));
+
+// F1: payment modes accepted by POST /api/orders/:id/invoice. Mirrors the
+// backend allow-list so the cashier doesn't see options that will 400.
+const PAYMENT_OPTIONS = [
+  { value: "Cash", label: "Cash" },
+  { value: "UPI", label: "UPI" },
+  { value: "Card", label: "Card" },
+  { value: "Bank Transfer", label: "Bank Transfer" },
+];
 
 const emptyForm = {
   customer: "",
@@ -45,6 +67,19 @@ const emptyForm = {
   notes: "",
 };
 
+// F1: dialog state for the "Create invoice" flow. The dialog captures
+// payment mode + optional overrides; the backend derives totals from
+// the order row + the catalog rate.
+const emptyInvoiceForm = {
+  paymentMode: "Cash",
+  gstRate: "",
+  remarks: "",
+  customerEmail: "",
+  customerAddress: "",
+  customerGst: "",
+  customerState: "",
+};
+
 const ServiceOrderPage = () => {
   const [orders, setOrders] = useState([]);
   const [services, setServices] = useState([]);
@@ -53,8 +88,14 @@ const ServiceOrderPage = () => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  // F1: invoice dialog state.
+  const [invoiceFor, setInvoiceFor] = useState(null);
+  const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm);
+  const [invoiceSubmitting, setInvoiceSubmitting] = useState(false);
+  const [invoiceError, setInvoiceError] = useState("");
 
   const { activeStore } = useUi();
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +207,92 @@ const ServiceOrderPage = () => {
     }
   };
 
+  // F1: open the "Create invoice" dialog for a row. Pre-fills customer
+  // email / address / GST if the order already carries them (the order
+  // row only stores customer + phone today; anything else is blank).
+  const openInvoiceDialog = (order) => {
+    if (!order || order.invoiceNo) return;
+    setInvoiceError("");
+    setInvoiceForm({
+      ...emptyInvoiceForm,
+      // If the order is already `completed`, default payment to Cash
+      // because completed jobs are typically billed in person. For an
+      // `in_progress` job that the cashier wants to bill now, Cash is
+      // still the safest default — the cashier can flip it.
+      paymentMode: "Cash",
+    });
+    setInvoiceFor(order);
+  };
+
+  const closeInvoiceDialog = () => {
+    if (invoiceSubmitting) return;
+    setInvoiceFor(null);
+    setInvoiceForm(emptyInvoiceForm);
+    setInvoiceError("");
+  };
+
+  const handleInvoiceFieldChange = (e) => {
+    const { name, value } = e.target;
+    setInvoiceForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const submitInvoiceDialog = async () => {
+    if (!invoiceFor || invoiceSubmitting) return;
+    setInvoiceSubmitting(true);
+    setInvoiceError("");
+    try {
+      const result = await createInvoiceFromOrder(invoiceFor.id, invoiceForm);
+      // Backend returns { invoice, order }; update local state to the
+      // post-write rows so the list reflects status=invoiced and the
+      // back-link without a manual refetch.
+      if (result && result.order) {
+        setOrders((prev) => prev.map((o) => (o.id === result.order.id ? result.order : o)));
+      } else if (result && result.invoice) {
+        // Fallback: if the backend omitted the order, optimistically flip
+        // the local row with the known invoiceNo.
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === invoiceFor.id
+              ? { ...o, status: "invoiced", invoiceNo: result.invoice.invoiceNo }
+              : o
+          )
+        );
+      }
+      window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
+      window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "invoices" }));
+      const invoiceNo =
+        (result && result.invoice && result.invoice.invoiceNo) || invoiceFor.invoiceNo;
+      closeInvoiceDialog();
+      if (invoiceNo) {
+        navigate(`/invoice/${invoiceNo}/preview`);
+      }
+    } catch (err) {
+      console.error("Failed to create invoice from order:", err);
+      // Backend signals ORDER_ALREADY_INVOICED with body.invoiceNo so
+      // the cashier can jump to the existing bill instead of seeing a
+      // dead-end error.
+      if (err && err.status === 409 && err.body && err.body.code === "ORDER_ALREADY_INVOICED") {
+        const existing = err.body.invoiceNo;
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === invoiceFor.id ? { ...o, status: "invoiced", invoiceNo: existing } : o
+          )
+        );
+        setInvoiceError(
+          `This order was already billed as ${existing}. Opening the existing invoice.`
+        );
+        setTimeout(() => {
+          closeInvoiceDialog();
+          if (existing) navigate(`/invoice/${existing}/preview`);
+        }, 1200);
+        return;
+      }
+      setInvoiceError(err.message || "Failed to create invoice. Please try again.");
+    } finally {
+      setInvoiceSubmitting(false);
+    }
+  };
+
   const handleCancel = () => {
     setForm({
       ...emptyForm,
@@ -179,8 +306,9 @@ const ServiceOrderPage = () => {
     const pending = orders.filter((o) => (o.status || "pending") === "pending").length;
     const inProgress = orders.filter((o) => o.status === "in_progress").length;
     const completed = orders.filter((o) => o.status === "completed").length;
+    const invoiced = orders.filter((o) => o.status === "invoiced").length;
     const totalHours = orders.reduce((s, o) => s + (Number(o.hours) || 0), 0);
-    return { pending, inProgress, completed, totalHours };
+    return { pending, inProgress, completed, invoiced, totalHours };
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
@@ -204,9 +332,33 @@ const ServiceOrderPage = () => {
       pending: stats.pending,
       in_progress: stats.inProgress,
       completed: stats.completed,
+      invoiced: stats.invoiced,
     }),
     [orders, stats]
   );
+
+  // F1: derive the catalog rate/GST for the dialog preview so the
+  // cashier can sanity-check totals before they commit. Falls back to
+  // the order's hours if the catalog has been deleted (mirrors the
+  // backend's fall-back).
+  const dialogCatalogPreview = useMemo(() => {
+    if (!invoiceFor) return null;
+    const svc = services.find(
+      (s) => s.name === invoiceFor.service || String(s.id) === String(invoiceFor.service)
+    );
+    const rate = Number(svc?.rate) || 0;
+    const hours = Number(invoiceFor.hours) || 0;
+    const lineTotal = +(rate * hours).toFixed(2);
+    const gstPct =
+      invoiceForm.gstRate !== "" && invoiceForm.gstRate != null
+        ? Number(invoiceForm.gstRate)
+        : svc?.gst != null
+          ? Number(svc.gst)
+          : 0;
+    const gstTotal = +((lineTotal * gstPct) / 100).toFixed(2);
+    const grandTotal = +(lineTotal + gstTotal).toFixed(2);
+    return { svc, rate, hours, lineTotal, gstPct, gstTotal, grandTotal };
+  }, [invoiceFor, services, invoiceForm.gstRate]);
 
   return (
     <Layout>
@@ -465,8 +617,13 @@ const ServiceOrderPage = () => {
             >
               <FaListUl /> All ({statusCounts.ALL})
             </button>
-            {STATUS_FLOW.map((s) => {
+            {/* F1: chip row spans actionable statuses (the existing
+                forward pipeline) plus invoiced so a cashier can quickly
+                pull up jobs that are awaiting a bill OR have already
+                been billed. */}
+            {[...STATUS_FLOW, "invoiced"].map((s) => {
               const tone = STATUS_TONES[s];
+              if (!tone) return null;
               return (
                 <button
                   type="button"
@@ -475,7 +632,7 @@ const ServiceOrderPage = () => {
                   onClick={() => setStatusFilter(s)}
                 >
                   <span className="sv-chip-dot" style={{ background: tone.dot }} />
-                  {STATUS_LABEL[s]} ({statusCounts[s]})
+                  {STATUS_LABEL[s]} ({statusCounts[s] || 0})
                 </button>
               );
             })}
@@ -494,6 +651,10 @@ const ServiceOrderPage = () => {
               {filteredOrders.map((order) => {
                 const status = order.status || "pending";
                 const tone = STATUS_TONES[status] || STATUS_TONES.pending;
+                // F1: invoiced rows are terminal — the bill owns the
+                // state from here on, so Start/Complete are suppressed
+                // and Edit is replaced by a direct "View invoice" link.
+                const isInvoiced = status === "invoiced" || Boolean(order.invoiceNo);
                 return (
                   <div key={order.id} className="so-row" style={{ "--row-accent": tone.color }}>
                     <div className="so-row-main">
@@ -515,6 +676,14 @@ const ServiceOrderPage = () => {
                               <>
                                 <i> · </i>
                                 {order.service}
+                              </>
+                            ) : null}
+                            {isInvoiced && order.invoiceNo ? (
+                              <>
+                                <i> · </i>
+                                <span className="so-invoice-ref">
+                                  <FaReceipt /> {order.invoiceNo}
+                                </span>
                               </>
                             ) : null}
                           </span>
@@ -563,10 +732,35 @@ const ServiceOrderPage = () => {
                             boxShadow: `0 0 0 4px ${tone.halo}`,
                           }}
                         />
-                        {STATUS_LABEL[status]}
+                        {STATUS_LABEL[status] || status}
                       </span>
 
                       <div className="so-quick-actions">
+                        {/* F1: actionable rows get a primary "Create invoice"
+                            button. Once invoiced, this slot flips to a
+                            muted "View invoice" link that jumps straight
+                            to the bill preview — the cashier should not
+                            be generating a second bill from the same row. */}
+                        {isInvoiced ? (
+                          <button
+                            type="button"
+                            className="so-qa-btn invoiced"
+                            onClick={() => navigate(`/invoice/${order.invoiceNo}/preview`)}
+                            title={`Open bill ${order.invoiceNo}`}
+                          >
+                            <FaExternalLinkAlt /> View invoice
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="so-qa-btn bill"
+                            onClick={() => openInvoiceDialog(order)}
+                            title="Generate a bill from this order"
+                            disabled={!ACTIONABLE_STATUSES.includes(status)}
+                          >
+                            <FaFileInvoiceDollar /> Create invoice
+                          </button>
+                        )}
                         {status === "pending" && (
                           <button
                             type="button"
@@ -577,7 +771,7 @@ const ServiceOrderPage = () => {
                             <FaPlay /> Start
                           </button>
                         )}
-                        {status !== "completed" && (
+                        {!isInvoiced && status !== "completed" && (
                           <button
                             type="button"
                             className="so-qa-btn complete"
@@ -614,6 +808,203 @@ const ServiceOrderPage = () => {
           )}
         </div>
       </div>
+
+      {/* F1: "Create invoice" dialog. The bill is generated server-side
+          via POST /api/orders/:id/invoice which atomically inserts the
+          invoice row, flips the order status to 'invoiced', and stamps
+          the invoice_no back-link in a single MySQL transaction. */}
+      {invoiceFor && (
+        <div
+          className="so-invoice-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeInvoiceDialog();
+          }}
+        >
+          <div className="so-invoice-dialog" role="dialog" aria-modal="true">
+            <div className="so-invoice-head">
+              <div>
+                <h3>
+                  <FaFileInvoiceDollar /> Create invoice from order
+                </h3>
+                <p>
+                  A new bill will be generated for <strong>{invoiceFor.customer}</strong>
+                  {invoiceFor.service ? (
+                    <>
+                      {" "}
+                      · <span>{invoiceFor.service}</span>
+                    </>
+                  ) : null}{" "}
+                  ({Number(invoiceFor.hours) || 0}h). Totals are derived from the service catalog
+                  and the order hours.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="so-invoice-close"
+                onClick={closeInvoiceDialog}
+                aria-label="Close"
+                disabled={invoiceSubmitting}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="so-invoice-body">
+              {invoiceError && (
+                <div
+                  className={`sv-alert ${
+                    invoiceError.includes("already billed") ? "sv-alert-info" : "sv-alert-danger"
+                  }`}
+                >
+                  {invoiceError}
+                </div>
+              )}
+
+              <div className="sv-field-row">
+                <div className="sv-field">
+                  <label htmlFor="inv-pm">Payment mode *</label>
+                  <select
+                    id="inv-pm"
+                    className="sv-input sv-select"
+                    name="paymentMode"
+                    value={invoiceForm.paymentMode}
+                    onChange={handleInvoiceFieldChange}
+                  >
+                    {PAYMENT_OPTIONS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sv-field">
+                  <label htmlFor="inv-gst">GST rate (%)</label>
+                  <input
+                    id="inv-gst"
+                    className="sv-input"
+                    name="gstRate"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={invoiceForm.gstRate}
+                    onChange={handleInvoiceFieldChange}
+                    placeholder="(use catalog rate)"
+                  />
+                </div>
+              </div>
+
+              <div className="sv-field-row">
+                <div className="sv-field">
+                  <label htmlFor="inv-email">Customer email</label>
+                  <input
+                    id="inv-email"
+                    className="sv-input"
+                    name="customerEmail"
+                    type="email"
+                    value={invoiceForm.customerEmail}
+                    onChange={handleInvoiceFieldChange}
+                    placeholder="(optional)"
+                  />
+                </div>
+                <div className="sv-field">
+                  <label htmlFor="inv-gstin">Customer GSTIN</label>
+                  <input
+                    id="inv-gstin"
+                    className="sv-input"
+                    name="customerGst"
+                    value={invoiceForm.customerGst}
+                    onChange={handleInvoiceFieldChange}
+                    placeholder="(optional)"
+                  />
+                </div>
+              </div>
+
+              <div className="sv-field-row">
+                <div className="sv-field">
+                  <label htmlFor="inv-state">Customer state</label>
+                  <input
+                    id="inv-state"
+                    className="sv-input"
+                    name="customerState"
+                    value={invoiceForm.customerState}
+                    onChange={handleInvoiceFieldChange}
+                    placeholder="(optional)"
+                  />
+                </div>
+                <div className="sv-field">
+                  <label htmlFor="inv-addr">Customer address</label>
+                  <input
+                    id="inv-addr"
+                    className="sv-input"
+                    name="customerAddress"
+                    value={invoiceForm.customerAddress}
+                    onChange={handleInvoiceFieldChange}
+                    placeholder="(optional)"
+                  />
+                </div>
+              </div>
+
+              <div className="sv-field">
+                <label htmlFor="inv-remarks">Remarks</label>
+                <textarea
+                  id="inv-remarks"
+                  className="sv-input"
+                  name="remarks"
+                  rows={2}
+                  value={invoiceForm.remarks}
+                  onChange={handleInvoiceFieldChange}
+                  placeholder="Note for the bill (optional)"
+                />
+              </div>
+
+              {dialogCatalogPreview && (
+                <div className="so-invoice-preview">
+                  <div>
+                    <span>Rate</span>
+                    <strong>{formatCurrency(dialogCatalogPreview.rate)} / hr</strong>
+                  </div>
+                  <div>
+                    <span>Hours</span>
+                    <strong>{dialogCatalogPreview.hours}</strong>
+                  </div>
+                  <div>
+                    <span>Subtotal</span>
+                    <strong>{formatCurrency(dialogCatalogPreview.lineTotal)}</strong>
+                  </div>
+                  <div>
+                    <span>GST ({dialogCatalogPreview.gstPct}%)</span>
+                    <strong>{formatCurrency(dialogCatalogPreview.gstTotal)}</strong>
+                  </div>
+                  <div className="so-invoice-preview-total">
+                    <span>Grand total</span>
+                    <strong>{formatCurrency(dialogCatalogPreview.grandTotal)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="so-invoice-foot">
+              <button
+                type="button"
+                className="sv-btn sv-btn-ghost"
+                onClick={closeInvoiceDialog}
+                disabled={invoiceSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="sv-btn sv-btn-primary"
+                onClick={submitInvoiceDialog}
+                disabled={invoiceSubmitting}
+              >
+                {invoiceSubmitting ? "Generating…" : "Generate invoice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

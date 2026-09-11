@@ -268,6 +268,199 @@
   background: rgba(244, 63, 94, 0.22);
 }
 
+/* F1: "Create invoice" primary button — purple gradient so it stands
+   out from the green Start/Complete pair without competing with them. */
+.so-qa-btn.bill {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.28);
+}
+.so-qa-btn.bill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(124, 58, 237, 0.4);
+}
+.so-qa-btn.bill:disabled {
+  background: rgba(124, 58, 237, 0.4);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* F1: terminal "View invoice" link — muted outline button so the row
+   no longer screams for action; the chip is the visual signal that the
+   job is closed. */
+.so-qa-btn.invoiced {
+  background: rgba(124, 58, 237, 0.1);
+  color: #5b21b6;
+  border-color: rgba(124, 58, 237, 0.22);
+}
+.so-qa-btn.invoiced:hover {
+  background: rgba(124, 58, 237, 0.18);
+}
+
+.so-invoice-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "JetBrains Mono", "Menlo", monospace;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(124, 58, 237, 0.12);
+  color: #5b21b6;
+}
+
+/* ---------- DIALOG (Create invoice) ---------- */
+
+.so-invoice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 90;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.so-invoice-dialog {
+  width: min(640px, 100%);
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+.so-invoice-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 22px 26px 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+.so-invoice-head h3 {
+  margin: 0 0 6px;
+  font-size: 1.18rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #1e1b4b;
+}
+.so-invoice-head p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #475569;
+  line-height: 1.45;
+}
+.so-invoice-close {
+  background: rgba(15, 23, 42, 0.06);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #1e1b4b;
+  transition: background 0.16s ease;
+}
+.so-invoice-close:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+.so-invoice-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.so-invoice-body {
+  padding: 18px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.so-invoice-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(99, 102, 241, 0.04));
+  border-radius: 14px;
+  border: 1px dashed rgba(124, 58, 237, 0.25);
+  font-size: 0.86rem;
+}
+.so-invoice-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.so-invoice-preview span {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.so-invoice-preview strong {
+  font-size: 0.95rem;
+  color: #1e1b4b;
+}
+.so-invoice-preview-total {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(124, 58, 237, 0.18);
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.so-invoice-preview-total strong {
+  font-size: 1.1rem;
+  color: #5b21b6;
+}
+
+.so-invoice-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 26px 22px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+body.theme-dark .so-invoice-dialog {
+  background: #1e293b;
+}
+body.theme-dark .so-invoice-head {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+body.theme-dark .so-invoice-head h3 {
+  color: #f8fafc;
+}
+body.theme-dark .so-invoice-head p {
+  color: #cbd5e1;
+}
+body.theme-dark .so-invoice-close {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+body.theme-dark .so-invoice-preview {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(99, 102, 241, 0.1));
+}
+body.theme-dark .so-invoice-preview span {
+  color: #94a3b8;
+}
+body.theme-dark .so-invoice-preview strong {
+  color: #f8fafc;
+}
+body.theme-dark .so-invoice-foot {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
 /* Chip dot in filter row */
 .sv-chip-dot {
   width: 8px;
