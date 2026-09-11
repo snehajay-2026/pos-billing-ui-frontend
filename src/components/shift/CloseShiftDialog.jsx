@@ -107,6 +107,17 @@ const CloseShiftDialog = ({ open, shift, onClose, onClosed, title = "Close shift
                     <span>UPI collection</span>
                     <strong>Rs {(summary.sales?.upi || 0).toFixed(2)}</strong>
                   </div>
+                  {/* F3: Bank Transfer was previously lumped into "Other";
+                      it now surfaces explicitly when any bank-transfer
+                      invoice was generated this shift. The cell is
+                      hidden when total is 0 so the dialog stays compact
+                      for stores that don't use bank transfers. */}
+                  {(summary.sales?.bankTransfer || 0) > 0 ? (
+                    <div>
+                      <span>Bank Transfer collection</span>
+                      <strong>Rs {(summary.sales.bankTransfer || 0).toFixed(2)}</strong>
+                    </div>
+                  ) : null}
                   <div>
                     <span>Other collection</span>
                     <strong>Rs {(summary.sales?.other || 0).toFixed(2)}</strong>
