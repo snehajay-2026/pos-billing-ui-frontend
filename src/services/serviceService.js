@@ -44,6 +44,20 @@ export const deleteService = async (id) => {
   return apiDelete(`/api/services/${id}`, null, { storeType, email });
 };
 
+// F6: read the per-service rate / GST / hours change log. The backend
+// stamps a row in `service_rate_history` whenever a PUT changes one of
+// those three fields, and exposes them via
+// `GET /api/services/:id/rate-history`. Returns
+// `{ service: { id, name }, entries: [...] }`.
+export const getServiceRateHistory = async (serviceId, { limit = 50 } = {}) => {
+  const { storeType, email } = getUserMeta();
+  return apiGet(`/api/services/${serviceId}/rate-history`, {
+    storeType,
+    email,
+    limit,
+  });
+};
+
 // loadServices is now an alias for getServices. The previous implementation
 // returned a hardcoded fallback (Consulting/Repair/Training) when the API
 // returned an empty list, which masked DB outages and silently generated

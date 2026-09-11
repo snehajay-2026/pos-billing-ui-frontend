@@ -11,12 +11,20 @@ import {
   FaPercent,
   FaTags,
   FaChartLine,
+  FaHistory,
+  FaTimes,
+  FaArrowUp,
+  FaArrowDown,
+  FaEquals,
+  FaUserCircle,
+  FaSpinner,
 } from "react-icons/fa";
 import {
   loadServices,
   createService,
   updateService,
   deleteService,
+  getServiceRateHistory,
 } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
 import { CATEGORY_TONES, SERVICE_CATEGORIES, formatCurrency } from "../utils/serviceTones";
@@ -39,6 +47,11 @@ const ServiceManagementPage = () => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  // F6: rate-history drawer state.
+  const [historyFor, setHistoryFor] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historyError, setHistoryError] = useState("");
 
   const { activeStore } = useUi();
 
@@ -128,6 +141,33 @@ const ServiceManagementPage = () => {
     setForm(emptyForm);
     setEditing(false);
     setError("");
+  };
+
+  // F6: open the rate-history drawer for a service. Fetches the first
+  // page of entries (default 50) from GET /api/services/:id/rate-history
+  // and renders them in chronological order, newest first. The drawer
+  // is local-state only — closing it discards the entries.
+  const openRateHistory = async (svc) => {
+    setHistoryFor(svc);
+    setHistoryEntries([]);
+    setHistoryError("");
+    setHistoryLoading(true);
+    try {
+      const data = await getServiceRateHistory(svc.id, { limit: 50 });
+      setHistoryEntries(Array.isArray(data?.entries) ? data.entries : []);
+    } catch (err) {
+      console.error("Failed to load rate history:", err);
+      setHistoryError(err.message || "Failed to load history. Please try again.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const closeRateHistory = () => {
+    setHistoryFor(null);
+    setHistoryEntries([]);
+    setHistoryError("");
+    setHistoryLoading(false);
   };
 
   const stats = useMemo(() => {
@@ -391,6 +431,15 @@ const ServiceManagementPage = () => {
                         <button
                           type="button"
                           className="sv-icon-btn"
+                          onClick={() => openRateHistory(svc)}
+                          aria-label="View rate history"
+                          title="View rate history"
+                        >
+                          <FaHistory />
+                        </button>
+                        <button
+                          type="button"
+                          className="sv-icon-btn"
                           onClick={() => handleEdit(svc)}
                           aria-label="Edit"
                           title="Edit"
@@ -444,8 +493,127 @@ const ServiceManagementPage = () => {
           )}
         </div>
       </div>
+
+      {/* F6: Rate-history drawer. Renders one entry per PUT that changed
+          rate / hours / gst on the selected service. Entries are pulled
+          on open (default 50) and discarded on close — the drawer is
+          local-state only, no caching, no SSE subscription. */}
+      {historyFor && (
+        <div
+          className="sv-history-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeRateHistory();
+          }}
+        >
+          <div className="sv-history-drawer" role="dialog" aria-modal="true">
+            <div className="sv-history-head">
+              <div>
+                <h3>
+                  <FaHistory /> Rate history — {historyFor.name}
+                </h3>
+                <p>
+                  Every change to this service's rate, hours, or GST is logged here. The audit trail
+                  stays even if the service is later deleted.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="sv-history-close"
+                onClick={closeRateHistory}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="sv-history-body">
+              {historyLoading && (
+                <div className="sv-history-loading">
+                  <FaSpinner /> Loading history…
+                </div>
+              )}
+              {historyError && <div className="sv-alert sv-alert-danger">{historyError}</div>}
+              {!historyLoading && !historyError && historyEntries.length === 0 && (
+                <div className="sv-history-empty">
+                  <FaHistory />
+                  <strong>No rate changes yet</strong>
+                  <span>Edits to rate, hours, or GST will appear here automatically.</span>
+                </div>
+              )}
+              {!historyLoading && historyEntries.length > 0 && (
+                <ol className="sv-history-list">
+                  {historyEntries.map((entry) => (
+                    <li key={entry.id} className="sv-history-row">
+                      <div className="sv-history-when">
+                        <strong>{formatHistoryTimestamp(entry.changedAt)}</strong>
+                        <span>
+                          <FaUserCircle /> {entry.changedByEmail || "Unknown user"}
+                        </span>
+                      </div>
+                      <div className="sv-history-fields">
+                        {entry.oldRate !== entry.newRate &&
+                          renderFieldDiff(
+                            "Rate",
+                            formatCurrency(entry.oldRate),
+                            formatCurrency(entry.newRate)
+                          )}
+                        {entry.oldGst !== entry.newGst &&
+                          renderFieldDiff("GST", `${entry.oldGst ?? 0}%`, `${entry.newGst ?? 0}%`)}
+                        {entry.oldHours !== entry.newHours &&
+                          renderFieldDiff("Hours", entry.oldHours ?? 0, entry.newHours ?? 0)}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
+
+// F6 helpers: tiny pure formatters used by the drawer. Defined outside
+// the component so they aren't re-created on every render.
+
+function formatHistoryTimestamp(value) {
+  if (!value) return "—";
+  // mysql2 returns DATETIME(3) as a JS Date string in the pool's local TZ;
+  // Date.parse handles both ISO and "YYYY-MM-DD HH:mm:ss.SSS" shapes.
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderFieldDiff(label, oldValue, newValue) {
+  const oldN = Number(oldValue);
+  const newN = Number(newValue);
+  let icon = <FaEquals />;
+  let tone = "flat";
+  if (Number.isFinite(oldN) && Number.isFinite(newN)) {
+    if (newN > oldN) {
+      icon = <FaArrowUp />;
+      tone = "up";
+    } else if (newN < oldN) {
+      icon = <FaArrowDown />;
+      tone = "down";
+    }
+  }
+  return (
+    <div className={`sv-history-field tone-${tone}`}>
+      <span className="sv-history-field-label">{label}</span>
+      <span className="sv-history-field-old">{oldValue}</span>
+      <span className="sv-history-field-arrow">{icon}</span>
+      <span className="sv-history-field-new">{newValue}</span>
+    </div>
+  );
+}
 
 export default ServiceManagementPage;
