@@ -44,6 +44,17 @@ const RANGE_PILLS = [
   { key: "CUSTOM", label: "Custom" },
 ];
 
+// F7: payment-mode bucket toggle. "ALL" shows every recorded mode;
+// the rest are canonical labels that match the POS dropdown so what
+// the cashier picks is what the admin sees bucketed here.
+const PAYMENT_BUCKETS = [
+  { key: "ALL", label: "All" },
+  { key: "Cash", label: "Cash" },
+  { key: "UPI", label: "UPI" },
+  { key: "Card", label: "Card" },
+  { key: "Bank Transfer", label: "Bank Transfer" },
+];
+
 const CHART_PALETTE = [
   "#4f46e5",
   "#0ea5e9",
@@ -222,6 +233,7 @@ const ServiceAdminDashboard = () => {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [search, setSearch] = useState("");
+  const [paymentBucket, setPaymentBucket] = useState("ALL");
   const { activeStore } = useUi();
 
   const load = async () => {
@@ -274,7 +286,18 @@ const ServiceAdminDashboard = () => {
 
   const topServices = useMemo(() => aggregateByService(invoicesForRange), [invoicesForRange]);
   const topTechnicians = useMemo(() => aggregateByTechnician(invoicesForRange), [invoicesForRange]);
-  const paymentModes = useMemo(() => aggregateByPaymentMode(invoicesForRange), [invoicesForRange]);
+  const paymentModes = useMemo(() => {
+    // F7: filter invoices to the selected payment bucket before aggregating.
+    // "ALL" → show every bucket; specific keys show only that mode.
+    const filtered =
+      paymentBucket === "ALL"
+        ? invoicesForRange
+        : invoicesForRange.filter(
+            (inv) =>
+              (inv.paymentMode || inv.paymentMethod || inv.payment || "Cash") === paymentBucket
+          );
+    return aggregateByPaymentMode(filtered);
+  }, [invoicesForRange, paymentBucket]);
 
   const recentInvoices = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -615,9 +638,31 @@ const ServiceAdminDashboard = () => {
                 <p>Where the money is coming from · {rangeLabel}</p>
               </div>
             </header>
+            {/* F7: bucket toggle. "All" shows every mode; specific buckets
+                narrow the chart to a single mode (useful when reconciling
+                the day's UPI receipts against the bank statement). */}
+            <div className="sd-bucket-row" role="group" aria-label="Filter by payment mode">
+              {PAYMENT_BUCKETS.map((b) => (
+                <button
+                  key={b.key}
+                  type="button"
+                  className={`sd-bucket-pill ${paymentBucket === b.key ? "active" : ""}`}
+                  onClick={() => setPaymentBucket(b.key)}
+                  aria-pressed={paymentBucket === b.key}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
             <div className="chart-card-body">
               {paymentModes.length === 0 ? (
-                <EmptyChart label="No payments recorded in this range." />
+                <EmptyChart
+                  label={
+                    paymentBucket === "ALL"
+                      ? "No payments recorded in this range."
+                      : `No ${paymentBucket} payments recorded in this range.`
+                  }
+                />
               ) : (
                 <Doughnut data={paymentChartData} options={paymentChartOptions} />
               )}
