@@ -1,33 +1,6 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./api";
 import { getUser, getActiveStoreContext } from "../utils/auth";
 
-export const defaultServices = [
-  {
-    id: 1,
-    name: "Consulting",
-    description: "Business consulting services",
-    rate: 500,
-    gst: 18,
-    hours: 2,
-  },
-  {
-    id: 2,
-    name: "Repair",
-    description: "Device repair and maintenance",
-    rate: 300,
-    gst: 18,
-    hours: 1,
-  },
-  {
-    id: 3,
-    name: "Training",
-    description: "Employee training session",
-    rate: 800,
-    gst: 18,
-    hours: 3,
-  },
-];
-
 const getUserMeta = () => {
   const active = getActiveStoreContext();
   const user = getUser();
@@ -45,11 +18,15 @@ const getUserMeta = () => {
   };
 };
 
+// getServices returns whatever the API gives us. An empty list is a real
+// answer — the store's catalog is empty. We no longer substitute a hardcoded
+// list of "Consulting / Repair / Training" services, because that hid DB
+// configuration problems and let cashiers generate invoices against rates
+// that never existed in the catalog.
 export const getServices = async () => {
   const { storeType, email } = getUserMeta();
   const services = await apiGet("/api/services", { storeType, email });
-  if (Array.isArray(services) && services.length) return services;
-  return [];
+  return Array.isArray(services) ? services : [];
 };
 
 export const createService = async (service) => {
@@ -67,8 +44,9 @@ export const deleteService = async (id) => {
   return apiDelete(`/api/services/${id}`, null, { storeType, email });
 };
 
-export const loadServices = async () => {
-  const services = await getServices();
-  if (services.length) return services;
-  return defaultServices;
-};
+// loadServices is now an alias for getServices. The previous implementation
+// returned a hardcoded fallback (Consulting/Repair/Training) when the API
+// returned an empty list, which masked DB outages and silently generated
+// invoices against fake rates. Callers that previously relied on the
+// fallback should now render an empty state instead.
+export const loadServices = getServices;
