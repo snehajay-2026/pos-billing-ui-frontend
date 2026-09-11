@@ -1,5 +1,6 @@
 import React from "react";
 import { getStoreSettings } from "../../services/storeSettingsService";
+import { computeStatus } from "../../utils/invoiceStatus";
 import "./ServiceInvoice.css";
 
 const fmt2 = (n) => (Number(n) || 0).toFixed(2);
@@ -22,38 +23,6 @@ function splitTerms(text) {
     .map((line) => line.replace(/^[-•\d.)\s]+/, "").trim())
     .filter(Boolean);
 }
-
-export const STATUS_LABELS = {
-  PAID: { label: "PAID", tone: "paid" },
-  PARTIAL: { label: "PARTIAL", tone: "partial" },
-  PENDING: { label: "PENDING", tone: "pending" },
-  CLEARED: { label: "CLEARED", tone: "paid" },
-  CANCELLED: { label: "CANCELLED", tone: "cancelled" },
-  OVERDUE: { label: "OVERDUE", tone: "overdue" },
-};
-
-export const computeStatus = (invoice, totalDue) => {
-  const explicit = String(invoice?.status || "").toLowerCase();
-  if (explicit === "cleared" || explicit === "paid") {
-    return STATUS_LABELS.CLEARED;
-  }
-  if (explicit === "cancelled") {
-    return STATUS_LABELS.CANCELLED;
-  }
-
-  const paid = Number(invoice.paidAmount || 0);
-  if (paid <= 0) {
-    const due = invoice.dueDate ? new Date(invoice.dueDate) : null;
-    if (due && !Number.isNaN(due.getTime()) && due.getTime() < Date.now()) {
-      return STATUS_LABELS.OVERDUE;
-    }
-    return STATUS_LABELS.PENDING;
-  }
-  if (paid + 0.01 < (Number(totalDue) || 0)) {
-    return STATUS_LABELS.PARTIAL;
-  }
-  return STATUS_LABELS.PAID;
-};
 
 // Indian numbering: 12,34,567.89 → "Rupees Twelve Lakh Thirty Four Thousand Five Hundred Sixty Seven and Eighty Nine Paise Only"
 const numberToWordsIndian = (n) => {

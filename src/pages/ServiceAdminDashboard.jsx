@@ -22,7 +22,7 @@ import "chart.js/auto";
 import { getInvoices } from "../services/invoiceService";
 import { getServices } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
-import { STATUS_LABELS, computeStatus } from "../components/invoice/ServiceInvoice";
+import { computeStatus } from "../utils/invoiceStatus";
 import "./ServiceAdminDashboard.css";
 
 /* ---------- formatters ---------- */
