@@ -28,6 +28,7 @@ import {
   FaChevronUp,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useUi } from "../../context/UiContext";
 import { printESC_POS } from "../../utils/bluetoothEscpos";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import { loadServices } from "../../services/serviceService";
@@ -47,6 +48,7 @@ import "./ServiceBilling.css";
 
 const ServiceBilling = () => {
   const navigate = useNavigate();
+  const { showToast } = useUi();
   const [hydrated, setHydrated] = useState(false);
   const settings = getStoreSettings();
 
