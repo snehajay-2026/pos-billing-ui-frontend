@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { getInvoiceByNo, updateInvoice } from "../../services/invoiceService";
 import { getStoreSettings } from "../../services/storeSettingsService";
-import { getUser } from "../../utils/auth";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import LaundryThermalReceipt from "../laundry/LaundryThermalReceipt";
@@ -156,7 +155,6 @@ const InvoiceView = () => {
   const messageDiscountInfo = invoice?.discount || null;
   const messageDiscountBreakdown = invoice?.discountBreakdown || null;
   let messageDiscountAmount = 0;
-  let messageTaxableAmount = Number(invoice?.subTotal || 0);
   if (
     messageDiscountInfo &&
     typeof messageDiscountInfo.value === "number" &&
@@ -172,9 +170,6 @@ const InvoiceView = () => {
         Math.round(preDiscountSubtotal * messageDiscountInfo.value * 100) / 10000
       );
     }
-    messageTaxableAmount =
-      messageDiscountBreakdown?.taxableAmount ??
-      Math.max(0, preDiscountSubtotal - messageDiscountAmount);
   }
   const messageGstTotal = Number(invoice?.gstTotal || 0);
   const breakdownLine =
@@ -259,18 +254,28 @@ const InvoiceView = () => {
       // the addImage call to the printable area so the output is a real
       // 80mm-wide receipt, not a stretched A4 sheet).
       const useThermalPage = invoiceStoreType === "hotel" && hotelLayout === "thermal";
+      const useServiceA4 = isServiceInvoice;
       const pdf = useThermalPage
         ? new jsPDF({ unit: "mm", format: [80, 5000], orientation: "portrait" })
         : new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
       const pageWidthMm = useThermalPage ? 80 : 210;
       const pageHeightMm = useThermalPage ? 5000 : 297;
       const marginMm = useThermalPage ? 4 : 10;
-      const printableWidthMm = pageWidthMm - marginMm * 2;
+      const printableWidthMm = useThermalPage ? pageWidthMm - marginMm * 2 : pageWidthMm;
       const printableHeightMm = pageHeightMm - marginMm * 2;
-
       // Scale the captured image so it spans the full printable width. The
       // image's height in PDF mm becomes (imgHeight / imgWidth) * printableWidth.
       const imgHeightMm = (imgProps.height * printableWidthMm) / imgProps.width;
+
+      if (useServiceA4) {
+        // The renderer owns an exact one-page A4 canvas. Keep its PDF path
+        // from invoking the generic tall-image page slicing fallback.
+        const serviceHeight = Math.min(imgHeightMm, 297);
+        pdf.addImage(imgData, "PNG", 0, 0, 210, serviceHeight);
+        pdf.save(`${invoiceNo || "receipt"}.pdf`);
+        setDownloadStatus("Download complete");
+        return;
+      }
 
       // If it fits on one page, render normally. Otherwise slice the image
       // into page-height bands and addImage each band as its own page.

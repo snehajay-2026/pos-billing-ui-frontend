@@ -135,6 +135,7 @@ const PublicInvoiceView = () => {
 
   const { invoice } = state;
   const invoiceStoreType = invoice && invoice.storeType;
+  const isServiceInvoice = invoiceStoreType === "service" || invoiceStoreType === "msme-service";
 
   // Render switch mirrors `InvoiceView.jsx:renderThermalReceipt()` so
   // the visual output matches the cashier preview exactly. Each branch
@@ -193,8 +194,12 @@ const PublicInvoiceView = () => {
   }
 
   return (
-    <div className="public-invoice-page">
-      <div className="public-invoice-card">{body}</div>
+    <div className={`public-invoice-page${isServiceInvoice ? " public-invoice-page-service" : ""}`}>
+      <div
+        className={`public-invoice-card${isServiceInvoice ? " public-invoice-card-service" : ""}`}
+      >
+        {body}
+      </div>
     </div>
   );
 };

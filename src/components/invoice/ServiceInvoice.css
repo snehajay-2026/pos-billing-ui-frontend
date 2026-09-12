@@ -1,703 +1,690 @@
-/* ---------------------------------------------------------------------------
-   Service Store Invoice — modern, professional, polished
-
-   Scope: this stylesheet applies ONLY to .service-invoice (used by the
-   Service Store authed preview AND the public WhatsApp/Email share link,
-   since both render through <ServiceInvoice>). Retail / Hotel / Laundry /
-   MSME invoices each have their own renderer + stylesheet and are
-   untouched by any change in this file.
-
-   Visual system:
-     - A4 portrait canvas, generous padding, soft slate typography.
-     - Indigo accent for the brand; the rest of the page is neutral.
-     - Consistent 8/12/16/24 spacing rhythm; 12px radius on cards.
-     - Two-column From / Bill-To that collapses below 720px.
-     - Items table with right-aligned numerics + zebra striping.
-     - Totals card with a highlighted grand-total strip and amount in words.
-     - Mobile-responsive via media queries; print fidelity preserved.
---------------------------------------------------------------------------- */
-
+/* Service Store Tax Invoice — reference-matched light A4 renderer. */
 .service-invoice {
+  --si-navy: #243f73;
+  --si-blue: #315aa6;
+  --si-pale: #eaf1fb;
+  --si-surface: #f7f9fd;
+  --si-gold: #c6a15b;
+  --si-ink: #263248;
+  --si-muted: #68758a;
+  --si-border: #d8e2f0;
   display: block;
-  color: #0f172a;
+  width: 100%;
+  color: var(--si-ink);
   background: transparent;
+  box-sizing: border-box;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }
-
-/* -------- Page canvas (A4) ---------------------------------------------- */
+.service-invoice *,
+.service-invoice *::before,
+.service-invoice *::after {
+  box-sizing: border-box;
+}
 .si-page {
   width: 210mm;
+  height: 297mm;
   min-height: 297mm;
   margin: 0 auto;
-  background: #ffffff;
-  padding: 16mm 14mm 14mm;
-  box-sizing: border-box;
-  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #0f172a;
-  box-shadow: 0 18px 48px -24px rgba(15, 23, 42, 0.25);
-  border-radius: 8px;
+  padding: 7mm 7mm 5mm;
+  overflow: hidden;
+  background: #fff;
+  color: var(--si-ink);
+  font-size: 10px;
+  line-height: 1.3;
+  box-shadow: 0 18px 48px rgba(36, 63, 115, 0.18);
 }
-
-/* -------- Hero header ---------------------------------------------------- */
 .si-hero {
+  position: relative;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 18px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 18px;
+  align-items: center;
+  min-height: 31mm;
+  padding: 0 5mm 4mm;
+  border-bottom: 2px solid var(--si-gold);
+  overflow: hidden;
 }
-
-.si-hero-left {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
+.si-hero::after {
+  content: "";
+  position: absolute;
+  right: -18mm;
+  top: -24mm;
+  width: 92mm;
+  height: 48mm;
+  border-radius: 50%;
+  border-bottom: 5px solid var(--si-gold);
+  background: var(--si-navy);
+  transform: rotate(-8deg);
+  opacity: 0.98;
 }
-
-.si-title {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #0f172a;
-  line-height: 1.15;
-}
-
-.si-subtitle {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #6366f1;
-}
-
-.si-brand {
+.si-brand-block {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 5mm;
+  min-width: 0;
+}
+.si-logo-box {
+  width: 30mm;
+  height: 25mm;
+  border: 1px solid var(--si-gold);
+  border-radius: 4mm;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.si-logo {
+  max-width: 25mm;
+  max-height: 21mm;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.si-logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #8b96a6;
+  font-weight: 800;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+.si-logo-placeholder svg {
+  font-size: 19px;
+}
+.si-company-block {
+  min-width: 0;
+}
+.si-company-name {
+  color: var(--si-navy);
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.si-company-desc {
+  margin-top: 2px;
+  color: var(--si-blue);
+  font-size: 12px;
+}
+.si-company-ids {
+  display: flex;
+  gap: 10px;
+  margin-top: 7px;
+  color: var(--si-ink);
+  font-size: 9px;
+  font-weight: 600;
+}
+.si-company-ids span + span {
+  border-left: 1px solid var(--si-border);
+  padding-left: 10px;
+}
+.si-title-block {
+  position: relative;
+  z-index: 1;
+  min-width: 48mm;
+  padding-right: 3mm;
   text-align: right;
 }
-
-.si-logo {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 4px;
+.si-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
-
-.si-brand-meta {
+.si-title-rule {
+  width: 33mm;
+  height: 2px;
+  margin: 4px 0 4px auto;
+  background: var(--si-gold);
+}
+.si-title-caption {
+  color: var(--si-gold);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  white-space: nowrap;
+}
+.si-title-caption span {
+  color: #fff;
+  margin: 0 3px;
+}
+.si-duplicate {
+  margin: 2mm 0 1mm;
+  color: #b91c1c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.si-meta-band {
+  display: grid;
+  grid-template-columns: 1.18fr 1fr 1fr 1.1fr auto;
+  align-items: stretch;
+  min-height: 16mm;
+  margin: 3mm 0;
+  background: var(--si-pale);
+  border: 1px solid var(--si-border);
+  border-radius: 2.5mm;
+  overflow: hidden;
+}
+.si-meta-cell {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 2.5mm;
+  padding: 2.5mm 3mm;
+  border-right: 1px solid var(--si-border);
   min-width: 0;
 }
-
-.si-company-name {
+.si-meta-cell > svg {
+  flex: 0 0 auto;
+  color: var(--si-navy);
   font-size: 14px;
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1.2;
 }
-
-.si-company-gst {
-  font-size: 10.5px;
-  color: #64748b;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+.si-meta-cell span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
-
-/* -------- Status pill (kept — already used by InvoiceView) ------------- */
-.si-status-pill {
+.si-meta-cell small {
+  color: var(--si-muted);
+  font-size: 8px;
+  font-weight: 600;
+}
+.si-meta-cell b {
+  color: var(--si-ink);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.si-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  justify-content: center;
+  gap: 4px;
+  min-width: 25mm;
+  padding: 0 3mm;
+  color: #765317;
+  background: #ffedbc;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  border: 1px solid transparent;
-  white-space: nowrap;
 }
-
-.si-status-pill.paid {
-  background: #ecfdf5;
-  color: #047857;
-  border-color: #a7f3d0;
+.si-status-badge.paid,
+.si-status-badge.cleared {
+  color: #11633e;
+  background: #d8f5e7;
 }
-
-.si-status-pill.partial {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #fde68a;
+.si-status-badge.cancelled {
+  color: #a51d2d;
+  background: #ffe1e5;
 }
-
-.si-status-pill.pending {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-}
-
-.si-status-pill.overdue {
-  background: #fef2f2;
-  color: #b91c1c;
-  border-color: #fecaca;
-}
-
-.si-status-pill.cancelled {
-  background: #fef2f2;
-  color: #b91c1c;
-  border-color: #fecaca;
-  text-decoration: line-through;
-}
-
-/* -------- Invoice meta card (number / date / due / job) ---------------- */
-.si-inv-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: #e2e8f0;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.si-meta-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-  background: #f8fafc;
-}
-
-.si-meta-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.si-meta-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  font-variant-numeric: tabular-nums;
-}
-
-/* -------- From / Bill-To two-column cards ------------------------------ */
-.si-grid {
+.si-party-grid,
+.si-bottom-grid,
+.si-middle-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 3mm;
 }
-
-.si-box {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 16px;
+.si-party-grid {
+  margin-bottom: 3mm;
 }
-
-.si-box-title {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #6366f1;
-  margin-bottom: 8px;
-}
-
-.si-kv {
-  font-size: 12px;
-  line-height: 1.55;
-  color: #334155;
-}
-
-.si-kv b,
-.si-kv-strong {
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.si-kv-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 1px 0;
-}
-
-/* -------- Service period strip ----------------------------------------- */
-.si-period-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: #e2e8f0;
-  border-radius: 12px;
+.si-party-card {
+  border: 1px solid var(--si-border);
+  border-radius: 2mm;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 18px;
+  min-width: 0;
 }
-
-.si-period-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-  background: #f8fafc;
-}
-
-.si-period-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.si-period-value {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-/* -------- Items table --------------------------------------------------- */
-.si-section-title {
+.si-section-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 2mm;
+  padding: 2.2mm 3.5mm;
+  background: var(--si-navy);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+}
+.si-party-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2mm;
+  min-height: 25mm;
+  padding: 3mm 4mm;
+  background: #fff;
+  font-size: 9px;
+}
+.si-party-body strong {
+  color: var(--si-navy);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #475569;
-  margin: 4px 0 8px;
 }
-
-.si-section-title::before {
-  content: "";
-  width: 4px;
-  height: 16px;
-  background: #6366f1;
-  border-radius: 2px;
+.si-party-body span {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5mm;
+  color: var(--si-ink);
+  overflow-wrap: anywhere;
 }
-
+.si-party-body span svg {
+  flex: 0 0 auto;
+  color: var(--si-navy);
+  margin-top: 2px;
+}
+.si-info-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-bottom: 3mm;
+  border: 1px solid var(--si-border);
+  border-radius: 2mm;
+  overflow: hidden;
+  background: var(--si-pale);
+}
+.si-info-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+  padding: 2.6mm 4mm;
+  border-right: 1px solid var(--si-border);
+  min-width: 0;
+}
+.si-info-strip > div:last-child {
+  border-right: 0;
+}
+.si-info-strip small {
+  color: var(--si-muted);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+.si-info-strip b {
+  color: var(--si-ink);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.si-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin: 1mm 0 1.5mm;
+  color: var(--si-navy);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+.si-section-heading svg {
+  color: var(--si-gold);
+}
 .si-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 11.5px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  margin-bottom: 3mm;
+  border: 1px solid var(--si-border);
+  border-radius: 2mm;
   overflow: hidden;
-  margin-bottom: 16px;
+  font-size: 9px;
 }
-
-.si-table thead th {
-  background: #f8fafc;
-  color: #475569;
+.si-table th {
+  padding: 2.3mm 1.7mm;
+  background: var(--si-navy);
+  color: #fff;
   text-align: left;
-  padding: 10px 12px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border-bottom: 1px solid #e2e8f0;
-  white-space: nowrap;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
 }
-
-.si-table tbody td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+.si-table td {
+  padding: 2.1mm 1.7mm;
+  border-top: 1px solid var(--si-border);
+  color: var(--si-ink);
+  vertical-align: middle;
   font-variant-numeric: tabular-nums;
 }
-
-.si-table tbody tr:last-child td {
-  border-bottom: 0;
+.si-table tbody tr:nth-child(even) td {
+  background: var(--si-surface);
 }
-
-.si-table tbody tr.is-alt td {
-  background: #fbfbfd;
-}
-
-.si-col-no {
-  width: 38px;
+.si-table .si-col-no {
+  width: 5%;
   text-align: center;
 }
-
-.si-col-small {
-  width: 88px;
+.si-table .si-col-sac {
+  width: 10%;
   text-align: center;
 }
-
+.si-table .si-col-qty {
+  width: 11%;
+  text-align: center;
+}
+.si-table .si-col-rate {
+  width: 14%;
+  text-align: right;
+}
+.si-table .si-col-gst {
+  width: 9%;
+  text-align: center;
+}
+.si-table .si-col-amount {
+  width: 15%;
+  text-align: right;
+}
 .si-center {
   text-align: center;
 }
-
 .si-right {
   text-align: right;
 }
-
+.si-description {
+  overflow-wrap: anywhere;
+}
 .si-empty {
-  padding: 18px;
+  padding: 5mm !important;
+  color: var(--si-muted);
   text-align: center;
-  color: #94a3b8;
-  font-style: italic;
 }
-
-/* -------- Totals card --------------------------------------------------- */
-.si-totals {
-  background: #0f172a;
-  color: #e2e8f0;
-  border-radius: 12px;
-  padding: 16px 18px;
-  margin-bottom: 18px;
+.si-middle-grid {
+  align-items: stretch;
+  margin-bottom: 3mm;
 }
-
+.si-notes-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+  min-width: 0;
+}
+.si-note-card,
+.si-bottom-card {
+  border: 1px solid var(--si-border);
+  border-radius: 2mm;
+  background: #fff;
+  overflow: hidden;
+}
+.si-light-heading {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  padding: 2.2mm 3.5mm;
+  background: var(--si-pale);
+  color: var(--si-navy);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+.si-light-heading svg {
+  color: var(--si-blue);
+}
+.si-note-card ul {
+  margin: 0;
+  padding: 2.5mm 6mm 2.5mm 7mm;
+  color: var(--si-ink);
+  font-size: 9px;
+}
+.si-note-card li {
+  margin: 1mm 0;
+}
+.si-words-card {
+  flex: 1;
+}
+.si-words-card > strong {
+  display: block;
+  padding: 3mm 4mm;
+  color: var(--si-navy);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.si-totals-card {
+  min-width: 0;
+  padding: 3mm 4mm;
+  border: 1px solid var(--si-border);
+  border-radius: 2mm;
+  background: #fff;
+}
 .si-totals-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  padding: 4px 0;
+  gap: 4mm;
+  padding: 1.6mm 0;
+  border-bottom: 1px solid var(--si-border);
+  font-size: 10px;
+}
+.si-totals-row b {
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-
-.si-totals-row.strong {
-  font-weight: 700;
-  font-size: 13px;
-  color: #f8fafc;
-  padding-top: 8px;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
-  margin-top: 6px;
+.si-discount-row {
+  color: #157347;
 }
-
-.si-totals-grand {
+.si-total-highlight {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #6366f1;
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  gap: 3mm;
+  margin: 3mm -1mm 0;
+  padding: 3mm;
+  border-radius: 1.8mm;
+  background: var(--si-navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
 }
-
-.si-totals-grand-amount {
-  font-size: 18px;
-  font-weight: 700;
+.si-total-highlight b {
+  color: #ffdc7e;
+  font-size: 15px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-
-.si-totals-row.paid {
-  color: #6ee7b7;
+.si-balance-row {
+  padding-top: 2mm;
+  color: var(--si-muted);
+  font-size: 8px;
+  text-align: right;
 }
-
-.si-totals-row.balance {
-  color: #fca5a5;
-}
-
-.si-totals-words {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(148, 163, 184, 0.3);
-  font-size: 11px;
-  color: #cbd5e1;
-  line-height: 1.5;
-  font-style: italic;
-}
-
-.si-totals-words b {
-  color: #f8fafc;
-  font-style: normal;
-  margin-right: 4px;
-}
-
-/* -------- Bottom grid: Billing info + Terms + Signature ---------------- */
 .si-bottom-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 3mm;
 }
-
-.si-bottom-grid .si-box {
+.si-bottom-card {
+  min-height: 25mm;
+}
+.si-info-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1.2mm;
+  padding: 2.5mm 4mm;
+  font-size: 9px;
 }
-
-.si-terms {
+.si-info-list span {
+  display: grid;
+  grid-template-columns: 31mm 1fr;
+  gap: 2mm;
+}
+.si-info-list b {
+  color: var(--si-ink);
+}
+.si-bottom-card ol {
   margin: 0;
-  padding-left: 18px;
-  font-size: 11.5px;
-  line-height: 1.55;
-  color: #475569;
+  padding: 2.5mm 5mm 2.5mm 9mm;
+  font-size: 8.5px;
 }
-
-.si-terms li {
-  margin-bottom: 2px;
+.si-bottom-card li {
+  padding: 0.6mm 0;
 }
-
-.si-remarks {
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
+.si-signature-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  min-height: 17mm;
+  padding: 1mm 3mm 3mm;
 }
-
-.si-remarks p {
-  margin: 0;
-  font-size: 11.5px;
-  color: #334155;
-  line-height: 1.55;
-  white-space: pre-wrap;
+.si-signature-line {
+  width: 52mm;
+  padding-top: 8mm;
+  border-top: 1px solid var(--si-navy);
+  color: var(--si-navy);
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
 }
-
-.si-sign {
-  margin-top: 16px;
+.si-signature-meta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 1mm;
+  color: var(--si-ink);
+  font-size: 9px;
 }
-
-.si-sign-date {
-  font-size: 11px;
-  color: #64748b;
+.si-signature-meta strong {
+  color: var(--si-navy);
+  font-size: 10px;
 }
-
-.si-sign-line {
-  width: 180px;
-  height: 1px;
-  background: #cbd5e1;
+.si-signature-meta small {
+  color: var(--si-muted);
 }
-
-.si-sign-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: 0.02em;
-}
-
-/* -------- Footer -------------------------------------------------------- */
 .si-footer {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
-  background: #0f172a;
-  color: #cbd5e1;
-  padding: 12px 16px;
-  font-size: 11px;
-  border-radius: 12px;
-}
-
-.si-footer-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-
-.si-footer-item:last-child {
-  justify-content: flex-end;
-  font-style: italic;
-  color: #94a3b8;
-}
-
-.si-footer-item strong {
-  color: #f8fafc;
-  font-weight: 600;
-}
-
-/* -------- Duplicate banner (kept) -------------------------------------- */
-.si-duplicate {
-  display: inline-block;
-  margin: 0 0 14px 0;
-  padding: 6px 12px;
-  border: 1.5px solid #dc2626;
-  color: #dc2626;
-  font-weight: 700;
-  border-radius: 6px;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  background: #fef2f2;
-}
-
-/* -------- UPI block (kept) --------------------------------------------- */
-.si-upi {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
-  border: 1px solid #bbf7d0;
-  font-size: 12px;
-  color: #064e3b;
-}
-
-.si-upi-title {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #047857;
-  margin-bottom: 6px;
-}
-
-.si-upi-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 2px 0;
+  align-items: center;
+  gap: 4mm;
+  min-height: 14mm;
+  padding: 3mm 4mm;
+  background: var(--si-navy);
+  color: #fff;
+  border-top: 2px solid var(--si-gold);
+  font-size: 8px;
 }
-
-.si-upi-row b {
-  color: #064e3b;
-  font-weight: 700;
+.si-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4mm;
+  min-width: 0;
 }
-
-.si-upi-link {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 6px 12px;
-  background: #047857;
-  color: #ffffff;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 12px;
+.si-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.4mm;
+  max-width: 52mm;
+  overflow-wrap: anywhere;
 }
-
-.si-upi-link:hover {
-  background: #065f46;
-  color: #ffffff;
+.si-footer span svg {
+  color: #ffdc7e;
+  flex: 0 0 auto;
 }
-
-/* -------- Responsive collapse ------------------------------------------ */
+.si-footer > strong {
+  flex: 0 0 auto;
+  color: #ffdc7e;
+  font-size: 13px;
+  font-style: italic;
+  text-align: right;
+}
+.si-footer > strong small {
+  display: block;
+  color: #fff;
+  font-size: 6px;
+  letter-spacing: 0.22em;
+}
 @media (max-width: 720px) {
   .si-page {
     width: 100%;
+    height: auto;
     min-height: 0;
-    padding: 14px 12px;
-    border-radius: 0;
+    overflow: visible;
+    padding: 18px 12px;
     box-shadow: none;
   }
-
   .si-hero {
-    flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
   }
-
-  .si-brand {
-    text-align: left;
-    align-self: stretch;
-    justify-content: flex-start;
+  .si-company-name {
+    font-size: 17px;
+    white-space: normal;
   }
-
-  .si-brand-meta {
-    align-items: flex-start;
+  .si-title {
+    font-size: 18px;
   }
-
-  .si-inv-meta {
-    grid-template-columns: 1fr;
+  .si-meta-band {
+    grid-template-columns: repeat(2, 1fr);
   }
-
-  .si-grid,
+  .si-status-badge {
+    min-height: 32px;
+  }
+  .si-party-grid,
+  .si-middle-grid,
   .si-bottom-grid {
     grid-template-columns: 1fr;
   }
-
-  .si-period-strip {
+  .si-info-strip {
     grid-template-columns: 1fr;
   }
-
+  .si-info-strip > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--si-border);
+  }
+  .si-info-strip > div:last-child {
+    border-bottom: 0;
+  }
   .si-table {
-    font-size: 11px;
+    font-size: 8px;
   }
-
-  .si-table thead th,
-  .si-table tbody td {
-    padding: 8px 8px;
+  .si-table th,
+  .si-table td {
+    padding: 7px 4px;
   }
-
   .si-footer {
-    grid-template-columns: 1fr;
-    text-align: left;
+    align-items: flex-start;
+    flex-direction: column;
   }
-
-  .si-footer-item:last-child {
-    justify-content: flex-start;
+  .si-footer > strong {
+    align-self: flex-end;
   }
 }
-
-/* -------- Print fidelity ------------------------------------------------ */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
 @media print {
-  body {
-    background: #ffffff;
+  .service-invoice {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-
   .si-page {
-    box-shadow: none;
-    border-radius: 0;
-    padding: 14mm 12mm;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 7mm 7mm 5mm !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
-
-  /* Keep the highlighted grand-total strip and the dark totals card vivid
-     even on a black-and-white printer — fall back to high-contrast
-     outlines so the totals block remains legible. */
-  .si-totals {
-    background: #ffffff;
-    color: #0f172a;
-    border: 1px solid #0f172a;
-  }
-
-  .si-totals-row.strong {
-    color: #0f172a;
-    border-top: 1px solid #0f172a;
-  }
-
-  .si-totals-grand {
-    background: #ffffff;
-    color: #0f172a;
-    border: 1.5px solid #0f172a;
-  }
-
-  .si-totals-row.paid,
-  .si-totals-row.balance {
-    color: #0f172a;
-  }
-
-  .si-totals-words {
-    color: #0f172a;
-    border-top: 1px dashed #0f172a;
-  }
-
-  .si-totals-words b {
-    color: #0f172a;
-  }
-
+  .si-hero,
+  .si-meta-band,
+  .si-party-grid,
+  .si-info-strip,
+  .si-table,
+  .si-middle-grid,
+  .si-bottom-grid,
+  .si-signature-row,
   .si-footer {
-    background: #ffffff;
-    color: #0f172a;
-    border: 1px solid #0f172a;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
-
-  .si-footer-item,
-  .si-footer-item strong {
-    color: #0f172a;
+  .si-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

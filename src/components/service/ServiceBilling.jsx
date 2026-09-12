@@ -30,9 +30,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { printESC_POS } from "../../utils/bluetoothEscpos";
 import { getStoreSettings } from "../../services/storeSettingsService";
-import { getUser } from "../../utils/auth";
 import { loadServices } from "../../services/serviceService";
 import { CATEGORY_TONES, formatCurrency, initialsFromName } from "../../utils/serviceTones";
+import {
+  calculateServiceTotals,
+  getServiceLine,
+  clampPercent,
+} from "../../utils/serviceInvoiceMath";
 import { recordCashSaleForShift, currentStoreNeedsShift } from "../../services/shiftService";
 import OpenShiftDialog from "../shift/OpenShiftDialog";
 import ShiftStatusBanner from "../shift/ShiftStatusBanner";
@@ -45,7 +49,6 @@ const ServiceBilling = () => {
   const navigate = useNavigate();
   const [hydrated, setHydrated] = useState(false);
   const settings = getStoreSettings();
-  const user = getUser();
 
   // Mandatory shift gate: Branch Admin / Cashier must open a shift before
   // they can take cash sales in a cash-vertical store. SUPER_OWNER / ADMIN
@@ -226,34 +229,24 @@ const ServiceBilling = () => {
     setActiveBillId(newId);
   };
 
-  const subTotal = useMemo(
-    () => activeBill.items.reduce((s, i) => s + (Number(i.price) || 0), 0),
-    [activeBill.items]
+  // One calculation contract drives the live bill, generated payload, and
+  // printed/public invoice. This prevents service hours from disappearing
+  // in the billing subtotal while appearing in the printed line table.
+  const billGstRate = clampPercent(activeBill.gstRate);
+  const discountPct = clampPercent(activeBill.discountPct);
+  const serviceTotals = useMemo(
+    () => calculateServiceTotals(activeBill.items, billGstRate, discountPct),
+    [activeBill.items, billGstRate, discountPct]
   );
-
-  // Single source of truth for the bill-level GST%. The cashier enters this
-  // once and it applies to every line on the bill. Empty / non-numeric /
-  // negative input is treated as 0% so the math is always well-defined
-  // (cashier can generate an exempt / non-tax bill without typing anything).
-  const billGstRate = (() => {
-    const raw = String(activeBill.gstRate ?? "").trim();
-    if (raw === "") return 0;
-    const n = Number(raw);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  })();
-
-  const gstTotal = useMemo(() => (subTotal * billGstRate) / 100, [subTotal, billGstRate]);
-
-  // Indian GST default: split the combined rate into two equal halves for
-  // intra-state invoices (CGST + SGST). When the customer's billing state
-  // differs from the store's state, the total still flows through the same
-  // grand total — ServiceInvoice re-renders the split as IGST in that case.
-  const cgstAmount = gstTotal / 2;
-  const sgstAmount = gstTotal / 2;
-
-  const discountPct = Number(activeBill.discountPct) || 0;
-  const discountAmt = ((subTotal + gstTotal) * discountPct) / 100;
-  const grandTotal = Math.max(0, subTotal + gstTotal - discountAmt);
+  const isInterState = Boolean(
+    activeBill.state &&
+    settings.state &&
+    activeBill.state.trim().toLowerCase() !== settings.state.trim().toLowerCase()
+  );
+  const { subTotal, gstTotal, discountAmt, grandTotal } = serviceTotals;
+  const cgstAmount = Math.round((gstTotal / 2 + Number.EPSILON) * 100) / 100;
+  const sgstAmount = Math.round((gstTotal - cgstAmount + Number.EPSILON) * 100) / 100; // keeps split sum exact
+  const serviceLines = serviceTotals.lines;
 
   const cartCount = activeBill.items.length;
   const openBillCount = Object.keys(bills).length;
@@ -302,25 +295,34 @@ const ServiceBilling = () => {
       customerAddress: activeBill.address || "",
       customerGst: activeBill.gst || "",
       customerState: activeBill.state || "",
+      technician: activeBill.technician || "",
+      jobRef: activeBill.jobRef || "",
+      serviceFrom: activeBill.serviceFrom || "",
+      serviceTo: activeBill.serviceTo || "",
+      remarks: activeBill.remarks || "",
+      gstRate: billGstRate,
+      discountPct,
+      discountAmt,
     };
-    const itemsWithCustomerMeta = activeBill.items.map((item, idx) =>
-      idx === 0 ? { ...item, meta: { ...(item.meta || {}), ...customerMeta } } : item
-    );
-
-    // Stamp the bill-level rate onto every line item so saved / reprinted /
-    // public-share invoices all read the same GST. ServiceInvoice.jsx
-    // prefers the top-level `invoice.gstRate` first and falls back to the
-    // stamped per-line `gst`, so reprints stay consistent even if a future
-    // change ever re-introduces per-line input.
-    const itemsWithGst = itemsWithCustomerMeta.map((item) => ({
-      ...item,
-      gst: billGstRate,
-    }));
+    const itemsWithCustomerMeta = activeBill.items.map((item, idx) => {
+      const normalized = serviceLines[idx] || getServiceLine(item, idx, billGstRate);
+      return {
+        ...item,
+        // Persist normalized service fields in the existing JSON snapshot so
+        // public/legacy renderers can recover the exact billed quantities.
+        hours: normalized.units,
+        rate: normalized.rate,
+        price: normalized.rate,
+        lineTotal: normalized.taxableAmount,
+        gst: billGstRate,
+        meta: idx === 0 ? { ...(item.meta || {}), ...customerMeta } : item.meta,
+      };
+    });
 
     const invoice = {
       invoiceNo,
       date: new Date().toISOString().split("T")[0],
-      items: itemsWithGst,
+      items: itemsWithCustomerMeta,
       subTotal,
       gstTotal,
       // Bill-level GST rate is the single source of truth for service
@@ -330,6 +332,11 @@ const ServiceBilling = () => {
       gstRate: billGstRate,
       discountPct,
       discountAmt,
+      discount: { type: "percent", value: discountPct },
+      discountBreakdown: {
+        bill: discountAmt,
+        taxableAmount: Math.max(0, subTotal - discountAmt),
+      },
       grandTotal,
       paymentMode: activeBill.paymentMode,
       // Lifecycle: new service invoices start as PENDING; cleared from the Invoice view.
@@ -436,7 +443,11 @@ const ServiceBilling = () => {
       <div className="bill-tabs">
         {Object.keys(bills).map((billId) => {
           const bill = bills[billId];
-          const billSub = (bill.items || []).reduce((s, i) => s + (Number(i.price) || 0), 0);
+          const billSub = calculateServiceTotals(
+            bill.items || [],
+            clampPercent(bill.gstRate),
+            clampPercent(bill.discountPct)
+          ).subTotal;
           const isActive = billId === activeBillId;
           return (
             <div
@@ -759,19 +770,21 @@ const ServiceBilling = () => {
             </div>
           ) : (
             <div className="sv-line-items">
-              {activeBill.items.map((i) => {
-                const lineTotal = Number(i.price) || 0;
-                const lineGst = (lineTotal * billGstRate) / 100;
+              {activeBill.items.map((i, index) => {
+                const line = serviceLines[index] || getServiceLine(i, index, billGstRate);
                 return (
                   <div className="sv-line-item" key={i.id}>
                     <div className="sv-line-item-main">
                       <strong>{i.name}</strong>
-                      <span>{formatCurrency(lineTotal)}</span>
+                      <span>
+                        {line.units} × {formatCurrency(line.rate)} ={" "}
+                        {formatCurrency(line.taxableAmount)}
+                      </span>
                     </div>
                     <div className="sv-line-item-amount">
-                      <strong>{formatCurrency(lineTotal + lineGst)}</strong>
+                      <strong>{formatCurrency(line.taxableAmount + line.taxAmount)}</strong>
                       <span>
-                        + GST {formatCurrency(lineGst)} @ {billGstRate}%
+                        + GST {formatCurrency(line.taxAmount)} @ {billGstRate}%
                       </span>
                     </div>
                     <button
@@ -821,14 +834,23 @@ const ServiceBilling = () => {
               <span>Subtotal</span>
               <strong>{formatCurrency(subTotal)}</strong>
             </div>
-            <div className="sv-total-row">
-              <span>CGST</span>
-              <strong>{formatCurrency(cgstAmount)}</strong>
-            </div>
-            <div className="sv-total-row">
-              <span>SGST</span>
-              <strong>{formatCurrency(sgstAmount)}</strong>
-            </div>
+            {!isInterState ? (
+              <>
+                <div className="sv-total-row">
+                  <span>CGST</span>
+                  <strong>{formatCurrency(cgstAmount)}</strong>
+                </div>
+                <div className="sv-total-row">
+                  <span>SGST</span>
+                  <strong>{formatCurrency(sgstAmount)}</strong>
+                </div>
+              </>
+            ) : (
+              <div className="sv-total-row">
+                <span>IGST</span>
+                <strong>{formatCurrency(gstTotal)}</strong>
+              </div>
+            )}
             <div className="sv-total-row sv-total-gst-combined">
               <span>Total GST</span>
               <strong>{formatCurrency(gstTotal)}</strong>

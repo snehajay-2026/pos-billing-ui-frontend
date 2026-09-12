@@ -1,9 +1,31 @@
 import React from "react";
+import {
+  FaBuilding,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaEnvelope,
+  FaFileInvoice,
+  FaFileSignature,
+  FaIdCard,
+  FaMapMarkerAlt,
+  FaPhone,
+  FaUser,
+} from "react-icons/fa";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import { computeStatus } from "../../utils/invoiceStatus";
+import {
+  numberToWordsIndian,
+  resolvePersistedServiceTotals,
+  resolveTaxSplit,
+} from "../../utils/serviceInvoiceMath";
 import "./ServiceInvoice.css";
 
-const fmt2 = (n) => (Number(n) || 0).toFixed(2);
+const fmt2 = (value) => (Number(value) || 0).toFixed(2);
+const display = (value, fallback = "") => {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+};
 
 function addDays(yyyyMmDd, days) {
   if (!yyyyMmDd) return "";
@@ -24,473 +46,414 @@ function splitTerms(text) {
     .filter(Boolean);
 }
 
-// Indian numbering: 12,34,567.89 → "Rupees Twelve Lakh Thirty Four Thousand Five Hundred Sixty Seven and Eighty Nine Paise Only"
-const numberToWordsIndian = (n) => {
-  const num = Math.floor(Math.abs(Number(n) || 0));
-  const paise = Math.round((Math.abs(Number(n) || 0) - num) * 100);
-  if (num === 0 && paise === 0) return "Zero";
-
-  const ones = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-    "Ten",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-  const tens = [
-    "",
-    "",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-
-  const two = (x) => {
-    if (x < 20) return ones[x];
-    return `${tens[Math.floor(x / 10)]}${x % 10 ? " " + ones[x % 10] : ""}`;
-  };
-  const three = (x) => {
-    const h = Math.floor(x / 100);
-    const r = x % 100;
-    return `${h ? ones[h] + " Hundred" : ""}${r ? (h ? " " : "") + two(r) : ""}`;
-  };
-
-  const parts = [];
-  const crore = Math.floor(num / 10000000);
-  const lakh = Math.floor((num % 10000000) / 100000);
-  const thousand = Math.floor((num % 100000) / 1000);
-  const rest = num % 1000;
-  if (crore) parts.push(`${three(crore)} Crore`);
-  if (lakh) parts.push(`${three(lakh)} Lakh`);
-  if (thousand) parts.push(`${three(thousand)} Thousand`);
-  if (rest) parts.push(three(rest));
-
-  let words = parts.join(" ").trim();
-  if (!words) words = "Zero";
-  let out = `Rupees ${words}`;
-  if (paise > 0) out += ` and ${two(paise)} Paise`;
-  return `${out} Only`;
-};
-
-const normalizeState = (s) =>
-  String(s || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-
 const ServiceInvoice = ({ invoice, isDuplicate }) => {
   const settings = getStoreSettings();
   if (!invoice) return null;
 
   const items = Array.isArray(invoice.items) ? invoice.items : [];
-
-  // PRIMARY: bill-level rate the cashier entered at billing time. ServiceBilling
-  // always stamps this onto every saved invoice.
-  // FALLBACK (legacy rows saved before this field existed): derive the rate
-  // from the saved gstTotal/subTotal ratio. We deliberately do NOT read
-  // settings.serviceTaxRate — that field is no longer a source for the
-  // Service Store, and reading it would silently leak a configured store
-  // default onto legacy rows that were originally generated without it.
-  const explicitRate = Number(invoice.gstRate);
-  const hasExplicitRate = Number.isFinite(explicitRate) && explicitRate >= 0;
-  const subTotalForRate = Number(invoice.subTotal) || 0;
-  const legacyRate =
-    !hasExplicitRate && subTotalForRate > 0 && Number(invoice.gstTotal) > 0
-      ? Math.round((Number(invoice.gstTotal) / subTotalForRate) * 10000) / 100
-      : 0;
-  const billGstRate = hasExplicitRate ? explicitRate : legacyRate;
-
-  const mappedItems = items.map((item, idx) => {
-    const units = item.hours ?? item.qty ?? item.qtyKg ?? item.units ?? 1;
-    const rate = item.rate ?? item.price ?? 0;
-    const lineTotal = (Number(units) || 0) * (Number(rate) || 0);
-
-    return {
-      key: item.id ?? `${idx}`,
-      description: item.serviceDescription || item.name || "Service",
-      hsn: item.hsn || item.hsnSac || item.sac || "",
-      units: Number(units) || 0,
-      rate: Number(rate) || 0,
-      // Every line carries the same bill-level rate so the table column
-      // reads identically across rows. legacy rows fall through to
-      // Number(item.gst || 0) when neither path produced a usable rate.
-      gst: billGstRate > 0 ? billGstRate : Number(item.gst || 0),
-      total: lineTotal,
-      tax: (lineTotal * (billGstRate > 0 ? billGstRate : Number(item.gst || 0))) / 100,
-    };
-  });
-
-  const subTotal = Number(invoice.subTotal) || mappedItems.reduce((sum, row) => sum + row.total, 0);
-
-  // Tax amount uses the bill-level rate directly. The cashier's input
-  // (invoice.gstRate) is the only source; the saved gstTotal is accepted
-  // as a fallback only when the legacy recovery above produced a usable
-  // rate. settings.serviceTaxRate is never consulted.
-  const lineTaxTotal = (subTotal * billGstRate) / 100;
-  const taxAmountFromInvoice = Number(invoice.gstTotal);
-  const taxAmount =
-    billGstRate > 0
-      ? lineTaxTotal
-      : Number.isFinite(taxAmountFromInvoice) && taxAmountFromInvoice > 0
-        ? taxAmountFromInvoice
-        : 0;
-
-  // The effective rate is always the bill-level rate (or its legacy
-  // recovery). It is no longer an average — there is no per-line input
-  // to average from.
-  const effectiveRate = billGstRate;
-
-  // CGST / SGST / IGST split. Intra-state (customer state === settings state)
-  // splits the rate into two equal halves; inter-state shows IGST at the full rate.
-  const taxState = normalizeState(invoice.customerState);
-  const settingsState = normalizeState(settings.state);
-  const isInterState = taxState && settingsState && taxState !== settingsState;
-  const halfAmount = taxAmount / 2;
-  const taxSplit = isInterState
-    ? [{ label: "IGST", rate: effectiveRate, amount: taxAmount }]
-    : [
-        { label: "CGST", rate: effectiveRate / 2, amount: halfAmount },
-        { label: "SGST", rate: effectiveRate / 2, amount: halfAmount },
-      ];
-
-  const totalDue = Number(invoice.grandTotal) || subTotal + taxAmount;
-
-  const paymentMode = invoice.paymentMode || invoice.paymentMethod || invoice.payment || "Cash";
-
-  const hasTax = taxAmount > 0;
-  const invoiceTitle = hasTax ? "TAX INVOICE" : settings.serviceInvoiceTitle || "INVOICE";
-  const invoiceSubtitle =
-    settings.serviceInvoiceTitle && !hasTax ? settings.serviceInvoiceTitle : "Service Bill";
-
+  const itemMeta = items.find((item) => item?.meta)?.meta || {};
+  const totals = resolvePersistedServiceTotals(invoice);
+  const invoiceCustomerState = display(invoice.customerState, itemMeta.customerState);
+  const taxSplit = resolveTaxSplit(
+    totals.gstTotal,
+    totals.gstRate,
+    invoiceCustomerState,
+    settings.state
+  );
+  const totalAmount = totals.grandTotal;
+  const paidAmount = Number(invoice.paidAmount || 0);
+  const balanceDue = Math.max(0, totalAmount - paidAmount);
+  const status = computeStatus(invoice, totalAmount);
+  const paymentMode = display(
+    invoice.paymentMode || invoice.paymentMethod || invoice.payment,
+    "Cash"
+  );
   const dueDays = Number(settings.serviceDueDays) || 0;
-  const dueDate = invoice.dueDate || addDays(invoice.date, dueDays) || invoice.date;
-  const servicePeriodFrom = invoice.serviceFrom || invoice.date;
-  const servicePeriodTo = invoice.serviceTo || invoice.date;
-
-  const bankAccount = settings.serviceBankAccount || settings.accountNo || "";
-
-  const footerPhone = settings.serviceFooterPhone || settings.phone || "";
-  const footerEmail = settings.serviceFooterEmail || settings.email || "";
-
-  // Bill-to values MUST come from the cashier's input in the Service Billing
-  // "Bill summary → Customer details" section, never from store settings.
-  // Store settings hold *business* info (store name, store address, GSTIN,
-  // bank account, footer phone/email) — leaking store-level customerName /
-  // customerAddress / customerMobile / customerEmail / customerGst onto the
-  // printed invoice replaces the customer's actual contact with the store's
-  // own, which is the bug this commit fixes.
-  //
-  // Two source layers, both populated by ServiceBilling at save time:
-  //   1. Top-level invoice camelCase keys (customerName, customerPhone,
-  //      customerEmail, customerAddress, customerGst, customerState).
-  //   2. items[0].meta — the JSON `items` column on the `invoices` table
-  //      round-trips every customer field through this even for legacy
-  //      rows where the dedicated DB columns are not yet populated.
-  //
-  // Precedence: top-level first, then items[0].meta, then the legacy flat
-  // aliases (older payloads saved before the camelCase pass).
-  const itemMeta = (items[0] && items[0].meta) || {};
-  const pick = (...candidates) => {
-    for (const c of candidates) {
-      if (c == null) continue;
-      const trimmed = String(c).trim();
-      if (trimmed) return trimmed;
-    }
-    return "";
-  };
-  const billToName = pick(invoice.customerName, invoice.customer, itemMeta.guest);
-  const billToAddress = pick(invoice.customerAddress, invoice.address, itemMeta.customerAddress);
-  // Prefix "+91" only when the cashier typed a bare 10-digit Indian mobile.
-  // If they explicitly typed a "+" prefix we keep what they entered verbatim.
-  const rawPhone = pick(
-    invoice.customerPhone,
-    invoice.phone,
-    invoice.customerMobile,
-    invoice.mobile,
-    itemMeta.customerPhone,
-    itemMeta.customerMobile
+  const dueDate = display(invoice.dueDate, addDays(invoice.date, dueDays) || invoice.date);
+  const serviceFrom = display(invoice.serviceFrom, itemMeta.serviceFrom || invoice.date);
+  const serviceTo = display(invoice.serviceTo, itemMeta.serviceTo || invoice.date);
+  const technician = display(invoice.technician, itemMeta.technician);
+  const jobRef = display(invoice.jobRef, itemMeta.jobRef);
+  const remarks = display(invoice.remarks, itemMeta.remarks);
+  const terms = splitTerms(settings.serviceTerms);
+  const signatureName = display(settings.serviceSignatureName, settings.name);
+  const bankAccount = display(settings.serviceBankAccount || settings.accountNo);
+  const footerPhone = display(settings.serviceFooterPhone || settings.phone);
+  const footerEmail = display(settings.serviceFooterEmail || settings.email);
+  const billToName = display(
+    invoice.customerName || invoice.customer,
+    itemMeta.guest || "Walk-in Customer"
+  );
+  const billToAddress = display(
+    invoice.customerAddress || invoice.address,
+    itemMeta.customerAddress
+  );
+  const rawPhone = display(
+    invoice.customerPhone || invoice.phone || invoice.customerMobile || invoice.mobile,
+    itemMeta.customerPhone || itemMeta.customerMobile
   );
   const billToPhone = rawPhone ? (rawPhone.startsWith("+") ? rawPhone : `+91${rawPhone}`) : "";
-  const billToEmail = pick(invoice.customerEmail, invoice.email, itemMeta.customerEmail);
-  const billToGst = pick(invoice.customerGst, invoice.gst, itemMeta.customerGst);
-  const billToState = pick(invoice.customerState, invoice.state, itemMeta.customerState);
-
-  const terms = splitTerms(settings.serviceTerms);
-  const signatureName = settings.serviceSignatureName || settings.name || "";
-  const technician = invoice.technician || invoice.assignedTo || "";
-  const jobRef = invoice.jobRef || invoice.poNumber || invoice.reference || "";
-  const remarks = invoice.remarks || invoice.notes || "";
-
-  const status = computeStatus(invoice, totalDue);
-  const paidAmount = Number(invoice.paidAmount || 0);
-  const balanceDue = Math.max((Number(totalDue) || 0) - paidAmount, 0);
-  const amountInWords = numberToWordsIndian(totalDue);
+  const billToEmail = display(invoice.customerEmail || invoice.email, itemMeta.customerEmail);
+  const billToGst = display(invoice.customerGst || invoice.gst, itemMeta.customerGst);
+  const billToState = invoiceCustomerState;
+  const businessDescription = display(
+    settings.businessDescription || settings.tagline,
+    "Professional Services & Solutions"
+  );
+  const invoiceTitle = "TAX INVOICE";
+  const amountWords = numberToWordsIndian(totalAmount);
+  const placeOfSupply = display(settings.state, "—");
+  const statusLabel = status?.label || display(invoice.status, "PENDING").toUpperCase();
+  const statusTone = status?.tone || "pending";
 
   return (
     <div id="service-invoice" className="service-invoice">
       <div className="si-page">
-        {/* Hero header: title + status pill on the left, brand on the right */}
-        <div className="si-hero">
-          <div className="si-hero-left">
-            <div className="si-subtitle">{invoiceSubtitle}</div>
-            <div className="si-title">{invoiceTitle}</div>
-            {status && <span className={`si-status-pill ${status.tone}`}>{status.label}</span>}
-          </div>
-
-          <div className="si-brand">
-            {settings.logo && <img className="si-logo" src={settings.logo} alt="Company Logo" />}
-            <div className="si-brand-meta">
-              <div className="si-company-name">{settings.name || "Company"}</div>
-              {settings.gstNo && <div className="si-company-gst">GSTIN {settings.gstNo}</div>}
+        <header className="si-hero">
+          <div className="si-brand-block">
+            <div className="si-logo-box">
+              {settings.logo ? (
+                <img
+                  className="si-logo"
+                  src={settings.logo}
+                  alt={`${settings.name || "Company"} logo`}
+                />
+              ) : (
+                <div className="si-logo-placeholder">
+                  <FaBuilding />
+                  <span>LOGO</span>
+                </div>
+              )}
+            </div>
+            <div className="si-company-block">
+              <div className="si-company-name">{display(settings.name, "Your Company Name")}</div>
+              <div className="si-company-desc">{businessDescription}</div>
+              <div className="si-company-ids">
+                {settings.gstNo && <span>GSTIN: {settings.gstNo}</span>}
+                {settings.panNo && <span>PAN: {settings.panNo}</span>}
+              </div>
             </div>
           </div>
-        </div>
+          <div className="si-title-block">
+            <div className="si-title">{invoiceTitle}</div>
+            <div className="si-title-rule" />
+            <div className="si-title-caption">
+              SERVICE <span>|</span> QUALITY <span>|</span> TRUST
+            </div>
+          </div>
+        </header>
 
         {isDuplicate && <div className="si-duplicate">DUPLICATE COPY</div>}
 
-        {/* Invoice meta card: number, date, due, job ref */}
-        <div className="si-inv-meta">
-          <div className="si-meta-row">
-            <span className="si-meta-label">Invoice Number</span>
-            <span className="si-meta-value">{invoice.invoiceNo}</span>
-          </div>
-          <div className="si-meta-row">
-            <span className="si-meta-label">Invoice Date</span>
-            <span className="si-meta-value">{invoice.date}</span>
-          </div>
-          <div className="si-meta-row">
-            <span className="si-meta-label">Due Date</span>
-            <span className="si-meta-value">{dueDate}</span>
-          </div>
-          {jobRef && (
-            <div className="si-meta-row">
-              <span className="si-meta-label">Job / Ref</span>
-              <span className="si-meta-value">{jobRef}</span>
-            </div>
-          )}
-        </div>
-
-        {/* From / Bill-To two-column cards */}
-        <div className="si-grid">
-          <div className="si-box">
-            <div className="si-box-title">From</div>
-            <div className="si-kv">
-              <b>{settings.name || "Company"}</b>
-            </div>
-            {settings.address && <div className="si-kv">{settings.address}</div>}
-            {(settings.city || settings.state || settings.pincode) && (
-              <div className="si-kv">
-                {[settings.city, settings.state, settings.pincode].filter(Boolean).join(", ")}
-              </div>
-            )}
-            {settings.phone && <div className="si-kv">Phone: {settings.phone}</div>}
-            {settings.email && <div className="si-kv">Email: {settings.email}</div>}
-            {settings.panNo && <div className="si-kv">PAN: {settings.panNo}</div>}
-          </div>
-
-          <div className="si-box">
-            <div className="si-box-title">Bill To</div>
-            <div className="si-kv">
-              <b>{billToName || "Walk-in Customer"}</b>
-            </div>
-            {billToAddress && <div className="si-kv">{billToAddress}</div>}
-            {billToPhone && <div className="si-kv">Phone: {billToPhone}</div>}
-            {billToEmail && <div className="si-kv">Email: {billToEmail}</div>}
-            {billToState && <div className="si-kv">State: {billToState}</div>}
-            {billToGst && <div className="si-kv">GSTIN: {billToGst}</div>}
-          </div>
-        </div>
-
-        {/* Service period + technician strip */}
-        <div className="si-period-strip">
-          <div className="si-period-item">
-            <span className="si-period-label">Service Period</span>
-            <span className="si-period-value">
-              {servicePeriodFrom}
-              {servicePeriodTo && servicePeriodTo !== servicePeriodFrom
-                ? ` → ${servicePeriodTo}`
-                : ""}
+        <section className="si-meta-band">
+          <div className="si-meta-cell">
+            <FaFileInvoice />
+            <span>
+              <small>Invoice No.</small>
+              <b>{display(invoice.invoiceNo, "—")}</b>
             </span>
           </div>
-          {technician && (
-            <div className="si-period-item">
-              <span className="si-period-label">Service Provider</span>
-              <span className="si-period-value">{technician}</span>
-            </div>
-          )}
-          <div className="si-period-item">
-            <span className="si-period-label">Place of Supply</span>
-            <span className="si-period-value">{settings.state || "—"}</span>
+          <div className="si-meta-cell">
+            <FaCalendarAlt />
+            <span>
+              <small>Invoice Date</small>
+              <b>{display(invoice.date, "—")}</b>
+            </span>
           </div>
-        </div>
+          <div className="si-meta-cell">
+            <FaCalendarAlt />
+            <span>
+              <small>Due Date</small>
+              <b>{dueDate || "—"}</b>
+            </span>
+          </div>
+          <div className="si-meta-cell">
+            <FaMapMarkerAlt />
+            <span>
+              <small>Place of Supply</small>
+              <b>{placeOfSupply}</b>
+            </span>
+          </div>
+          <div className={`si-status-badge ${statusTone}`}>
+            <FaCheckCircle />
+            {statusLabel}
+          </div>
+        </section>
 
-        {/* Items table */}
-        <div className="si-section-title">Service Details</div>
+        <section className="si-party-grid">
+          <div className="si-party-card">
+            <div className="si-section-bar">
+              <FaBuilding /> FROM / SERVICE PROVIDER
+            </div>
+            <div className="si-party-body">
+              <strong>{display(settings.name, "Your Company Name")}</strong>
+              {settings.address && <span>{settings.address}</span>}
+              {(settings.city || settings.state || settings.pincode) && (
+                <span>
+                  {[settings.city, settings.state, settings.pincode].filter(Boolean).join(", ")}
+                </span>
+              )}
+              {settings.phone && (
+                <span>
+                  <FaPhone /> {settings.phone}
+                </span>
+              )}
+              {settings.email && (
+                <span>
+                  <FaEnvelope /> {settings.email}
+                </span>
+              )}
+              {settings.gstNo && (
+                <span>
+                  <FaIdCard /> GSTIN: {settings.gstNo}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="si-party-card">
+            <div className="si-section-bar">
+              <FaUser /> BILL TO / CUSTOMER
+            </div>
+            <div className="si-party-body">
+              <strong>{billToName}</strong>
+              {billToAddress && <span>{billToAddress}</span>}
+              {billToState && <span>{billToState}</span>}
+              {billToPhone && (
+                <span>
+                  <FaPhone /> {billToPhone}
+                </span>
+              )}
+              {billToEmail && (
+                <span>
+                  <FaEnvelope /> {billToEmail}
+                </span>
+              )}
+              {billToGst && (
+                <span>
+                  <FaIdCard /> GSTIN: {billToGst}
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="si-info-strip">
+          <div>
+            <small>SERVICE PERIOD</small>
+            <b>
+              {serviceFrom}
+              {serviceTo && serviceTo !== serviceFrom ? ` to ${serviceTo}` : ""}
+            </b>
+            {(technician || jobRef) && (
+              <em>
+                {[technician && `Provider: ${technician}`, jobRef && `Ref: ${jobRef}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </em>
+            )}
+          </div>
+          <div>
+            <small>PAYMENT METHOD</small>
+            <b>{paymentMode}</b>
+          </div>
+          <div>
+            <small>PAYMENT STATUS</small>
+            <b>{statusLabel}</b>
+          </div>
+        </section>
+
+        <div className="si-section-heading">
+          <FaFileInvoice /> SERVICE DETAILS
+        </div>
         <table className="si-table">
           <thead>
             <tr>
               <th className="si-col-no">#</th>
-              <th>Item Description</th>
-              <th className="si-col-small">HSN/SAC</th>
-              <th className="si-col-small">Hours/Units</th>
-              <th className="si-col-small">Rate/Unit (₹)</th>
-              <th className="si-col-small">GST %</th>
-              <th className="si-col-small">Total (₹)</th>
+              <th>SERVICE / ITEM DESCRIPTION</th>
+              <th className="si-col-sac">HSN/SAC</th>
+              <th className="si-col-qty">QTY / HRS</th>
+              <th className="si-col-rate">RATE / UNIT (₹)</th>
+              <th className="si-col-gst">GST</th>
+              <th className="si-col-amount">AMOUNT (₹)</th>
             </tr>
           </thead>
           <tbody>
-            {mappedItems.length === 0 ? (
+            {totals.lines.length === 0 ? (
               <tr>
                 <td colSpan={7} className="si-empty">
-                  No items
+                  No service items
                 </td>
               </tr>
             ) : (
-              mappedItems.map((row, idx) => (
-                <tr key={row.key} className={idx % 2 === 1 ? "is-alt" : ""}>
-                  <td className="si-center">{idx + 1}</td>
-                  <td>{row.description}</td>
+              totals.lines.map((row, index) => (
+                <tr key={row.key}>
+                  <td className="si-center">{index + 1}</td>
+                  <td className="si-description">{row.description}</td>
                   <td className="si-center">{row.hsn || "—"}</td>
                   <td className="si-center">{row.units}</td>
                   <td className="si-right">{fmt2(row.rate)}</td>
-                  <td className="si-center">{fmt2(row.gst)}%</td>
-                  <td className="si-right">{fmt2(row.total)}</td>
+                  <td className="si-center">{fmt2(totals.gstRate)}%</td>
+                  <td className="si-right">{fmt2(row.taxableAmount)}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
 
-        {/* Totals — dark card with a highlighted grand-total strip */}
-        <div className="si-totals">
-          <div className="si-totals-row">
-            <span>Subtotal</span>
-            <span>₹{fmt2(subTotal)}</span>
-          </div>
-          {taxSplit.map((t) => (
-            <div className="si-totals-row" key={t.label}>
-              <span>
-                {t.label} ({fmt2(t.rate)}%)
-              </span>
-              <span>₹{fmt2(t.amount)}</span>
-            </div>
-          ))}
-          {paidAmount > 0 && (
-            <div className="si-totals-row paid">
-              <span>Paid ({paymentMode})</span>
-              <span>− ₹{fmt2(paidAmount)}</span>
-            </div>
-          )}
-          <div className="si-totals-words">
-            <b>Amount in words:</b> {amountInWords}
-          </div>
-          <div className="si-totals-grand">
-            <span>{paidAmount > 0 ? "Balance Due" : "Total Amount Due"}</span>
-            <span className="si-totals-grand-amount">
-              ₹{fmt2(paidAmount > 0 ? balanceDue : totalDue)}
-            </span>
-          </div>
-        </div>
-
-        {/* Bottom 2-column: Billing info + Terms + Signature */}
-        <div className="si-bottom-grid">
-          <div className="si-box">
-            <div className="si-box-title">Billing Information</div>
-            <div className="si-kv-row">
-              <span className="si-kv-strong">Payment Method</span>
-              <span>{paymentMode}</span>
-            </div>
-            <div className="si-kv-row">
-              <span className="si-kv-strong">Due Date</span>
-              <span>{dueDate}</span>
-            </div>
-            {invoice.billedBy && (
-              <div className="si-kv-row">
-                <span className="si-kv-strong">Billed By</span>
-                <span>{invoice.billedBy}</span>
+        <section className="si-middle-grid">
+          <div className="si-notes-stack">
+            <div className="si-note-card">
+              <div className="si-light-heading">
+                <FaFileSignature /> NOTES
               </div>
-            )}
-            {bankAccount && (
-              <div className="si-kv-row">
-                <span className="si-kv-strong">Bank A/c</span>
-                <span>{bankAccount}</span>
-              </div>
-            )}
-            {settings.bankName && (
-              <div className="si-kv-row">
-                <span className="si-kv-strong">Bank</span>
-                <span>{settings.bankName}</span>
-              </div>
-            )}
-            {settings.ifscCode && (
-              <div className="si-kv-row">
-                <span className="si-kv-strong">IFSC</span>
-                <span>{settings.ifscCode}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="si-box">
-            <div className="si-box-title">Terms & Conditions</div>
-            {terms.length === 0 ? (
-              <ul className="si-terms">
-                <li>Payment is due upon receipt of this invoice.</li>
-                <li>Late payments may incur additional charges.</li>
-                <li>Please make checks payable to {settings.name || "Your Company Name"}.</li>
-              </ul>
-            ) : (
-              <ul className="si-terms">
-                {terms.map((t, i) => (
-                  <li key={i}>{t}</li>
+              <ul>
+                {(remarks
+                  ? [remarks]
+                  : [
+                      "Thank you for choosing our services.",
+                      "Please retain this invoice for your records.",
+                    ]
+                ).map((note, index) => (
+                  <li key={index}>{note}</li>
                 ))}
               </ul>
-            )}
-
-            {remarks && (
-              <div className="si-remarks">
-                <div className="si-box-title">Remarks</div>
-                <p>{remarks}</p>
+            </div>
+            <div className="si-note-card si-words-card">
+              <div className="si-light-heading">
+                <FaFileSignature /> AMOUNT IN WORDS
               </div>
-            )}
-
-            <div className="si-sign">
-              <div className="si-sign-date">Date: {invoice.date}</div>
-              <div className="si-sign-line" />
-              <div className="si-sign-name">{signatureName}</div>
+              <strong>{amountWords}</strong>
             </div>
           </div>
-        </div>
+          <div className="si-totals-card">
+            <div className="si-totals-row">
+              <span>Subtotal</span>
+              <b>₹ {fmt2(totals.subTotal)}</b>
+            </div>
+            {taxSplit.map((tax) => (
+              <div className="si-totals-row" key={tax.label}>
+                <span>
+                  {tax.label} ({fmt2(tax.rate)}%)
+                </span>
+                <b>₹ {fmt2(tax.amount)}</b>
+              </div>
+            ))}
+            {totals.discountAmt > 0 && (
+              <div className="si-totals-row si-discount-row">
+                <span>Discount</span>
+                <b>− ₹ {fmt2(totals.discountAmt)}</b>
+              </div>
+            )}
+            {invoice.roundOff != null && Number(invoice.roundOff) !== 0 && (
+              <div className="si-totals-row">
+                <span>Round Off</span>
+                <b>₹ {fmt2(invoice.roundOff)}</b>
+              </div>
+            )}
+            <div className="si-total-highlight">
+              <span>TOTAL AMOUNT</span>
+              <b>₹ {fmt2(totalAmount)}</b>
+            </div>
+            {paidAmount > 0 && (
+              <div className="si-balance-row">
+                <span>Paid {paymentMode}</span>
+                <b>
+                  ₹ {fmt2(paidAmount)} · Balance ₹ {fmt2(balanceDue)}
+                </b>
+              </div>
+            )}
+          </div>
+        </section>
 
-        {/* Footer */}
-        <div className="si-footer">
-          <div className="si-footer-item">
-            <strong>Phone:</strong> {footerPhone}
+        <section className="si-bottom-grid">
+          <div className="si-bottom-card">
+            <div className="si-light-heading">
+              <FaBuilding /> BILLING INFORMATION
+            </div>
+            <div className="si-info-list">
+              <span>
+                <b>Payment Method</b>
+                {paymentMode}
+              </span>
+              {bankAccount && (
+                <span>
+                  <b>Bank A/c</b>
+                  {bankAccount}
+                </span>
+              )}
+              {settings.bankName && (
+                <span>
+                  <b>Bank Name</b>
+                  {settings.bankName}
+                </span>
+              )}
+              {settings.ifscCode && (
+                <span>
+                  <b>IFSC</b>
+                  {settings.ifscCode}
+                </span>
+              )}
+              {settings.upiId && (
+                <span>
+                  <b>UPI ID</b>
+                  {settings.upiId}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="si-footer-item">
-            <strong>Email:</strong> {footerEmail}
+          <div className="si-bottom-card">
+            <div className="si-light-heading">
+              <FaFileSignature /> TERMS & CONDITIONS
+            </div>
+            <ol>
+              {(terms.length
+                ? terms
+                : [
+                    "Payment is due upon receipt of this invoice.",
+                    "Late payments may incur additional charges.",
+                    "Please make payments to the account mentioned above.",
+                    "This invoice is computer generated.",
+                  ]
+              ).map((term, index) => (
+                <li key={index}>{term}</li>
+              ))}
+            </ol>
           </div>
-          <div className="si-footer-item">Thank you for your business</div>
-        </div>
+        </section>
+
+        <section className="si-signature-row">
+          <div className="si-signature-line">
+            <span>AUTHORIZED SIGNATORY</span>
+          </div>
+          <div className="si-signature-meta">
+            <span>Date: {display(invoice.date, "—")}</span>
+            <strong>For {display(settings.name, "Your Company Name")}</strong>
+            {signatureName && <small>{signatureName}</small>}
+          </div>
+        </section>
+
+        <footer className="si-footer">
+          <div>
+            {footerPhone && (
+              <span>
+                <FaPhone /> {footerPhone}
+              </span>
+            )}
+            {footerEmail && (
+              <span>
+                <FaEnvelope /> {footerEmail}
+              </span>
+            )}
+            {settings.address && (
+              <span>
+                <FaMapMarkerAlt /> {settings.address}
+              </span>
+            )}
+          </div>
+          <strong>
+            THANK YOU!<small>FOR YOUR BUSINESS</small>
+          </strong>
+        </footer>
       </div>
     </div>
   );

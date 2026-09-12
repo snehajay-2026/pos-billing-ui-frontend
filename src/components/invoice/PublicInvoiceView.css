@@ -43,6 +43,39 @@
   margin-right: auto;
 }
 
+/* Service invoices own a full 210mm A4 canvas. Do not squeeze that canvas
+   into the generic 720px public card or its right edge will be clipped. */
+.public-invoice-page-service {
+  padding: 18px 0;
+  overflow-x: auto;
+  background: #f3f5f7;
+}
+.public-invoice-card-service {
+  width: 210mm;
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.public-invoice-card-service > .service-invoice {
+  width: 210mm;
+  margin: 0 auto;
+}
+
+@media print {
+  .public-invoice-page-service {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .public-invoice-card-service,
+  .public-invoice-card-service > .service-invoice {
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+}
+
 .public-invoice-loading {
   font-size: 1rem;
   color: #475569;
