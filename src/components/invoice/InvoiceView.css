@@ -473,6 +473,34 @@
     text-align: center;
   }
 
+  /* Service Store is a physical A4 document, not a responsive card. Keep
+     the print canvas inside the paper bounds and remove preview chrome. */
+  .invoice-container-service-store,
+  .invoice-container-service-store .invoice-card,
+  .invoice-container-service-store .invoice-fit-shell,
+  .invoice-container-service-store .receipt-preview {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-width: 210mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  .invoice-container-service-store .service-invoice,
+  .invoice-container-service-store .si-page {
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
   .duplicate-badge {
     color: red !important;
     font-size: 16px !important;
@@ -650,13 +678,12 @@
     width: 24% !important;
   }
 
-  /* Ensure print invoice text stays dark in dark theme mode */
+  /* Keep legacy invoice text dark. Service Store owns its own navy/gold
+     palette below and is intentionally excluded from this blanket rule. */
   #retail-print-invoice,
   body.print-retail-only #retail-print-invoice,
   #print-invoice,
-  .msme-invoice,
-  #service-invoice,
-  .service-invoice .si-page {
+  .msme-invoice {
     color: #111 !important;
     background: #fff !important;
   }
@@ -666,10 +693,36 @@
   #print-invoice th,
   #print-invoice td,
   .msme-invoice th,
-  .msme-invoice td,
-  #service-invoice th,
-  #service-invoice td {
+  .msme-invoice td {
     color: #111 !important;
+  }
+
+  .invoice-container-service-store #service-invoice,
+  .invoice-container-service-store #service-invoice .si-page {
+    color: #263248 !important;
+    background: #fff !important;
+  }
+
+  .invoice-container-service-store #service-invoice .si-hero,
+  .invoice-container-service-store #service-invoice .si-section-bar,
+  .invoice-container-service-store #service-invoice .si-table th,
+  .invoice-container-service-store #service-invoice .si-total-highlight,
+  .invoice-container-service-store #service-invoice .si-footer {
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .invoice-container-service-store #service-invoice .si-total-highlight b,
+  .invoice-container-service-store #service-invoice .si-footer > strong,
+  .invoice-container-service-store #service-invoice .si-footer span svg {
+    color: #ffdc7e !important;
+  }
+
+  .invoice-container-service-store #service-invoice .si-title-caption,
+  .invoice-container-service-store #service-invoice .si-title-rule {
+    color: #c6a15b !important;
+    background-color: #c6a15b !important;
   }
 
   #retail-print-invoice th:nth-child(2) {

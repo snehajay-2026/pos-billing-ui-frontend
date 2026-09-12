@@ -35,6 +35,14 @@ function addDays(yyyyMmDd, days) {
   return d.toISOString().split("T")[0];
 }
 
+function formatDate(value) {
+  const text = display(value);
+  if (!text) return "";
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+}
+
 function splitTerms(text) {
   const raw = String(text || "").trim();
   if (!raw) return [];
@@ -69,9 +77,13 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
     "Cash"
   );
   const dueDays = Number(settings.serviceDueDays) || 0;
-  const dueDate = display(invoice.dueDate, addDays(invoice.date, dueDays) || invoice.date);
-  const serviceFrom = display(invoice.serviceFrom, itemMeta.serviceFrom || invoice.date);
-  const serviceTo = display(invoice.serviceTo, itemMeta.serviceTo || invoice.date);
+  const dueDate = formatDate(
+    display(invoice.dueDate, addDays(invoice.date, dueDays) || invoice.date)
+  );
+  const serviceFrom = formatDate(
+    display(invoice.serviceFrom, itemMeta.serviceFrom || invoice.date)
+  );
+  const serviceTo = formatDate(display(invoice.serviceTo, itemMeta.serviceTo || invoice.date));
   const technician = display(invoice.technician, itemMeta.technician);
   const jobRef = display(invoice.jobRef, itemMeta.jobRef);
   const remarks = display(invoice.remarks, itemMeta.remarks);
@@ -92,7 +104,14 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
     invoice.customerPhone || invoice.phone || invoice.customerMobile || invoice.mobile,
     itemMeta.customerPhone || itemMeta.customerMobile
   );
-  const billToPhone = rawPhone ? (rawPhone.startsWith("+") ? rawPhone : `+91${rawPhone}`) : "";
+  const phoneDigits = rawPhone.replace(/\D/g, "");
+  const billToPhone = rawPhone
+    ? rawPhone.startsWith("+")
+      ? rawPhone
+      : phoneDigits.length === 10
+        ? `+91${phoneDigits}`
+        : rawPhone
+    : "";
   const billToEmail = display(invoice.customerEmail || invoice.email, itemMeta.customerEmail);
   const billToGst = display(invoice.customerGst || invoice.gst, itemMeta.customerGst);
   const billToState = invoiceCustomerState;
@@ -108,7 +127,9 @@ const ServiceInvoice = ({ invoice, isDuplicate }) => {
 
   return (
     <div id="service-invoice" className="service-invoice">
-      <div className="si-page">
+      <div
+        className={`si-page${items.length > 6 ? " si-page-dense" : ""}${items.length > 9 ? " si-page-ultra-dense" : ""}`}
+      >
         <header className="si-hero">
           <div className="si-brand-block">
             <div className="si-logo-box">

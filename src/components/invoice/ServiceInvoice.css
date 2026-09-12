@@ -25,7 +25,7 @@
   height: 297mm;
   min-height: 297mm;
   margin: 0 auto;
-  padding: 7mm 7mm 5mm;
+  padding: 6mm 7mm 4mm;
   overflow: hidden;
   background: #fff;
   color: var(--si-ink);
@@ -38,8 +38,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 31mm;
-  padding: 0 5mm 4mm;
+  min-height: 29mm;
+  padding: 0 5mm 3mm;
   border-bottom: 2px solid var(--si-gold);
   overflow: hidden;
 }
@@ -66,7 +66,7 @@
 }
 .si-logo-box {
   width: 30mm;
-  height: 25mm;
+  height: 23mm;
   border: 1px solid var(--si-gold);
   border-radius: 4mm;
   display: grid;
@@ -167,8 +167,8 @@
   display: grid;
   grid-template-columns: 1.18fr 1fr 1fr 1.1fr auto;
   align-items: stretch;
-  min-height: 16mm;
-  margin: 3mm 0;
+  min-height: 15mm;
+  margin: 2.5mm 0;
   background: var(--si-pale);
   border: 1px solid var(--si-border);
   border-radius: 2.5mm;
@@ -257,9 +257,9 @@
 .si-party-body {
   display: flex;
   flex-direction: column;
-  gap: 1.2mm;
-  min-height: 25mm;
-  padding: 3mm 4mm;
+  gap: 1mm;
+  min-height: 23mm;
+  padding: 2.5mm 4mm;
   background: #fff;
   font-size: 9px;
 }
@@ -658,6 +658,7 @@
     height: 297mm !important;
     margin: 0 !important;
     background: #fff !important;
+    color: var(--si-ink) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -666,10 +667,42 @@
     height: 297mm !important;
     min-height: 297mm !important;
     margin: 0 !important;
-    padding: 7mm 7mm 5mm !important;
+    padding: 6mm 7mm 4mm !important;
     overflow: hidden !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+  }
+
+  .si-page-dense .si-party-body {
+    min-height: 20mm;
+    padding-top: 2mm;
+    padding-bottom: 2mm;
+  }
+
+  .si-page-dense .si-table th,
+  .si-page-dense .si-table td {
+    padding-top: 1.5mm;
+    padding-bottom: 1.5mm;
+  }
+
+  .si-page-ultra-dense {
+    font-size: 9px;
+  }
+
+  .si-page-ultra-dense .si-party-body {
+    min-height: 18mm;
+    gap: 0.6mm;
+  }
+
+  .si-page-ultra-dense .si-table th,
+  .si-page-ultra-dense .si-table td {
+    padding-top: 1mm;
+    padding-bottom: 1mm;
+  }
+
+  .si-page-ultra-dense .si-bottom-card,
+  .si-page-ultra-dense .si-note-card {
+    min-height: 0;
   }
   .si-hero,
   .si-meta-band,

@@ -117,7 +117,8 @@ const InvoiceView = () => {
   const receiptRef = useRef(null);
   const fitShellRef = useRef(null);
   const invoiceStoreType = invoice?.storeType || invoice?._storeType || settings.businessType;
-  const isServiceInvoice = invoiceStoreType === "service" || invoiceStoreType === "msme-service";
+  const isServiceStore = invoiceStoreType === "service";
+  const isServiceInvoice = isServiceStore || invoiceStoreType === "msme-service";
   // The selected invoice format is the single source of truth for both
   // this preview session and every downstream touchpoint (PDF download,
   // WhatsApp share, email share, public link). For Hotel invoices the
@@ -201,6 +202,7 @@ const InvoiceView = () => {
       // `transform: scale(...)` so the captured image is 1:1 with the printed
       // output.
       const clone = source.cloneNode(true);
+      const captureTarget = isServiceStore ? clone.querySelector(".si-page") || clone : clone;
       clone.style.position = "fixed";
       clone.style.left = "-10000px";
       clone.style.top = "0";
@@ -211,6 +213,11 @@ const InvoiceView = () => {
       clone.style.width = `${source.scrollWidth}px`;
       clone.style.height = `${source.scrollHeight}px`;
       clone.style.overflow = "visible";
+      if (isServiceStore && captureTarget !== clone) {
+        captureTarget.style.height = "auto";
+        captureTarget.style.minHeight = "0";
+        captureTarget.style.overflow = "visible";
+      }
       // Walk children and clear any transform / scale the preview chrome
       // applied, so the captured image isn't visually shrunk.
       const all = clone.querySelectorAll("*");
@@ -224,16 +231,18 @@ const InvoiceView = () => {
       // Wait one frame so the layout settles before html2canvas reads from it.
       await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
-      const canvas = await html2canvas(clone, {
+      const captureWidth = captureTarget.scrollWidth;
+      const captureHeight = captureTarget.scrollHeight;
+      const canvas = await html2canvas(captureTarget, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         // Width/height + windowWidth/Height force html2canvas to walk the
         // full node, not just the visible viewport.
-        width: clone.scrollWidth,
-        height: clone.scrollHeight,
-        windowWidth: clone.scrollWidth,
-        windowHeight: clone.scrollHeight,
+        width: captureWidth,
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -254,7 +263,7 @@ const InvoiceView = () => {
       // the addImage call to the printable area so the output is a real
       // 80mm-wide receipt, not a stretched A4 sheet).
       const useThermalPage = invoiceStoreType === "hotel" && hotelLayout === "thermal";
-      const useServiceA4 = isServiceInvoice;
+      const useServiceA4 = isServiceStore;
       const pdf = useThermalPage
         ? new jsPDF({ unit: "mm", format: [80, 5000], orientation: "portrait" })
         : new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
@@ -268,10 +277,15 @@ const InvoiceView = () => {
       const imgHeightMm = (imgProps.height * printableWidthMm) / imgProps.width;
 
       if (useServiceA4) {
-        // The renderer owns an exact one-page A4 canvas. Keep its PDF path
-        // from invoking the generic tall-image page slicing fallback.
-        const serviceHeight = Math.min(imgHeightMm, 297);
-        pdf.addImage(imgData, "PNG", 0, 0, 210, serviceHeight);
+        // Service invoices are intentionally delivered as one complete A4
+        // page. Fit the captured image proportionally instead of capping its
+        // height (which previously clipped the footer/totals for long data).
+        const scale = Math.min(210 / imgProps.width, 297 / imgProps.height);
+        const renderedWidth = imgProps.width * scale;
+        const renderedHeight = imgProps.height * scale;
+        const x = (210 - renderedWidth) / 2;
+        const y = (297 - renderedHeight) / 2;
+        pdf.addImage(imgData, "PNG", x, y, renderedWidth, renderedHeight);
         pdf.save(`${invoiceNo || "receipt"}.pdf`);
         setDownloadStatus("Download complete");
         return;
@@ -593,7 +607,11 @@ const InvoiceView = () => {
   }
 
   return (
-    <div className={`invoice-container${isServiceInvoice ? " invoice-container-service" : ""}`}>
+    <div
+      className={`invoice-container${isServiceInvoice ? " invoice-container-service" : ""}${
+        isServiceStore ? " invoice-container-service-store" : ""
+      }`}
+    >
       {/* TOP BACK BAR — always-visible, sticky at the top so the cashier can
           leave the Invoice Preview no matter how wide/narrow their screen
           is, and regardless of how many other toolbar buttons wrap onto
@@ -738,7 +756,7 @@ const InvoiceView = () => {
         className={`invoice-card ${isServiceInvoice ? "service-invoice-card" : invoiceStoreType === "retail" ? "retail-invoice-card" : ""}`}
       >
         {/* DUPLICATE LABEL ABOVE RECEIPT */}
-        {isDuplicate && <div className="duplicate-badge">DUPLICATE COPY</div>}
+        {isDuplicate && !isServiceStore && <div className="duplicate-badge">DUPLICATE COPY</div>}
 
         {/*
           Fit shell:
