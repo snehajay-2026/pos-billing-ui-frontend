@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useUi } from "../context/UiContext";
+import { getUser } from "../utils/auth";
 import { getPurchaseOrderCatalog } from "../services/inventoryService";
 import {
   getSuppliers,
@@ -34,8 +35,11 @@ import {
   calculatePurchaseOrderTotal,
   lowStockSeverity,
   movementLabel,
+  getVisibleInventoryTabKeys,
+  isServiceStoreType,
   normalizePoLine,
   normalizePurchaseOrderPayload,
+  sanitizeInventoryTab,
   validatePurchaseOrder,
 } from "../utils/inventoryPo";
 import "./InventoryModule.css";
@@ -379,16 +383,24 @@ const PurchaseOrdersTab = () => {
   };
 
   const receive = async (po) => {
-    if (
-      !window.confirm("Mark this PO as received? Stock will be increased for each linked product.")
-    )
-      return;
+    const hasServiceLines = (po.items || []).some((item) => item.catalogType === "service");
+    const hasProductLines = (po.items || []).some((item) => item.catalogType !== "service");
+    const prompt =
+      hasServiceLines && !hasProductLines
+        ? "Mark this service PO as received? Service lines do not create stock movements."
+        : "Mark this PO as received? Stock will be increased for each linked product.";
+    if (!window.confirm(prompt)) return;
     setBusyId(po.id);
     try {
       const result = await receivePurchaseOrder(po.id);
+      const movementCount = (result.movements || []).length;
       showToast(
         "success",
-        `PO received. ${(result.movements || []).length} stock movement(s) recorded.`
+        movementCount
+          ? `PO received. ${movementCount} stock movement(s) recorded.`
+          : hasServiceLines && !hasProductLines
+            ? "PO received. Service lines do not create stock movements."
+            : "PO received."
       );
       await refresh();
     } catch (err) {
@@ -1082,20 +1094,28 @@ const LowStockTab = () => {
 
 const InventoryModule = () => {
   const navigate = useNavigate();
-  const [active, setActive] = useState(() => {
+  const { activeStore } = useUi();
+  const storeType = activeStore?.storeType || getUser()?.storeType || "";
+  const visibleTabKeys = getVisibleInventoryTabKeys(storeType);
+  const isServiceStore = isServiceStoreType(storeType);
+  const [storedActive, setStoredActive] = useState(() => {
     try {
       return localStorage.getItem("inventory.module.active") || "alerts";
     } catch {
       return "alerts";
     }
   });
+  const active = sanitizeInventoryTab(storedActive, storeType);
+
   useEffect(() => {
+    if (active !== storedActive) setStoredActive(active);
     try {
       localStorage.setItem("inventory.module.active", active);
     } catch {
       /* private mode */
     }
-  }, [active]);
+  }, [active, storedActive, storeType]);
+
   return (
     <div className="im-page">
       <header className="im-header">
@@ -1105,19 +1125,21 @@ const InventoryModule = () => {
         <div>
           <h1>Inventory &amp; Purchase Orders</h1>
           <p className="im-subtitle">
-            Suppliers · purchase orders · stock movements · low-stock alerts
+            {isServiceStore
+              ? "Suppliers · service purchase orders"
+              : "Suppliers · purchase orders · stock movements · low-stock alerts"}
           </p>
         </div>
       </header>
       <nav className="im-tabs" role="tablist" aria-label="Inventory sections">
-        {TABS.map((tab) => (
+        {TABS.filter((tab) => visibleTabKeys.includes(tab.key)).map((tab) => (
           <button
             key={tab.key}
             type="button"
             role="tab"
             aria-selected={active === tab.key}
             className={`im-tab ${active === tab.key ? "im-tab-active" : ""}`}
-            onClick={() => setActive(tab.key)}
+            onClick={() => setStoredActive(sanitizeInventoryTab(tab.key, storeType))}
           >
             {tab.icon} <span>{tab.label}</span>
           </button>

@@ -5,6 +5,19 @@ export const PO_LINE_INITIAL = {
   unitPrice: 0,
 };
 
+export const isServiceStoreType = (storeType) =>
+  ["service", "msme-service"].includes(String(storeType || "").toLowerCase());
+
+export const getVisibleInventoryTabKeys = (storeType) =>
+  isServiceStoreType(storeType)
+    ? ["suppliers", "pos"]
+    : ["alerts", "suppliers", "pos", "movements"];
+
+export const sanitizeInventoryTab = (tab, storeType) => {
+  const visible = getVisibleInventoryTabKeys(storeType);
+  return visible.includes(tab) ? tab : visible[0];
+};
+
 export const normalizePoLine = (line = {}) => {
   const catalogType = line.catalogType === "service" ? "service" : "product";
   const selectedId = line.catalogId ?? line.productId;

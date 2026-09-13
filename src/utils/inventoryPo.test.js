@@ -1,7 +1,10 @@
 import {
   calculatePurchaseOrderTotal,
+  getVisibleInventoryTabKeys,
+  isServiceStoreType,
   lowStockSeverity,
   normalizePoLine,
+  sanitizeInventoryTab,
   validatePurchaseOrder,
 } from "./inventoryPo";
 
@@ -40,6 +43,27 @@ describe("inventory purchase-order helpers", () => {
         items: [{ productId: 12, productName: "Soap", quantity: 2, unitPrice: 15 }],
       })
     ).toEqual({});
+  });
+
+  test("exposes only service-compatible inventory tabs", () => {
+    expect(isServiceStoreType("service")).toBe(true);
+    expect(isServiceStoreType("msme-service")).toBe(true);
+    expect(isServiceStoreType("retail")).toBe(false);
+    expect(getVisibleInventoryTabKeys("service")).toEqual(["suppliers", "pos"]);
+    expect(getVisibleInventoryTabKeys("msme-service")).toEqual(["suppliers", "pos"]);
+    expect(getVisibleInventoryTabKeys("inventory")).toEqual([
+      "alerts",
+      "suppliers",
+      "pos",
+      "movements",
+    ]);
+  });
+
+  test("sanitizes persisted tabs when switching store types", () => {
+    expect(sanitizeInventoryTab("alerts", "service")).toBe("suppliers");
+    expect(sanitizeInventoryTab("movements", "msme-service")).toBe("suppliers");
+    expect(sanitizeInventoryTab("pos", "service")).toBe("pos");
+    expect(sanitizeInventoryTab("unknown", "retail")).toBe("alerts");
   });
 
   test("classifies low stock severity", () => {
