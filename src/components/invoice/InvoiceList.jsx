@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { getInvoices } from "../../services/invoiceService";
+import { getUserStoreType } from "../../utils/auth";
+import { sortServiceInvoices } from "../../utils/invoiceOrdering";
 import { Link } from "react-router-dom";
 import { isHotelDiningInvoice, isHotelLodgingInvoice } from "../../utils/invoiceType";
 import {
@@ -36,6 +38,7 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
+  const isServiceStore = ["service", "msme-service"].includes(getUserStoreType());
   const { showToast } = useUi();
 
   const loadInvoices = async (silent = false) => {
@@ -91,7 +94,8 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
   }, [invoices, invoiceFilter]);
 
   /* ---------------- Filter logic ---------------- */
-  const filteredInvoices = invoices.filter((inv) => {
+  const orderedInvoices = isServiceStore ? sortServiceInvoices(invoices) : invoices;
+  const filteredInvoices = orderedInvoices.filter((inv) => {
     const invoiceNoStr = inv.invoiceNo ? String(inv.invoiceNo) : "";
     const dateStr = inv.date ? String(inv.date) : "";
 
