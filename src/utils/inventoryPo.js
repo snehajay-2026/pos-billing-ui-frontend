@@ -5,12 +5,23 @@ export const PO_LINE_INITIAL = {
   unitPrice: 0,
 };
 
-export const normalizePoLine = (line = {}) => ({
-  productId: line.productId === "" || line.productId == null ? "" : Number(line.productId),
-  productName: String(line.productName || line.name || "").trim(),
-  quantity: Number(line.quantity ?? line.qty) || 0,
-  unitPrice: Number(line.unitPrice ?? line.unitCost) || 0,
-});
+export const normalizePoLine = (line = {}) => {
+  const catalogType = line.catalogType === "service" ? "service" : "product";
+  const selectedId = line.catalogId ?? line.productId;
+  const normalized = {
+    productId: selectedId === "" || selectedId == null ? "" : Number(selectedId),
+    productName: String(line.productName || line.name || "").trim(),
+    quantity: Number(line.quantity ?? line.qty) || 0,
+    unitPrice: Number(line.unitPrice ?? line.unitCost) || 0,
+  };
+  // Preserve the legacy helper shape for ordinary product lines while
+  // retaining an explicit type for service catalog entries and persisted
+  // mixed-catalog purchase orders.
+  if (catalogType === "service" || Object.prototype.hasOwnProperty.call(line, "catalogType")) {
+    normalized.catalogType = catalogType;
+  }
+  return normalized;
+};
 
 export const calculatePurchaseOrderTotal = (lines = []) =>
   lines.reduce(
@@ -18,14 +29,22 @@ export const calculatePurchaseOrderTotal = (lines = []) =>
     0
   );
 
-export const validatePurchaseOrder = ({ poNumber, date, supplierId, supplierName, lines = [] }) => {
+export const validatePurchaseOrder = ({
+  poNumber,
+  date,
+  supplierId,
+  supplierName,
+  items,
+  lines,
+}) => {
+  const orderLines = Array.isArray(items) ? items : Array.isArray(lines) ? lines : [];
   const errors = {};
   if (!String(poNumber || "").trim()) errors.poNumber = "PO number is required";
   if (!date) errors.date = "Date is required";
   if (!supplierId && !String(supplierName || "").trim())
     errors.supplier = "Select or enter a supplier";
-  if (!lines.length) errors.items = "Add at least one line item";
-  const itemErrors = lines.map((line) => {
+  if (!orderLines.length) errors.items = "Add at least one line item";
+  const itemErrors = orderLines.map((line) => {
     const normalized = normalizePoLine(line);
     const error = {};
     if (!normalized.productName && !normalized.productId) error.product = "Select a product";
@@ -48,7 +67,12 @@ export const normalizePurchaseOrderPayload = (record = {}) => ({
   expectedAt: record.expectedAt || null,
   notes: record.notes || "",
   status: record.status || "draft",
-  items: (record.items || record.lines || []).map(normalizePoLine),
+  items: (record.items || record.lines || []).map((line) => {
+    const normalized = normalizePoLine(line);
+    return normalized.catalogType === "service"
+      ? { ...normalized, catalogId: normalized.productId, productId: "" }
+      : { ...normalized, catalogId: normalized.productId };
+  }),
 });
 
 export const movementLabel = (movement = {}) => {

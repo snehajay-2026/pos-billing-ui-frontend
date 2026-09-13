@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaPlus,
   FaTrash,
@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useUi } from "../context/UiContext";
-import { getProducts } from "../services/productService";
+import { getPurchaseOrderCatalog } from "../services/inventoryService";
 import {
   getSuppliers,
   createSupplier,
@@ -309,29 +309,47 @@ const PurchaseOrdersTab = () => {
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [catalogType, setCatalogType] = useState("product");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const catalogRequestRef = useRef(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
-    try {
-      const [pos, sups, catalog] = await Promise.all([
-        getPurchaseOrders(),
-        getSuppliers(),
-        getProducts(),
-      ]);
-      setRows(Array.isArray(pos) ? pos : []);
-      setSuppliers(Array.isArray(sups) ? sups : []);
-      setProducts(Array.isArray(catalog) ? catalog : []);
-    } catch (err) {
-      setError(errorText(err, "Unable to load purchase orders."));
-    } finally {
-      setLoading(false);
+    const requestId = ++catalogRequestRef.current;
+
+    // Keep the catalog request independent from purchase orders/suppliers.
+    // A missing inventory table or a scoped PO request must not hide products
+    // that are already available through the canonical Store catalog.
+    const [poResult, supplierResult, catalogResult] = await Promise.allSettled([
+      getPurchaseOrders(),
+      getSuppliers(),
+      getPurchaseOrderCatalog(),
+    ]);
+
+    if (requestId !== catalogRequestRef.current) return;
+    if (poResult.status === "fulfilled") {
+      setRows(Array.isArray(poResult.value) ? poResult.value : []);
     }
+    if (supplierResult.status === "fulfilled") {
+      setSuppliers(Array.isArray(supplierResult.value) ? supplierResult.value : []);
+    }
+    if (catalogResult.status === "fulfilled") {
+      setCatalogType(catalogResult.value?.catalogType || "product");
+      setProducts(Array.isArray(catalogResult.value?.items) ? catalogResult.value.items : []);
+    }
+
+    const failed = [poResult, supplierResult, catalogResult].filter(
+      (result) => result.status === "rejected"
+    );
+    if (failed.length && catalogResult.status === "rejected") {
+      setError(errorText(catalogResult.reason, "Unable to load the product catalog."));
+    }
+    setLoading(false);
   }, []);
   useEffect(() => {
     refresh();
@@ -495,6 +513,7 @@ const PurchaseOrdersTab = () => {
         record={editing}
         suppliers={suppliers}
         products={products}
+        catalogType={catalogType}
         saving={saving}
         onSave={handleSave}
         onClose={() => setEditing(null)}
@@ -503,7 +522,16 @@ const PurchaseOrdersTab = () => {
   );
 };
 
-const PurchaseOrderModal = ({ open, record, suppliers, products, saving, onSave, onClose }) => {
+const PurchaseOrderModal = ({
+  open,
+  record,
+  suppliers,
+  products,
+  catalogType,
+  saving,
+  onSave,
+  onClose,
+}) => {
   const [form, setForm] = useState({
     poNumber: "",
     date: today(),
@@ -534,7 +562,12 @@ const PurchaseOrderModal = ({ open, record, suppliers, products, saving, onSave,
     }));
   const chooseProduct = (index, value) => {
     const product = products.find((item) => String(item.id) === String(value));
-    setLine(index, { productId: value, productName: product?.name || "" });
+    setLine(index, {
+      productId: value,
+      productName: product?.name || "",
+      unitPrice: product?.price ?? product?.rate ?? 0,
+      catalogType: product?.catalogType || catalogType,
+    });
   };
   return (
     <Modal
@@ -653,10 +686,17 @@ const PurchaseOrderModal = ({ open, record, suppliers, products, saving, onSave,
                         value={line.productId}
                         onChange={(event) => chooseProduct(index, event.target.value)}
                       >
-                        <option value="">Select product</option>
+                        <option value="">
+                          {products.length
+                            ? `Select ${catalogType === "service" ? "service" : "product"}`
+                            : `No ${catalogType === "service" ? "services" : "products"} found for this store`}
+                        </option>
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.name}
+                            {product.price != null || product.rate != null
+                              ? ` · ${currency(product.price ?? product.rate)}`
+                              : ""}
                           </option>
                         ))}
                       </select>

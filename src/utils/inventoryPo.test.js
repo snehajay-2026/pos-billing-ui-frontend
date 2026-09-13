@@ -31,6 +31,17 @@ describe("inventory purchase-order helpers", () => {
     ).toEqual({});
   });
 
+  test("validates the modal's items payload", () => {
+    expect(
+      validatePurchaseOrder({
+        poNumber: "PO-2",
+        date: "2026-09-13",
+        supplierName: "Vendor",
+        items: [{ productId: 12, productName: "Soap", quantity: 2, unitPrice: 15 }],
+      })
+    ).toEqual({});
+  });
+
   test("classifies low stock severity", () => {
     expect(lowStockSeverity({ stock: 0, lowStock: 10 })).toBe("out");
     expect(lowStockSeverity({ stock: 4, lowStock: 10 })).toBe("critical");

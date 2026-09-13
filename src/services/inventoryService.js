@@ -1,5 +1,7 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./api";
 import { getUser, getActiveStoreContext } from "../utils/auth";
+import { getProducts } from "./productService";
+import { getServices } from "./serviceService";
 import { normalizePurchaseOrderPayload } from "../utils/inventoryPo";
 
 const isAuthed = () => {
@@ -13,6 +15,36 @@ const getScope = () => {
   return {
     storeType: active?.storeType || user?.storeType || "nostore",
     storeId: active?.storeId || user?.storeId || null,
+  };
+};
+
+export const getPurchaseOrderCatalog = async () => {
+  if (!isAuthed()) return { items: [], catalogType: "product", loadingSource: "none" };
+  const { storeType } = getScope();
+  if (storeType === "service" || storeType === "msme-service") {
+    const services = await getServices();
+    return {
+      catalogType: "service",
+      loadingSource: "services",
+      items: (Array.isArray(services) ? services : []).map((service) => ({
+        ...service,
+        id: service.id,
+        name: service.name || "",
+        price: Number(service.price ?? service.rate ?? 0),
+        gst: Number(service.gst || 0),
+        unit: service.unit || "unit",
+        catalogType: "service",
+      })),
+    };
+  }
+  const products = await getProducts();
+  return {
+    catalogType: "product",
+    loadingSource: "products",
+    items: (Array.isArray(products) ? products : []).map((product) => ({
+      ...product,
+      catalogType: "product",
+    })),
   };
 };
 
