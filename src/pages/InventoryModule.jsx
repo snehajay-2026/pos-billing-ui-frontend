@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FaPlus,
   FaTrash,
@@ -13,6 +13,8 @@ import {
   FaSync,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useUi } from "../context/UiContext";
+import { getProducts } from "../services/productService";
 import {
   getSuppliers,
   createSupplier,
@@ -27,18 +29,23 @@ import {
   createStockMovement,
   getLowStockAlerts,
 } from "../services/inventoryService";
+import {
+  PO_LINE_INITIAL,
+  calculatePurchaseOrderTotal,
+  lowStockSeverity,
+  movementLabel,
+  normalizePoLine,
+  normalizePurchaseOrderPayload,
+  validatePurchaseOrder,
+} from "../utils/inventoryPo";
 import "./InventoryModule.css";
 
-const currency = (v) =>
-  `₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const STORAGE_KEYS = {
-  active: "inventory.module.active",
-};
+const currency = (value) =>
+  `₹${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const today = () => new Date().toISOString().slice(0, 10);
+const errorText = (error, fallback) => error?.message || fallback;
 
 const SUPPLIER_INITIAL = { name: "", phone: "", email: "", gstin: "", address: "", notes: "" };
-const PO_LINE_INITIAL = { productId: "", name: "", qty: 1, unitCost: 0 };
-
 const TABS = [
   { key: "alerts", label: "Low Stock", icon: <FaExclamationTriangle /> },
   { key: "suppliers", label: "Suppliers", icon: <FaTruck /> },
@@ -47,13 +54,19 @@ const TABS = [
 ];
 
 const Modal = ({ open, title, onClose, children, footer }) => {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => event.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <div className="im-overlay" role="dialog" aria-modal="true" aria-label={title}>
       <div className="im-modal">
         <header className="im-modal-header">
           <h2>{title}</h2>
-          <button type="button" className="im-modal-close" onClick={onClose}>
+          <button type="button" className="im-modal-close" onClick={onClose} aria-label="Close">
             <FaTimes />
           </button>
         </header>
@@ -64,35 +77,75 @@ const Modal = ({ open, title, onClose, children, footer }) => {
   );
 };
 
-// =====================================================================
-// Suppliers tab
-// =====================================================================
+const LoadState = ({ loading, error, onRetry }) => {
+  if (loading) return <div className="im-empty">Loading inventory…</div>;
+  if (error)
+    return (
+      <div className="im-empty im-empty-error">
+        <p>{error}</p>
+        <button type="button" className="im-btn im-btn-secondary" onClick={onRetry}>
+          <FaSync /> Try again
+        </button>
+      </div>
+    );
+  return null;
+};
+
 const SuppliersTab = () => {
+  const { showToast } = useUi();
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      setRows(await getSuppliers());
+      const result = await getSuppliers();
+      setRows(Array.isArray(result) ? result : []);
+    } catch (err) {
+      setError(errorText(err, "Unable to load suppliers."));
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   const handleSave = async (record) => {
-    if (record.id) {
-      await updateSupplier(record.id, record);
-    } else {
-      await createSupplier(record);
+    if (!record.name.trim()) return showToast("error", "Supplier name is required.");
+    if (record.email && !/^\S+@\S+\.\S+$/.test(record.email))
+      return showToast("error", "Enter a valid supplier email.");
+    setSaving(true);
+    try {
+      if (record.id) await updateSupplier(record.id, record);
+      else await createSupplier(record);
+      setEditing(null);
+      showToast("success", record.id ? "Supplier updated." : "Supplier added.");
+      await refresh();
+    } catch (err) {
+      showToast("error", errorText(err, "Unable to save supplier."));
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    refresh();
+  };
+
+  const handleDelete = async (supplier) => {
+    if (!window.confirm(`Delete supplier “${supplier.name}”? This cannot be undone.`)) return;
+    setDeleting(supplier.id);
+    try {
+      await deleteSupplier(supplier.id);
+      showToast("success", "Supplier deleted.");
+      await refresh();
+    } catch (err) {
+      showToast("error", errorText(err, "Unable to delete supplier."));
+    } finally {
+      setDeleting(null);
+    }
   };
 
   return (
@@ -114,134 +167,136 @@ const SuppliersTab = () => {
           <FaSync className={loading ? "im-spin" : ""} /> Refresh
         </button>
       </div>
-      {rows.length === 0 ? (
-        <div className="im-empty">No suppliers yet. Add one to start raising purchase orders.</div>
-      ) : (
-        <table className="im-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>GSTIN</th>
-              <th>Active</th>
-              <th className="im-num">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name}</td>
-                <td className="im-mono">{s.phone || "—"}</td>
-                <td className="im-mono">{s.gstin || "—"}</td>
-                <td>{s.active === 0 ? "No" : "Yes"}</td>
-                <td className="im-num">
-                  <button
-                    type="button"
-                    className="im-row-btn"
-                    onClick={() => setEditing(s)}
-                    title="Edit"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button
-                    type="button"
-                    className="im-row-btn im-row-btn-danger"
-                    onClick={async () => {
-                      if (window.confirm(`Delete supplier "${s.name}"? This cannot be undone.`)) {
-                        await deleteSupplier(s.id);
-                        refresh();
-                      }
-                    }}
-                    title="Delete"
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <LoadState loading={loading} error={error} onRetry={refresh} />
+      {!loading &&
+        !error &&
+        (rows.length === 0 ? (
+          <div className="im-empty">
+            No suppliers yet. Add one to start raising purchase orders.
+          </div>
+        ) : (
+          <div className="im-table-scroll">
+            <table className="im-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>GSTIN</th>
+                  <th className="im-num">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((supplier) => (
+                  <tr key={supplier.id}>
+                    <td>{supplier.name}</td>
+                    <td className="im-mono">{supplier.phone || "—"}</td>
+                    <td>{supplier.email || "—"}</td>
+                    <td className="im-mono">{supplier.gstin || "—"}</td>
+                    <td className="im-num">
+                      <button
+                        type="button"
+                        className="im-row-btn"
+                        onClick={() => setEditing(supplier)}
+                        disabled={Boolean(deleting)}
+                        title="Edit supplier"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        type="button"
+                        className="im-row-btn im-row-btn-danger"
+                        onClick={() => handleDelete(supplier)}
+                        disabled={Boolean(deleting)}
+                        title="Delete supplier"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       <SupplierModal
         open={Boolean(editing)}
         record={editing}
         onSave={handleSave}
+        saving={saving}
         onClose={() => setEditing(null)}
       />
     </div>
   );
 };
 
-const SupplierModal = ({ open, record, onSave, onClose }) => {
-  const [form, setForm] = useState(() => ({ ...(record || SUPPLIER_INITIAL) }));
-  useEffect(() => {
-    setForm({ ...(record || SUPPLIER_INITIAL) });
-  }, [record]);
-
+const SupplierModal = ({ open, record, onSave, saving, onClose }) => {
+  const [form, setForm] = useState(SUPPLIER_INITIAL);
+  useEffect(() => setForm({ ...SUPPLIER_INITIAL, ...(record || {}) }), [record]);
   if (!open) return null;
   return (
     <Modal
       open={open}
-      title={record?.id ? `Edit supplier` : "Add supplier"}
+      title={record?.id ? "Edit supplier" : "Add supplier"}
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="im-btn im-btn-secondary" onClick={onClose}>
-            <FaTimes /> Cancel
+          <button
+            type="button"
+            className="im-btn im-btn-secondary"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancel
           </button>
-          <button type="button" className="im-btn im-btn-primary" onClick={() => onSave(form)}>
-            <FaCheck /> Save
+          <button
+            type="button"
+            className="im-btn im-btn-primary"
+            onClick={() => onSave(form)}
+            disabled={saving}
+          >
+            {saving ? (
+              "Saving…"
+            ) : (
+              <>
+                <FaCheck /> Save supplier
+              </>
+            )}
           </button>
         </>
       }
     >
       <div className="im-form">
+        {["name", "phone", "email", "gstin"].map((field) => (
+          <div className="im-form-row" key={field}>
+            <label htmlFor={`supplier-${field}`}>
+              {field === "name" ? "Name *" : field.toUpperCase()}
+            </label>
+            <input
+              id={`supplier-${field}`}
+              type={field === "email" ? "email" : "text"}
+              value={form[field] || ""}
+              onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+              required={field === "name"}
+            />
+          </div>
+        ))}
         <div className="im-form-row">
-          <label>Name *</label>
-          <input
-            type="text"
-            value={form.name || ""}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        </div>
-        <div className="im-form-row">
-          <label>Phone</label>
-          <input
-            type="text"
-            value={form.phone || ""}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
-        </div>
-        <div className="im-form-row">
-          <label>Email</label>
-          <input
-            type="email"
-            value={form.email || ""}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-        <div className="im-form-row">
-          <label>GSTIN</label>
-          <input
-            type="text"
-            value={form.gstin || ""}
-            onChange={(e) => setForm({ ...form, gstin: e.target.value })}
-          />
-        </div>
-        <div className="im-form-row">
-          <label>Address</label>
+          <label htmlFor="supplier-address">Address</label>
           <textarea
+            id="supplier-address"
+            rows={2}
             value={form.address || ""}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            rows={2}
+            onChange={(event) => setForm({ ...form, address: event.target.value })}
           />
         </div>
         <div className="im-form-row">
-          <label>Notes</label>
+          <label htmlFor="supplier-notes">Notes</label>
           <textarea
-            value={form.notes || ""}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            id="supplier-notes"
             rows={2}
+            value={form.notes || ""}
+            onChange={(event) => setForm({ ...form, notes: event.target.value })}
           />
         </div>
       </div>
@@ -249,71 +304,110 @@ const SupplierModal = ({ open, record, onSave, onClose }) => {
   );
 };
 
-// =====================================================================
-// Purchase Orders tab
-// =====================================================================
 const PurchaseOrdersTab = () => {
+  const { showToast } = useUi();
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      const [pos, sups] = await Promise.all([getPurchaseOrders(), getSuppliers()]);
-      setRows(pos);
-      setSuppliers(sups);
+      const [pos, sups, catalog] = await Promise.all([
+        getPurchaseOrders(),
+        getSuppliers(),
+        getProducts(),
+      ]);
+      setRows(Array.isArray(pos) ? pos : []);
+      setSuppliers(Array.isArray(sups) ? sups : []);
+      setProducts(Array.isArray(catalog) ? catalog : []);
+    } catch (err) {
+      setError(errorText(err, "Unable to load purchase orders."));
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   const handleSave = async (po) => {
-    if (po.id) {
-      await updatePurchaseOrder(po.id, po);
-    } else {
-      await createPurchaseOrder(po);
+    const errors = validatePurchaseOrder(po);
+    if (Object.keys(errors).length)
+      return showToast(
+        "error",
+        typeof errors.items === "string"
+          ? errors.items
+          : errors.poNumber || errors.supplier || "Please fix the PO form."
+      );
+    setSaving(true);
+    try {
+      if (po.id) await updatePurchaseOrder(po.id, po);
+      else await createPurchaseOrder(po);
+      setEditing(null);
+      showToast("success", po.id ? "Purchase order updated." : "Purchase order created.");
+      await refresh();
+    } catch (err) {
+      showToast("error", errorText(err, "Unable to save purchase order."));
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    refresh();
   };
 
-  const handleReceive = async (id) => {
+  const receive = async (po) => {
     if (
-      !window.confirm(
-        "Mark this PO as received? Stock will be incremented and cost prices updated for each line."
-      )
+      !window.confirm("Mark this PO as received? Stock will be increased for each linked product.")
     )
       return;
+    setBusyId(po.id);
     try {
-      const result = await receivePurchaseOrder(id);
-      // Server tells us how many stock_movements were written.
-      alert(`PO received. ${(result.movements || []).length} stock movements recorded.`);
-      refresh();
+      const result = await receivePurchaseOrder(po.id);
+      showToast(
+        "success",
+        `PO received. ${(result.movements || []).length} stock movement(s) recorded.`
+      );
+      await refresh();
     } catch (err) {
-      alert(`Receive failed: ${err.message}`);
+      showToast("error", errorText(err, "Unable to receive purchase order."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const remove = async (po) => {
+    if (!window.confirm("Delete this purchase order?")) return;
+    setBusyId(po.id);
+    try {
+      await deletePurchaseOrder(po.id);
+      showToast("success", "Purchase order deleted.");
+      await refresh();
+    } catch (err) {
+      showToast("error", errorText(err, "Unable to delete purchase order."));
+    } finally {
+      setBusyId(null);
     }
   };
 
+  const newPo = () =>
+    setEditing({
+      poNumber: `PO-${Date.now()}`,
+      date: today(),
+      expectedAt: "",
+      supplierId: "",
+      supplierName: "",
+      notes: "",
+      status: "draft",
+      items: [{ ...PO_LINE_INITIAL }],
+    });
   return (
     <div className="im-tab-body">
       <div className="im-tab-actions">
-        <button
-          type="button"
-          className="im-btn im-btn-primary"
-          onClick={() =>
-            setEditing({
-              poNumber: "",
-              date: new Date().toISOString().slice(0, 10),
-              items: [{ ...PO_LINE_INITIAL, productId: "" }],
-            })
-          }
-        >
+        <button type="button" className="im-btn im-btn-primary" onClick={newPo}>
           <FaPlus /> New PO
         </button>
         <button
@@ -325,80 +419,83 @@ const PurchaseOrdersTab = () => {
           <FaSync className={loading ? "im-spin" : ""} /> Refresh
         </button>
       </div>
-      {rows.length === 0 ? (
-        <div className="im-empty">No purchase orders yet.</div>
-      ) : (
-        <table className="im-table">
-          <thead>
-            <tr>
-              <th>PO #</th>
-              <th>Date</th>
-              <th>Supplier</th>
-              <th>Items</th>
-              <th className="im-num">Total</th>
-              <th>Status</th>
-              <th className="im-num">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p) => (
-              <tr key={p.id}>
-                <td className="im-mono">{p.poNumber || p.id}</td>
-                <td>{p.date || "—"}</td>
-                <td>{p.supplierName || "—"}</td>
-                <td>
-                  {(p.items || []).length} line{(p.items || []).length === 1 ? "" : "s"}
-                </td>
-                <td className="im-num">{currency(p.totalAmount)}</td>
-                <td>
-                  <span className={`im-pill im-pill-${p.status}`}>{p.status}</span>
-                </td>
-                <td className="im-num">
-                  {p.status !== "received" && (
-                    <button
-                      type="button"
-                      className="im-row-btn"
-                      onClick={() => setEditing(p)}
-                      title="Edit"
-                    >
-                      <FaEdit />
-                    </button>
-                  )}
-                  {p.status !== "received" && (
-                    <button
-                      type="button"
-                      className="im-row-btn"
-                      onClick={() => handleReceive(p.id)}
-                      title="Mark received"
-                    >
-                      <FaCheck />
-                    </button>
-                  )}
-                  {p.status !== "received" && (
-                    <button
-                      type="button"
-                      className="im-row-btn im-row-btn-danger"
-                      onClick={async () => {
-                        if (window.confirm("Delete this PO? (received POs can't be deleted)")) {
-                          await deletePurchaseOrder(p.id);
-                          refresh();
-                        }
-                      }}
-                      title="Delete"
-                    >
-                      <FaTrash />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <LoadState loading={loading} error={error} onRetry={refresh} />
+      {!loading &&
+        !error &&
+        (rows.length === 0 ? (
+          <div className="im-empty">
+            No purchase orders yet. Create one to start receiving stock.
+          </div>
+        ) : (
+          <div className="im-table-scroll">
+            <table className="im-table">
+              <thead>
+                <tr>
+                  <th>PO #</th>
+                  <th>Date</th>
+                  <th>Supplier</th>
+                  <th>Items</th>
+                  <th className="im-num">Total</th>
+                  <th>Status</th>
+                  <th className="im-num">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((po) => (
+                  <tr key={po.id}>
+                    <td className="im-mono">{po.poNumber || po.id}</td>
+                    <td>{po.date || po.createdAt?.slice(0, 10) || "—"}</td>
+                    <td>{po.supplierName || "—"}</td>
+                    <td>{(po.items || []).length}</td>
+                    <td className="im-num">{currency(po.totalAmount)}</td>
+                    <td>
+                      <span className={`im-pill im-pill-${po.status}`}>{po.status}</span>
+                    </td>
+                    <td className="im-num">
+                      {po.status !== "received" && (
+                        <>
+                          <button
+                            type="button"
+                            className="im-row-btn"
+                            onClick={() => setEditing(po)}
+                            disabled={busyId === po.id}
+                            title="Edit PO"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            type="button"
+                            className="im-row-btn"
+                            onClick={() => receive(po)}
+                            disabled={busyId === po.id}
+                            title="Receive PO"
+                          >
+                            <FaCheck />
+                          </button>
+                          <button
+                            type="button"
+                            className="im-row-btn im-row-btn-danger"
+                            onClick={() => remove(po)}
+                            disabled={busyId === po.id}
+                            title="Delete PO"
+                          >
+                            <FaTrash />
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       <PurchaseOrderModal
         open={Boolean(editing)}
         record={editing}
         suppliers={suppliers}
+        products={products}
+        saving={saving}
         onSave={handleSave}
         onClose={() => setEditing(null)}
       />
@@ -406,60 +503,61 @@ const PurchaseOrdersTab = () => {
   );
 };
 
-const PurchaseOrderModal = ({ open, record, suppliers, onSave, onClose }) => {
-  const [lines, setLines] = useState([]);
-  const [supplierId, setSupplierId] = useState("");
-  const [supplierName, setSupplierName] = useState("");
-  const [poNumber, setPoNumber] = useState("");
-  const [date, setDate] = useState("");
-  const [notes, setNotes] = useState("");
-
+const PurchaseOrderModal = ({ open, record, suppliers, products, saving, onSave, onClose }) => {
+  const [form, setForm] = useState({
+    poNumber: "",
+    date: today(),
+    expectedAt: "",
+    supplierId: "",
+    supplierName: "",
+    notes: "",
+    status: "draft",
+    items: [{ ...PO_LINE_INITIAL }],
+  });
   useEffect(() => {
-    if (!record) return;
-    setLines(
-      Array.isArray(record.items) && record.items.length > 0
-        ? record.items
-        : [{ ...PO_LINE_INITIAL }]
-    );
-    setSupplierId(record.supplierId || "");
-    setSupplierName(record.supplierName || "");
-    setPoNumber(record.poNumber || "");
-    setDate(record.date || new Date().toISOString().slice(0, 10));
-    setNotes(record.notes || "");
+    if (record)
+      setForm({
+        ...record,
+        date: record.date || record.createdAt?.slice(0, 10) || today(),
+        expectedAt: record.expectedAt || "",
+        items: (record.items || [{ ...PO_LINE_INITIAL }]).map(normalizePoLine),
+      });
   }, [record]);
-
   if (!open) return null;
-
-  const total = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitCost) || 0), 0);
-
+  const total = calculatePurchaseOrderTotal(form.items);
+  const setLine = (index, patch) =>
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((line, i) =>
+        i === index ? normalizePoLine({ ...line, ...patch }) : line
+      ),
+    }));
+  const chooseProduct = (index, value) => {
+    const product = products.find((item) => String(item.id) === String(value));
+    setLine(index, { productId: value, productName: product?.name || "" });
+  };
   return (
     <Modal
       open={open}
-      title={record?.id ? `Edit PO ${record.poNumber || record.id}` : "New purchase order"}
+      title={form.id ? `Edit PO ${form.poNumber}` : "New purchase order"}
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="im-btn im-btn-secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="im-btn im-btn-secondary"
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancel
           </button>
           <button
             type="button"
             className="im-btn im-btn-primary"
-            onClick={() =>
-              onSave({
-                id: record?.id,
-                poNumber,
-                date,
-                supplierId,
-                supplierName:
-                  supplierName || (suppliers.find((s) => s.id === supplierId) || {}).name || "",
-                notes,
-                status: record?.status || "draft",
-                items: lines,
-              })
-            }
+            onClick={() => onSave(normalizePurchaseOrderPayload(form))}
+            disabled={saving}
           >
-            Save PO
+            {saving ? "Saving…" : "Save PO"}
           </button>
         </>
       }
@@ -467,186 +565,216 @@ const PurchaseOrderModal = ({ open, record, suppliers, onSave, onClose }) => {
       <div className="im-form">
         <div className="im-form-grid">
           <div className="im-form-row">
-            <label>PO number</label>
+            <label htmlFor="po-number">PO number *</label>
             <input
-              type="text"
-              value={poNumber}
-              onChange={(e) => setPoNumber(e.target.value)}
-              placeholder="auto-generated if blank"
+              id="po-number"
+              value={form.poNumber}
+              onChange={(event) => setForm({ ...form, poNumber: event.target.value })}
             />
           </div>
           <div className="im-form-row">
-            <label>Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-        </div>
-        <div className="im-form-row">
-          <label>Supplier</label>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <select
-              value={supplierId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSupplierId(id);
-                const sup = suppliers.find((s) => s.id === id);
-                if (sup) setSupplierName(sup.name);
-              }}
-              style={{ flex: 1 }}
-            >
-              <option value="">Select supplier…</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <label htmlFor="po-date">Order date *</label>
             <input
-              type="text"
-              placeholder="or type name…"
-              value={supplierName}
-              onChange={(e) => setSupplierName(e.target.value)}
-              style={{ flex: 1 }}
+              id="po-date"
+              type="date"
+              value={form.date}
+              onChange={(event) => setForm({ ...form, date: event.target.value })}
             />
           </div>
+          <div className="im-form-row">
+            <label htmlFor="po-expected">Expected date</label>
+            <input
+              id="po-expected"
+              type="date"
+              value={form.expectedAt}
+              onChange={(event) => setForm({ ...form, expectedAt: event.target.value })}
+            />
+          </div>
+          <div className="im-form-row">
+            <label htmlFor="po-status">Status</label>
+            <select
+              id="po-status"
+              value={form.status}
+              onChange={(event) => setForm({ ...form, status: event.target.value })}
+            >
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+            </select>
+          </div>
         </div>
         <div className="im-form-row">
-          <label>Line items</label>
-          <table className="im-table im-line-table">
-            <thead>
-              <tr>
-                <th>Product ID</th>
-                <th>Description</th>
-                <th className="im-num">Qty</th>
-                <th className="im-num">Unit cost</th>
-                <th className="im-num">Line total</th>
-                <th className="im-num"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, i) => (
-                <tr key={i}>
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="product id"
-                      value={line.productId || ""}
-                      onChange={(e) => {
-                        const next = [...lines];
-                        next[i] = { ...next[i], productId: e.target.value };
-                        setLines(next);
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="name"
-                      value={line.name || ""}
-                      onChange={(e) => {
-                        const next = [...lines];
-                        next[i] = { ...next[i], name: e.target.value };
-                        setLines(next);
-                      }}
-                    />
-                  </td>
-                  <td className="im-num">
-                    <input
-                      type="number"
-                      min="1"
-                      value={line.qty || 0}
-                      onChange={(e) => {
-                        const next = [...lines];
-                        next[i] = { ...next[i], qty: Number(e.target.value) };
-                        setLines(next);
-                      }}
-                    />
-                  </td>
-                  <td className="im-num">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={line.unitCost || 0}
-                      onChange={(e) => {
-                        const next = [...lines];
-                        next[i] = { ...next[i], unitCost: Number(e.target.value) };
-                        setLines(next);
-                      }}
-                    />
-                  </td>
-                  <td className="im-num">
-                    {currency((Number(line.qty) || 0) * (Number(line.unitCost) || 0))}
-                  </td>
-                  <td className="im-num">
-                    <button
-                      type="button"
-                      className="im-row-btn im-row-btn-danger"
-                      onClick={() => setLines(lines.filter((_, j) => j !== i))}
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
+          <label htmlFor="po-supplier">Supplier</label>
+          <select
+            id="po-supplier"
+            value={form.supplierId}
+            onChange={(event) => {
+              const supplier = suppliers.find((item) => String(item.id) === event.target.value);
+              setForm({
+                ...form,
+                supplierId: event.target.value,
+                supplierName: supplier?.name || form.supplierName,
+              });
+            }}
+          >
+            <option value="">Select supplier…</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label="Supplier name"
+            placeholder="Or type supplier name"
+            value={form.supplierName}
+            onChange={(event) => setForm({ ...form, supplierName: event.target.value })}
+          />
+        </div>
+        <div className="im-form-row">
+          <label>Line items *</label>
+          <div className="im-table-scroll">
+            <table className="im-table im-line-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Description</th>
+                  <th className="im-num">Qty</th>
+                  <th className="im-num">Unit cost</th>
+                  <th className="im-num">Total</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {form.items.map((line, index) => (
+                  <tr key={index}>
+                    <td>
+                      <select
+                        aria-label={`Product ${index + 1}`}
+                        value={line.productId}
+                        onChange={(event) => chooseProduct(index, event.target.value)}
+                      >
+                        <option value="">Select product</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Description ${index + 1}`}
+                        value={line.productName}
+                        onChange={(event) => setLine(index, { productName: event.target.value })}
+                        placeholder="Description"
+                      />
+                    </td>
+                    <td className="im-num">
+                      <input
+                        aria-label={`Quantity ${index + 1}`}
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        value={line.quantity}
+                        onChange={(event) => setLine(index, { quantity: event.target.value })}
+                      />
+                    </td>
+                    <td className="im-num">
+                      <input
+                        aria-label={`Unit cost ${index + 1}`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={line.unitPrice}
+                        onChange={(event) => setLine(index, { unitPrice: event.target.value })}
+                      />
+                    </td>
+                    <td className="im-num">{currency(line.quantity * line.unitPrice)}</td>
+                    <td className="im-num">
+                      <button
+                        type="button"
+                        className="im-row-btn im-row-btn-danger"
+                        onClick={() =>
+                          setForm({ ...form, items: form.items.filter((_, i) => i !== index) })
+                        }
+                        disabled={form.items.length === 1}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <button
             type="button"
             className="im-btn im-btn-secondary"
-            onClick={() => setLines([...lines, { ...PO_LINE_INITIAL }])}
-            style={{ marginTop: "0.5rem" }}
+            onClick={() => setForm({ ...form, items: [...form.items, { ...PO_LINE_INITIAL }] })}
           >
             <FaPlus /> Add line
           </button>
-          <div style={{ marginTop: "0.75rem", textAlign: "right", fontWeight: 600 }}>
-            Total: {currency(total)}
-          </div>
+          <div className="im-total">Total: {currency(total)}</div>
         </div>
         <div className="im-form-row">
-          <label>Notes</label>
-          <textarea value={notes || ""} rows={2} onChange={(e) => setNotes(e.target.value)} />
+          <label htmlFor="po-notes">Notes</label>
+          <textarea
+            id="po-notes"
+            rows={2}
+            value={form.notes}
+            onChange={(event) => setForm({ ...form, notes: event.target.value })}
+          />
         </div>
       </div>
     </Modal>
   );
 };
 
-// =====================================================================
-// Stock Movements tab
-// =====================================================================
 const MovementsTab = () => {
+  const { showToast } = useUi();
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(null);
-
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      setRows(await getStockMovements());
+      const [moves, catalog] = await Promise.all([getStockMovements(), getProducts()]);
+      setRows(Array.isArray(moves) ? moves : []);
+      setProducts(Array.isArray(catalog) ? catalog : []);
+    } catch (err) {
+      setError(errorText(err, "Unable to load stock movements."));
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  const handleCreate = async (movement) => {
-    const result = await createStockMovement(movement);
-    setCreating(null);
-    alert(`Adjustment recorded. New stock: ${result.newStock}.`);
-    refresh();
+  const handleCreate = async (form) => {
+    if (!form.productId || !form.type || Number(form.quantity) <= 0)
+      return showToast("error", "Choose a product, movement type, and positive quantity.");
+    setSaving(true);
+    try {
+      const result = await createStockMovement(form);
+      showToast("success", `${movementLabel(form)} recorded. Stock is now updated.`);
+      setCreating(false);
+      await refresh();
+      if (result?.crossedLowStock)
+        showToast("warning", "This product is now at or below its low-stock threshold.");
+    } catch (err) {
+      showToast("error", errorText(err, "Unable to record stock movement."));
+    } finally {
+      setSaving(false);
+    }
   };
-
   return (
     <div className="im-tab-body">
       <div className="im-tab-actions">
-        <button
-          type="button"
-          className="im-btn im-btn-primary"
-          onClick={() => setCreating({ delta: 0, reason: "manual_adjustment", notes: "" })}
-        >
+        <button type="button" className="im-btn im-btn-primary" onClick={() => setCreating(true)}>
           <FaPlus /> Manual adjustment
         </button>
         <button
@@ -658,72 +786,82 @@ const MovementsTab = () => {
           <FaSync className={loading ? "im-spin" : ""} /> Refresh
         </button>
       </div>
-      {rows.length === 0 ? (
-        <div className="im-empty">No stock movements recorded yet.</div>
-      ) : (
-        <table className="im-table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Product</th>
-              <th className="im-num">Δ</th>
-              <th>Reason</th>
-              <th>Reference</th>
-              <th>By</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((m) => (
-              <tr key={m.id}>
-                <td className="im-mono">
-                  {String(m.at || "")
-                    .slice(0, 19)
-                    .replace("T", " ")}
-                </td>
-                <td>{m.productName || m.productId}</td>
-                <td className={`im-num ${m.delta >= 0 ? "im-positive" : "im-negative"}`}>
-                  {m.delta >= 0 ? "+" : ""}
-                  {m.delta}
-                </td>
-                <td>{m.reason}</td>
-                <td className="im-mono">
-                  {m.refType === "purchase_order"
-                    ? "PO"
-                    : m.refType === "manual"
-                      ? "manual"
-                      : m.refType || "—"}
-                  {m.refId ? `·${m.refId.slice(-6)}` : ""}
-                </td>
-                <td className="im-mono">{m.userEmail}</td>
-                <td>{m.notes || "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <LoadState loading={loading} error={error} onRetry={refresh} />
+      {!loading &&
+        !error &&
+        (rows.length === 0 ? (
+          <div className="im-empty">No stock movements recorded yet.</div>
+        ) : (
+          <div className="im-table-scroll">
+            <table className="im-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Product</th>
+                  <th>Type</th>
+                  <th className="im-num">Qty</th>
+                  <th>Reason</th>
+                  <th>PO ref</th>
+                  <th>By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((movement) => (
+                  <tr key={movement.id}>
+                    <td className="im-mono">
+                      {String(movement.createdAt || "")
+                        .slice(0, 19)
+                        .replace("T", " ") || "—"}
+                    </td>
+                    <td>{movement.productName || movement.productId || "—"}</td>
+                    <td>
+                      <span className={`im-pill im-pill-${movement.type}`}>
+                        {movementLabel(movement)}
+                      </span>
+                    </td>
+                    <td className="im-num">{movement.quantity}</td>
+                    <td>{movement.reason || "—"}</td>
+                    <td className="im-mono">
+                      {movement.purchaseOrderId ? `PO ·${movement.purchaseOrderId}` : "—"}
+                    </td>
+                    <td className="im-mono">{movement.createdBy || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       <AdjustmentModal
-        open={Boolean(creating)}
-        record={creating}
+        open={creating}
+        products={products}
+        saving={saving}
         onSave={handleCreate}
-        onClose={() => setCreating(null)}
+        onClose={() => setCreating(false)}
       />
     </div>
   );
 };
 
-const AdjustmentModal = ({ open, record, onSave, onClose }) => {
+const AdjustmentModal = ({ open, products, saving, onSave, onClose }) => {
   const [form, setForm] = useState({
     productId: "",
-    delta: 0,
+    productName: "",
+    type: "adjustment",
+    quantity: 1,
+    adjustmentDirection: "increase",
     reason: "manual_adjustment",
-    notes: "",
   });
   useEffect(() => {
-    if (record) setForm({ ...form, ...record });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record]);
-
+    if (open)
+      setForm({
+        productId: "",
+        productName: "",
+        type: "adjustment",
+        quantity: 1,
+        adjustmentDirection: "increase",
+        reason: "manual_adjustment",
+      });
+  }, [open]);
   if (!open) return null;
   return (
     <Modal
@@ -732,80 +870,120 @@ const AdjustmentModal = ({ open, record, onSave, onClose }) => {
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="im-btn im-btn-secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="im-btn im-btn-secondary"
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancel
           </button>
-          <button type="button" className="im-btn im-btn-primary" onClick={() => onSave(form)}>
-            Record
+          <button
+            type="button"
+            className="im-btn im-btn-primary"
+            onClick={() => onSave(form)}
+            disabled={saving}
+          >
+            {saving ? "Recording…" : "Record movement"}
           </button>
         </>
       }
     >
       <div className="im-form">
         <div className="im-form-row">
-          <label>Product ID *</label>
-          <input
-            type="text"
+          <label htmlFor="movement-product">Product *</label>
+          <select
+            id="movement-product"
             value={form.productId}
-            onChange={(e) => setForm({ ...form, productId: e.target.value })}
-          />
+            onChange={(event) => {
+              const product = products.find((item) => String(item.id) === event.target.value);
+              setForm({ ...form, productId: event.target.value, productName: product?.name || "" });
+            }}
+          >
+            <option value="">Select product…</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name} (stock {product.stock ?? 0})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="im-form-grid">
           <div className="im-form-row">
-            <label>Delta (+ in / - out)</label>
-            <input
-              type="number"
-              value={form.delta}
-              onChange={(e) => setForm({ ...form, delta: Number(e.target.value) })}
-            />
-          </div>
-          <div className="im-form-row">
-            <label>Reason</label>
+            <label htmlFor="movement-type">Type</label>
             <select
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
+              id="movement-type"
+              value={form.type}
+              onChange={(event) => setForm({ ...form, type: event.target.value })}
             >
-              <option value="manual_adjustment">Manual adjustment</option>
-              <option value="damage">Damage</option>
-              <option value="expiry">Expiry</option>
-              <option value="return">Customer return</option>
-              <option value="correction">Count correction</option>
+              <option value="adjustment">Adjustment</option>
+              <option value="in">Stock in</option>
+              <option value="out">Stock out</option>
             </select>
           </div>
+          <div className="im-form-row">
+            <label htmlFor="movement-quantity">Quantity *</label>
+            <input
+              id="movement-quantity"
+              type="number"
+              min="0.001"
+              step="0.001"
+              value={form.quantity}
+              onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+            />
+          </div>
         </div>
+        {form.type === "adjustment" && (
+          <div className="im-form-row">
+            <label htmlFor="movement-direction">Adjustment direction</label>
+            <select
+              id="movement-direction"
+              value={form.adjustmentDirection}
+              onChange={(event) => setForm({ ...form, adjustmentDirection: event.target.value })}
+            >
+              <option value="increase">Increase</option>
+              <option value="decrease">Decrease</option>
+            </select>
+          </div>
+        )}
         <div className="im-form-row">
-          <label>Notes</label>
-          <textarea
-            rows={2}
-            value={form.notes || ""}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
+          <label htmlFor="movement-reason">Reason</label>
+          <select
+            id="movement-reason"
+            value={form.reason}
+            onChange={(event) => setForm({ ...form, reason: event.target.value })}
+          >
+            <option value="manual_adjustment">Manual adjustment</option>
+            <option value="damage">Damage</option>
+            <option value="expiry">Expiry</option>
+            <option value="return">Customer return</option>
+            <option value="correction">Count correction</option>
+          </select>
         </div>
       </div>
     </Modal>
   );
 };
 
-// =====================================================================
-// Low-Stock tab
-// =====================================================================
 const LowStockTab = () => {
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
-      setRows(await getLowStockAlerts());
+      const result = await getLowStockAlerts();
+      setRows(Array.isArray(result) ? result : []);
+    } catch (err) {
+      setError(errorText(err, "Unable to load low-stock alerts."));
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
-
   return (
     <div className="im-tab-body">
       <div className="im-tab-actions">
@@ -818,76 +996,66 @@ const LowStockTab = () => {
           <FaSync className={loading ? "im-spin" : ""} /> Refresh
         </button>
       </div>
-      {rows.length === 0 ? (
-        <div className="im-empty im-empty-ok">
-          All products are above their re-order thresholds.{" "}
-        </div>
-      ) : (
-        <table className="im-table">
-          <thead>
-            <tr>
-              <th>Severity</th>
-              <th>Product</th>
-              <th>Barcode</th>
-              <th>Category</th>
-              <th className="im-num">Stock</th>
-              <th className="im-num">Re-order at</th>
-              <th className="im-num">Short by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <span className={`im-pill im-pill-${r.severity}`}>{r.severity}</span>
-                </td>
-                <td>{r.name}</td>
-                <td className="im-mono">{r.barcode || "—"}</td>
-                <td>{r.category || "—"}</td>
-                <td className="im-num">{r.stock}</td>
-                <td className="im-num">{r.lowStockLimit}</td>
-                <td className="im-num im-negative">{Math.max(0, r.lowStockLimit - r.stock)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <LoadState loading={loading} error={error} onRetry={refresh} />
+      {!loading &&
+        !error &&
+        (rows.length === 0 ? (
+          <div className="im-empty im-empty-ok">
+            All products are above their reorder thresholds.
+          </div>
+        ) : (
+          <div className="im-table-scroll">
+            <table className="im-table">
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th className="im-num">Stock</th>
+                  <th className="im-num">Reorder at</th>
+                  <th className="im-num">Short by</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const severity = row.severity || lowStockSeverity(row);
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <span className={`im-pill im-pill-${severity}`}>{severity}</span>
+                      </td>
+                      <td>{row.name}</td>
+                      <td>{row.category || "—"}</td>
+                      <td className="im-num">{row.stock}</td>
+                      <td className="im-num">{row.lowStock ?? row.lowStockLimit}</td>
+                      <td className="im-num im-negative">{row.deficit}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </div>
   );
 };
 
-// =====================================================================
-// Page
-// =====================================================================
 const InventoryModule = () => {
   const navigate = useNavigate();
   const [active, setActive] = useState(() => {
     try {
-      return localStorage.getItem(STORAGE_KEYS.active) || "alerts";
+      return localStorage.getItem("inventory.module.active") || "alerts";
     } catch {
       return "alerts";
     }
   });
-
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.active, active);
-    } catch {}
+      localStorage.setItem("inventory.module.active", active);
+    } catch {
+      /* private mode */
+    }
   }, [active]);
-
-  // Keep a fresh supplier list cached for the PO modal's picker.
-  useEffect(() => {
-    (async () => {
-      try {
-        setSuppliers(await getSuppliers());
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
-
-  const tabs = useMemo(() => TABS, []);
-
   return (
     <div className="im-page">
       <header className="im-header">
@@ -895,28 +1063,26 @@ const InventoryModule = () => {
           <FaArrowLeft /> Back
         </button>
         <div>
-          <h1>Inventory</h1>
+          <h1>Inventory &amp; Purchase Orders</h1>
           <p className="im-subtitle">
             Suppliers · purchase orders · stock movements · low-stock alerts
           </p>
         </div>
       </header>
-
-      <nav className="im-tabs" role="tablist">
-        {tabs.map((t) => (
+      <nav className="im-tabs" role="tablist" aria-label="Inventory sections">
+        {TABS.map((tab) => (
           <button
-            key={t.key}
+            key={tab.key}
             type="button"
             role="tab"
-            className={`im-tab ${active === t.key ? "im-tab-active" : ""}`}
-            aria-selected={active === t.key}
-            onClick={() => setActive(t.key)}
+            aria-selected={active === tab.key}
+            className={`im-tab ${active === tab.key ? "im-tab-active" : ""}`}
+            onClick={() => setActive(tab.key)}
           >
-            {t.icon} <span>{t.label}</span>
+            {tab.icon} <span>{tab.label}</span>
           </button>
         ))}
       </nav>
-
       <section className="im-panel">
         {active === "alerts" && <LowStockTab />}
         {active === "suppliers" && <SuppliersTab />}
