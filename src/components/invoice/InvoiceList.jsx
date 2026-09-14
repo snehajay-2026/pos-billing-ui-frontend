@@ -143,9 +143,9 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
       title: title || "Invoices",
       subtitle: "Browse, search and print every invoice across all sales channels.",
       icon: <FaStore />,
-      eyebrow: "Retail · All invoices",
+      eyebrow: `${isServiceStore ? "Service" : "Retail"} · All invoices`,
     };
-  }, [invoiceFilter, title]);
+  }, [invoiceFilter, title, isServiceStore]);
 
   const paymentTone = (mode) => {
     const m = (mode || "").toLowerCase();
