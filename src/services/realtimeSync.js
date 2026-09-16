@@ -109,9 +109,13 @@ const connect = (url, scopeKey) => {
 
   es.addEventListener("booking", relay("booking"));
   es.addEventListener("hotel", relay("hotel"));
+  es.addEventListener("table", relay("table"));
   es.addEventListener("live_bill", relay("live_bill"));
   es.addEventListener("invoice", relay("invoice"));
   es.addEventListener("stock", relay("stock"));
+  es.addEventListener("shift", relay("shift"));
+  es.addEventListener("order", relay("order"));
+  es.addEventListener("service", relay("service"));
   es.addEventListener("message", relay("message"));
 
   es.onerror = () => {
