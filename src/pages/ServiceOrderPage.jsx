@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUserTie,
@@ -23,12 +23,13 @@ import {
   FaReceipt,
 } from "react-icons/fa";
 import { useUi } from "../context/UiContext";
+import { getUser } from "../utils/auth";
 import Layout from "../components/layout/Layout";
 import {
   getOrders,
   createOrder,
   updateOrder,
-  deleteOrder,
+  deleteOrder as deleteOrderApi,
   createInvoiceFromOrder,
 } from "../services/orderService";
 import { loadServices } from "../services/serviceService";
@@ -80,6 +81,18 @@ const emptyInvoiceForm = {
   customerState: "",
 };
 
+const getServiceScopeKey = (activeStore) => {
+  const user = getUser();
+  return JSON.stringify({
+    email: user?.email || "",
+    role: user?.role || "",
+    storeType: user?.storeType || "",
+    storeId: user?.storeId || "",
+    activeStoreType: activeStore?.storeType || "",
+    activeStoreId: activeStore?.storeId || "",
+  });
+};
+
 const ServiceOrderPage = () => {
   const [orders, setOrders] = useState([]);
   const [services, setServices] = useState([]);
@@ -93,34 +106,126 @@ const ServiceOrderPage = () => {
   const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm);
   const [invoiceSubmitting, setInvoiceSubmitting] = useState(false);
   const [invoiceError, setInvoiceError] = useState("");
+  const reloadRef = useRef(null);
+  const scopeKeyRef = useRef("");
+  const scopeGenerationRef = useRef(0);
+  const invoiceRedirectTimerRef = useRef(null);
 
   const { activeStore } = useUi();
   const navigate = useNavigate();
+  const scopeKey = useMemo(() => getServiceScopeKey(activeStore), [activeStore]);
+
+  const captureMutationScope = () => ({
+    key: scopeKeyRef.current,
+    generation: scopeGenerationRef.current,
+  });
+  const isMutationScopeCurrent = (scope) =>
+    scope.key === scopeKeyRef.current && scope.generation === scopeGenerationRef.current;
+  const clearInvoiceRedirectTimer = () => {
+    if (invoiceRedirectTimerRef.current) {
+      window.clearTimeout(invoiceRedirectTimerRef.current);
+      invoiceRedirectTimerRef.current = null;
+    }
+  };
+
+  useLayoutEffect(() => {
+    clearInvoiceRedirectTimer();
+    scopeGenerationRef.current += 1;
+    scopeKeyRef.current = scopeKey;
+    setOrders([]);
+    setServices([]);
+    setEditing(null);
+    setForm({ ...emptyForm });
+    setError("");
+    setSearch("");
+    setStatusFilter("ALL");
+    setInvoiceFor(null);
+    setInvoiceForm({ ...emptyInvoiceForm });
+    setInvoiceSubmitting(false);
+    setInvoiceError("");
+
+    return () => {
+      clearInvoiceRedirectTimer();
+      scopeGenerationRef.current += 1;
+    };
+  }, [scopeKey]);
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
+    let pending = false;
+    let reloadTimer = null;
+    let requestGeneration = 0;
+    const effectGeneration = scopeGenerationRef.current;
+
+    const isCurrent = (generation) =>
+      !cancelled &&
+      generation === requestGeneration &&
+      effectGeneration === scopeGenerationRef.current &&
+      scopeKey === scopeKeyRef.current;
+
     const load = async () => {
+      if (cancelled) return;
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      const generation = ++requestGeneration;
+      const requestScopeGeneration = scopeGenerationRef.current;
       try {
         const [data, svc] = await Promise.all([getOrders("service"), loadServices()]);
-        if (!cancelled) {
+        if (isCurrent(generation) && requestScopeGeneration === scopeGenerationRef.current) {
           setOrders(Array.isArray(data) ? data : []);
           setServices(Array.isArray(svc) ? svc : []);
-          if (Array.isArray(svc) && svc.length && !form.service) {
-            setForm((f) => ({ ...f, service: svc[0].name }));
+          if (Array.isArray(svc) && svc.length) {
+            setForm((f) => (f.service ? f : { ...f, service: svc[0].name }));
           }
         }
       } catch (err) {
-        if (!cancelled) {
+        if (isCurrent(generation)) {
           console.error("Failed to load service orders:", err);
           setOrders([]);
+          setServices([]);
+        }
+      } finally {
+        inFlight = false;
+        if (pending && isCurrent(generation)) {
+          pending = false;
+          load();
         }
       }
     };
+
+    const scheduleReload = () => {
+      if (cancelled || reloadTimer) return;
+      reloadTimer = window.setTimeout(() => {
+        reloadTimer = null;
+        load();
+      }, 0);
+    };
+    reloadRef.current = scheduleReload;
+
+    const onDataUpdated = (event) => {
+      if (event?.detail === "orders" || event?.detail === "services") scheduleReload();
+    };
+    const onServicesUpdated = () => scheduleReload();
+
+    window.addEventListener("dataUpdated", onDataUpdated);
+    window.addEventListener("servicesUpdated", onServicesUpdated);
     load();
+
     return () => {
       cancelled = true;
+      pending = false;
+      requestGeneration += 1;
+      if (reloadTimer) window.clearTimeout(reloadTimer);
+      reloadTimer = null;
+      reloadRef.current = null;
+      window.removeEventListener("dataUpdated", onDataUpdated);
+      window.removeEventListener("servicesUpdated", onServicesUpdated);
     };
-  }, [activeStore]);
+  }, [scopeKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -128,6 +233,7 @@ const ServiceOrderPage = () => {
   };
 
   const saveOrder = async () => {
+    const mutationScope = captureMutationScope();
     setError("");
     if (!form.customer || !form.service || !form.hours) {
       setError("Customer name, service, and hours are required.");
@@ -142,18 +248,24 @@ const ServiceOrderPage = () => {
       let saved;
       if (editing !== null) {
         saved = await updateOrder({ ...payload, id: editing });
-        setOrders((prev) => prev.map((o) => (o.id === editing ? saved : o)));
       } else {
         saved = await createOrder(payload);
+      }
+      if (!isMutationScopeCurrent(mutationScope)) return;
+      if (editing !== null) {
+        setOrders((prev) => prev.map((o) => (o.id === editing ? saved : o)));
+      } else {
         setOrders((prev) => [...prev, saved]);
       }
       window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
+      reloadRef.current?.();
       setForm({
         ...emptyForm,
         service: services[0]?.name || "",
       });
       setEditing(null);
     } catch (err) {
+      if (!isMutationScopeCurrent(mutationScope)) return;
       console.error("Failed to save service order:", err);
       setError(err.message || "Unable to save order. Please try again.");
     }
@@ -179,11 +291,15 @@ const ServiceOrderPage = () => {
 
   const deleteOrder = async (orderId) => {
     if (!window.confirm("Delete this service order?")) return;
+    const mutationScope = captureMutationScope();
     try {
-      await deleteOrder(orderId);
+      await deleteOrderApi(orderId);
+      if (!isMutationScopeCurrent(mutationScope)) return;
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
       window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
+      reloadRef.current?.();
     } catch (err) {
+      if (!isMutationScopeCurrent(mutationScope)) return;
       console.error("Failed to delete service order:", err);
       setError("Unable to delete order. Please try again.");
     }
@@ -192,6 +308,7 @@ const ServiceOrderPage = () => {
   const setStatus = async (orderId, newStatus) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
+    const mutationScope = captureMutationScope();
     try {
       const saved = await updateOrder({
         ...order,
@@ -199,10 +316,14 @@ const ServiceOrderPage = () => {
         status: newStatus,
         type: "service",
       });
+      if (!isMutationScopeCurrent(mutationScope)) return;
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? saved : { ...o, status: newStatus }))
       );
+      window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
+      reloadRef.current?.();
     } catch (err) {
+      if (!isMutationScopeCurrent(mutationScope)) return;
       console.error("Failed to update status:", err);
     }
   };
@@ -226,8 +347,9 @@ const ServiceOrderPage = () => {
 
   const closeInvoiceDialog = () => {
     if (invoiceSubmitting) return;
+    clearInvoiceRedirectTimer();
     setInvoiceFor(null);
-    setInvoiceForm(emptyInvoiceForm);
+    setInvoiceForm({ ...emptyInvoiceForm });
     setInvoiceError("");
   };
 
@@ -237,14 +359,18 @@ const ServiceOrderPage = () => {
   };
 
   const submitInvoiceDialog = async () => {
-    if (!invoiceFor || invoiceSubmitting) return;
+    if (!invoiceFor || invoiceSubmitting || invoiceRedirectTimerRef.current) return;
+    const mutationScope = captureMutationScope();
+    const targetOrderId = invoiceFor.id;
+    const targetInvoiceNo = invoiceFor.invoiceNo;
+    const invoicePayload = { ...invoiceForm };
     setInvoiceSubmitting(true);
     setInvoiceError("");
     try {
-      const result = await createInvoiceFromOrder(invoiceFor.id, invoiceForm);
-      // Backend returns { invoice, order }; update local state to the
-      // post-write rows so the list reflects status=invoiced and the
-      // back-link without a manual refetch.
+      const result = await createInvoiceFromOrder(targetOrderId, invoicePayload);
+      if (!isMutationScopeCurrent(mutationScope)) return;
+      // Backend returns { invoice, order }; update the local row only when
+      // the response still belongs to the active store scope.
       if (result && result.order) {
         setOrders((prev) => prev.map((o) => (o.id === result.order.id ? result.order : o)));
       } else if (result && result.invoice) {
@@ -252,7 +378,7 @@ const ServiceOrderPage = () => {
         // the local row with the known invoiceNo.
         setOrders((prev) =>
           prev.map((o) =>
-            o.id === invoiceFor.id
+            o.id === targetOrderId
               ? { ...o, status: "invoiced", invoiceNo: result.invoice.invoiceNo }
               : o
           )
@@ -260,13 +386,14 @@ const ServiceOrderPage = () => {
       }
       window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "orders" }));
       window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "invoices" }));
-      const invoiceNo =
-        (result && result.invoice && result.invoice.invoiceNo) || invoiceFor.invoiceNo;
+      reloadRef.current?.();
+      const invoiceNo = (result && result.invoice && result.invoice.invoiceNo) || targetInvoiceNo;
       closeInvoiceDialog();
       if (invoiceNo) {
         navigate(`/invoice/${invoiceNo}/preview`);
       }
     } catch (err) {
+      if (!isMutationScopeCurrent(mutationScope)) return;
       console.error("Failed to create invoice from order:", err);
       // Backend signals ORDER_ALREADY_INVOICED with body.invoiceNo so
       // the cashier can jump to the existing bill instead of seeing a
@@ -275,13 +402,16 @@ const ServiceOrderPage = () => {
         const existing = err.body.invoiceNo;
         setOrders((prev) =>
           prev.map((o) =>
-            o.id === invoiceFor.id ? { ...o, status: "invoiced", invoiceNo: existing } : o
+            o.id === targetOrderId ? { ...o, status: "invoiced", invoiceNo: existing } : o
           )
         );
         setInvoiceError(
           `This order was already billed as ${existing}. Opening the existing invoice.`
         );
-        setTimeout(() => {
+        clearInvoiceRedirectTimer();
+        invoiceRedirectTimerRef.current = window.setTimeout(() => {
+          invoiceRedirectTimerRef.current = null;
+          if (!isMutationScopeCurrent(mutationScope) || invoiceFor?.id !== targetOrderId) return;
           closeInvoiceDialog();
           if (existing) navigate(`/invoice/${existing}/preview`);
         }, 1200);
@@ -289,7 +419,7 @@ const ServiceOrderPage = () => {
       }
       setInvoiceError(err.message || "Failed to create invoice. Please try again.");
     } finally {
-      setInvoiceSubmitting(false);
+      if (isMutationScopeCurrent(mutationScope)) setInvoiceSubmitting(false);
     }
   };
 

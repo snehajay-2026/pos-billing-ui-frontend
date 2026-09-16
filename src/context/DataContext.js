@@ -38,6 +38,16 @@ const DataContext = createContext(null);
 
 const REFRESH_INTERVAL_MS = 60_000;
 
+const getDataScopeKey = () => {
+  const user = getUser();
+  return JSON.stringify({
+    email: user?.email || "",
+    role: user?.role || "",
+    storeType: user?.storeType || "",
+    storeId: user?.storeId || "",
+  });
+};
+
 export const DataProvider = ({ children }) => {
   const isAuthenticated = useIsAuthenticated();
   const [products, setProducts] = useState([]);
@@ -45,12 +55,26 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const productsRef = useRef(products);
+  const ordersRef = useRef(orders);
   const inFlightRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
+  const scopeKeyRef = useRef(getDataScopeKey());
+  const scopeGenerationRef = useRef(0);
+  const requestGenerationRef = useRef(0);
+  const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    if (inFlightRef.current) return;
+    if (inFlightRef.current) {
+      pendingRefreshRef.current = true;
+      return;
+    }
+
     inFlightRef.current = true;
     setLoading(true);
+    const requestGeneration = ++requestGenerationRef.current;
+    const scopeGeneration = scopeGenerationRef.current;
+    const requestScopeKey = scopeKeyRef.current;
     try {
       const [productResult, orderResult] = await Promise.allSettled([getProducts(), getOrders()]);
 
@@ -58,41 +82,77 @@ export const DataProvider = ({ children }) => {
       // expired). Quietly treat that as "no data yet" rather than logging.
       const isAuthFailure = (result) =>
         result.status === "rejected" && /401|Unauthorized/i.test(String(result.reason?.message));
+      const isCurrent =
+        mountedRef.current &&
+        requestGeneration === requestGenerationRef.current &&
+        scopeGeneration === scopeGenerationRef.current &&
+        requestScopeKey === scopeKeyRef.current;
 
-      const failedSources = [];
-      let nextProducts = products;
-      let nextOrders = orders;
-      if (productResult.status === "fulfilled") {
-        nextProducts = Array.isArray(productResult.value) ? productResult.value : [];
-      } else if (!isAuthFailure(productResult)) {
-        failedSources.push("products");
-        console.warn("DataContext: getProducts failed", productResult.reason);
-      }
-      if (orderResult.status === "fulfilled") {
-        nextOrders = Array.isArray(orderResult.value) ? orderResult.value : [];
-      } else if (!isAuthFailure(orderResult)) {
-        failedSources.push("orders");
-        console.warn("DataContext: getOrders failed", orderResult.reason);
-      }
+      if (isCurrent) {
+        const failedSources = [];
+        const nextProducts =
+          productResult.status === "fulfilled"
+            ? Array.isArray(productResult.value)
+              ? productResult.value
+              : []
+            : productsRef.current;
+        const nextOrders =
+          orderResult.status === "fulfilled"
+            ? Array.isArray(orderResult.value)
+              ? orderResult.value
+              : []
+            : ordersRef.current;
+        if (productResult.status !== "fulfilled" && !isAuthFailure(productResult)) {
+          failedSources.push("products");
+          console.warn("DataContext: getProducts failed", productResult.reason);
+        }
+        if (orderResult.status !== "fulfilled" && !isAuthFailure(orderResult)) {
+          failedSources.push("orders");
+          console.warn("DataContext: getOrders failed", orderResult.reason);
+        }
 
-      setProducts(nextProducts);
-      setOrders(nextOrders);
-      setError(failedSources.length ? `Couldn't load: ${failedSources.join(", ")}` : null);
-      setLastFetchedAt(new Date());
+        productsRef.current = nextProducts;
+        ordersRef.current = nextOrders;
+        setProducts(nextProducts);
+        setOrders(nextOrders);
+        setError(failedSources.length ? `Couldn't load: ${failedSources.join(", ")}` : null);
+        setLastFetchedAt(new Date());
+      }
     } finally {
-      setLoading(false);
+      const isCurrentRequest =
+        mountedRef.current &&
+        requestGeneration === requestGenerationRef.current &&
+        scopeGeneration === scopeGenerationRef.current &&
+        requestScopeKey === scopeKeyRef.current;
       inFlightRef.current = false;
+      if (mountedRef.current && pendingRefreshRef.current && getUser()) {
+        pendingRefreshRef.current = false;
+        refresh();
+      } else if (isCurrentRequest && !pendingRefreshRef.current) {
+        setLoading(false);
+      }
     }
-    // We intentionally don't depend on `products` / `orders` here — that would
-    // cause an infinite refetch loop. The functional setters below are not
-    // available here because we want to compare failure paths.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // We intentionally keep this callback stable — adding products/orders
+    // would cause the polling and realtime listeners to recreate and loop.
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      scopeGenerationRef.current += 1;
+      requestGenerationRef.current += 1;
+      pendingRefreshRef.current = false;
+    };
   }, []);
 
   // Initial fetch + 60s polling while the tab is visible.
   useEffect(() => {
     if (!isAuthenticated) {
       // User isn't signed in — clear any stale data and don't bother the API.
+      productsRef.current = [];
+      ordersRef.current = [];
+      pendingRefreshRef.current = false;
       setProducts([]);
       setOrders([]);
       setError(null);
@@ -134,10 +194,21 @@ export const DataProvider = ({ children }) => {
   // Invalidate the cache when the active store or auth state changes.
   useEffect(() => {
     const invalidate = () => {
+      scopeGenerationRef.current += 1;
+      requestGenerationRef.current += 1;
+      scopeKeyRef.current = getDataScopeKey();
+      productsRef.current = [];
+      ordersRef.current = [];
       setProducts([]);
       setOrders([]);
+      setError(null);
       setLastFetchedAt(null);
-      refresh();
+      if (getUser()) {
+        refresh();
+      } else {
+        pendingRefreshRef.current = false;
+        setLoading(false);
+      }
     };
     window.addEventListener("activeStoreChanged", invalidate);
     window.addEventListener("authChanged", invalidate);
@@ -165,15 +236,14 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const unsub = onRealtimeSyncEvent((detail) => {
       const kind = detail?.kind;
-      if (kind !== "invoice" && kind !== "stock" && kind !== "booking") return;
+      if (!["invoice", "stock", "booking", "order", "service"].includes(kind)) return;
 
-      // Sound: only when tab is visible AND the event came from another
-      // user (the SSE server includes `actor` for invoice events; booking
-      // events also include `createdBy`). Falls back to "play anyway" when
-      // no actor info is present, since the server still scopes events
-      // per-store and this user is one of many.
+      // Sound is only supported for the existing invoice/stock/booking
+      // notifications. Order and service events are change notifications,
+      // not audible alerts.
+      const supportsSound = ["invoice", "stock", "booking"].includes(kind);
       const isVisible = typeof document === "undefined" || !document.hidden;
-      if (isVisible) {
+      if (supportsSound && isVisible) {
         try {
           const actor =
             detail?.event?.invoice?.createdBy ||
@@ -275,8 +345,9 @@ export const DataProvider = ({ children }) => {
         }
       }
 
-      // Pull fresh products so the bell badge updates without a 60s wait.
-      refresh();
+      // Pull fresh products/orders so the shared cache updates without a
+      // 60s wait. Service catalog events have no DataContext cache to warm.
+      if (kind !== "service") refresh();
     });
     return unsub;
   }, [refresh]);

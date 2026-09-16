@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import KpiCard from "../components/dashboard/KpiCard";
@@ -22,6 +22,7 @@ import "chart.js/auto";
 import { getInvoices } from "../services/invoiceService";
 import { getServices } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
+import { getUser } from "../utils/auth";
 import { computeStatus } from "../utils/invoiceStatus";
 import "./ServiceAdminDashboard.css";
 
@@ -225,48 +226,124 @@ const formatDate = (s) => {
 };
 
 /* ---------- component ---------- */
+const getDashboardScopeKey = (activeStore) => {
+  const user = getUser();
+  return JSON.stringify({
+    email: user?.email || "",
+    role: user?.role || "",
+    storeType: user?.storeType || "",
+    storeId: user?.storeId || "",
+    activeStoreType: activeStore?.storeType || "",
+    activeStoreId: activeStore?.storeId || "",
+  });
+};
+
 const ServiceAdminDashboard = () => {
   const [invoices, setInvoices] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const loadGenerationRef = useRef(0);
   const [range, setRange] = useState("MONTH");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [search, setSearch] = useState("");
   const [paymentBucket, setPaymentBucket] = useState("ALL");
   const { activeStore } = useUi();
+  const scopeKey = useMemo(() => getDashboardScopeKey(activeStore), [activeStore]);
+  const scopeKeyRef = useRef("");
+  const scopeGenerationRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const pendingRef = useRef(false);
+  const reloadTimerRef = useRef(null);
 
-  const load = async () => {
+  useLayoutEffect(() => {
+    scopeGenerationRef.current += 1;
+    scopeKeyRef.current = scopeKey;
+    setInvoices([]);
+    setServices([]);
+    setLoadError("");
+
+    return () => {
+      scopeGenerationRef.current += 1;
+    };
+  }, [scopeKey]);
+
+  const load = useCallback(async () => {
+    if (inFlightRef.current) {
+      pendingRef.current = true;
+      return;
+    }
+    const generation = ++loadGenerationRef.current;
+    const scopeGeneration = scopeGenerationRef.current;
+    const requestScopeKey = scopeKeyRef.current;
+    inFlightRef.current = true;
     setLoading(true);
+    setLoadError("");
     try {
       const [invs, srvs] = await Promise.all([getInvoices(), getServices()]);
+      if (
+        generation !== loadGenerationRef.current ||
+        scopeGeneration !== scopeGenerationRef.current ||
+        requestScopeKey !== scopeKeyRef.current
+      ) {
+        return;
+      }
       setInvoices(Array.isArray(invs) ? invs : []);
       setServices(Array.isArray(srvs) ? srvs : []);
     } catch (err) {
+      if (
+        generation !== loadGenerationRef.current ||
+        scopeGeneration !== scopeGenerationRef.current ||
+        requestScopeKey !== scopeKeyRef.current
+      ) {
+        return;
+      }
       console.error("Failed to load service dashboard data", err);
       setInvoices([]);
       setServices([]);
+      setLoadError("Unable to load service dashboard data.");
     } finally {
-      setLoading(false);
+      const isCurrentRequest =
+        generation === loadGenerationRef.current &&
+        scopeGeneration === scopeGenerationRef.current &&
+        requestScopeKey === scopeKeyRef.current;
+      inFlightRef.current = false;
+      if (pendingRef.current && getUser()) {
+        pendingRef.current = false;
+        load();
+      } else if (isCurrentRequest) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      if (cancelled) return;
-      await load();
+    const scheduleLoad = () => {
+      if (cancelled || reloadTimerRef.current) return;
+      reloadTimerRef.current = window.setTimeout(() => {
+        reloadTimerRef.current = null;
+        if (!cancelled) load();
+      }, 0);
     };
-    run();
     const onDataUpdated = (e) => {
-      if (e?.detail === "invoices" || e?.detail === "services") load();
+      if (e?.detail === "invoices" || e?.detail === "services") scheduleLoad();
     };
+    const onServicesUpdated = () => scheduleLoad();
+    scheduleLoad();
     window.addEventListener("dataUpdated", onDataUpdated);
+    window.addEventListener("servicesUpdated", onServicesUpdated);
     return () => {
       cancelled = true;
+      loadGenerationRef.current += 1;
+      pendingRef.current = false;
+      if (reloadTimerRef.current) window.clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = null;
       window.removeEventListener("dataUpdated", onDataUpdated);
+      window.removeEventListener("servicesUpdated", onServicesUpdated);
     };
-  }, [activeStore]);
+  }, [scopeKey, load]);
 
   const invoicesForRange = useMemo(
     () => filterInvoices(invoices, range, customFrom, customTo),
@@ -465,6 +542,11 @@ const ServiceAdminDashboard = () => {
   return (
     <Layout>
       <div className="dashboard-page sd-page">
+        {loadError && (
+          <div className="sd-load-error" role="alert">
+            {loadError}
+          </div>
+        )}
         {/* HERO */}
         <div className="sd-hero">
           <div className="sd-hero-bg" aria-hidden="true" />
