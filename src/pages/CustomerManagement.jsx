@@ -84,7 +84,30 @@ const CustomerManagement = () => {
   };
 
   useEffect(() => {
-    loadCustomers();
+    let inFlight = false;
+    let pending = false;
+    const loadCoalesced = async () => {
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      try {
+        await loadCustomers();
+      } finally {
+        inFlight = false;
+        if (pending) {
+          pending = false;
+          loadCoalesced();
+        }
+      }
+    };
+    loadCoalesced();
+    const onDataUpdated = (event) => {
+      if (event.detail === "customers") loadCoalesced();
+    };
+    window.addEventListener("dataUpdated", onDataUpdated);
+    return () => window.removeEventListener("dataUpdated", onDataUpdated);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 

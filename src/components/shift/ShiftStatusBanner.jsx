@@ -5,6 +5,7 @@ import {
   currentStoreNeedsShift,
   canCloseShiftClient,
 } from "../../services/shiftService";
+import { onRealtimeSyncEvent } from "../../services/realtimeSync";
 import { getUser } from "../../utils/auth";
 import "./shiftStatusBanner.css";
 
@@ -41,13 +42,36 @@ const ShiftStatusBanner = ({ onOpen, onClose, onOpened }) => {
       }
     };
 
-    refresh();
-    const interval = setInterval(refresh, 30000);
-    const onAuthChange = () => refresh();
-    const onFocus = () => refresh();
+    let inFlight = false;
+    let pending = false;
+    const refreshCoalesced = async () => {
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      try {
+        await refresh();
+      } finally {
+        inFlight = false;
+        if (pending) {
+          pending = false;
+          refreshCoalesced();
+        }
+      }
+    };
+
+    refreshCoalesced();
+    const interval = setInterval(refreshCoalesced, 30000);
+    const onAuthChange = () => refreshCoalesced();
+    const onFocus = () => refreshCoalesced();
+    const onRealtime = (detail) => {
+      if (detail?.kind === "shift") refreshCoalesced();
+    };
     window.addEventListener("authChanged", onAuthChange);
     window.addEventListener("activeStoreChanged", onAuthChange);
     window.addEventListener("focus", onFocus);
+    const unsubscribeRealtime = onRealtimeSyncEvent(onRealtime);
 
     return () => {
       cancelled = true;
@@ -55,6 +79,7 @@ const ShiftStatusBanner = ({ onOpen, onClose, onOpened }) => {
       window.removeEventListener("authChanged", onAuthChange);
       window.removeEventListener("activeStoreChanged", onAuthChange);
       window.removeEventListener("focus", onFocus);
+      unsubscribeRealtime();
     };
   }, [user]);
 

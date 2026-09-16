@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { getInvoiceByNo, updateInvoice } from "../../services/invoiceService";
+import { onRealtimeSyncEvent } from "../../services/realtimeSync";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -407,11 +408,17 @@ const InvoiceView = () => {
 
     loadInvoice();
     syncSettings();
+    const unsubscribeRealtime = onRealtimeSyncEvent((detail) => {
+      if (detail?.kind !== "invoice") return;
+      const eventInvoiceNo = detail.event?.invoice?.invoiceNo;
+      if (!eventInvoiceNo || String(eventInvoiceNo) === String(invoiceNo)) loadInvoice();
+    });
     window.addEventListener("activeStoreChanged", syncSettings);
     window.addEventListener("authChanged", syncSettings);
     window.addEventListener("storeSettingsChanged", syncSettings);
 
     return () => {
+      unsubscribeRealtime();
       window.removeEventListener("activeStoreChanged", syncSettings);
       window.removeEventListener("authChanged", syncSettings);
       window.removeEventListener("storeSettingsChanged", syncSettings);

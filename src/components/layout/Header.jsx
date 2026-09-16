@@ -12,6 +12,7 @@ import {
   canCloseShiftClient,
   currentStoreNeedsShift,
 } from "../../services/shiftService";
+import { onRealtimeSyncEvent } from "../../services/realtimeSync";
 import CloseShiftDialog from "../shift/CloseShiftDialog";
 import {
   getStoreSettings,
@@ -394,16 +395,39 @@ const Header = ({ toggleSidebar }) => {
     refreshActiveShift();
   }, [refreshActiveShift]);
   useEffect(() => {
-    const onAuthChange = () => refreshActiveShift();
-    const onFocus = () => refreshActiveShift();
+    let inFlight = false;
+    let pending = false;
+    const refreshCoalesced = async () => {
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      try {
+        await refreshActiveShift();
+      } finally {
+        inFlight = false;
+        if (pending) {
+          pending = false;
+          refreshCoalesced();
+        }
+      }
+    };
+    const onAuthChange = () => refreshCoalesced();
+    const onFocus = () => refreshCoalesced();
+    const onRealtime = (detail) => {
+      if (detail?.kind === "shift") refreshCoalesced();
+    };
     window.addEventListener("authChanged", onAuthChange);
     window.addEventListener("activeStoreChanged", onAuthChange);
     window.addEventListener("focus", onFocus);
-    const interval = setInterval(refreshActiveShift, 30000);
+    const unsubscribeRealtime = onRealtimeSyncEvent(onRealtime);
+    const interval = setInterval(refreshCoalesced, 30000);
     return () => {
       window.removeEventListener("authChanged", onAuthChange);
       window.removeEventListener("activeStoreChanged", onAuthChange);
       window.removeEventListener("focus", onFocus);
+      unsubscribeRealtime();
       clearInterval(interval);
     };
   }, [refreshActiveShift]);

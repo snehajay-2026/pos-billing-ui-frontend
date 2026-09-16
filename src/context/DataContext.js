@@ -236,7 +236,19 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const unsub = onRealtimeSyncEvent((detail) => {
       const kind = detail?.kind;
-      if (!["invoice", "stock", "booking", "order", "service"].includes(kind)) return;
+      if (
+        ![
+          "invoice",
+          "stock",
+          "booking",
+          "order",
+          "service",
+          "customer",
+          "customer_credit",
+          "shift",
+        ].includes(kind)
+      )
+        return;
 
       // Sound is only supported for the existing invoice/stock/booking
       // notifications. Order and service events are change notifications,
@@ -298,11 +310,37 @@ export const DataProvider = ({ children }) => {
         }
       }
 
-      // Invoice checkout elsewhere in the store → let every page that
-      // listens for "dataUpdated" refresh its own copy.
+      // Invoice checkout/status change elsewhere in the store → let every
+      // page that listens for "dataUpdated" refresh its own copy.
       if (kind === "invoice") {
         try {
           window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "invoices" }));
+        } catch {
+          /* SSR */
+        }
+      }
+
+      // Shift writes invalidate active-shift and summary reads. Consumers
+      // keep their existing polling fallback and fetch authoritative data.
+      if (kind === "shift") {
+        try {
+          window.dispatchEvent(new Event("shiftUpdated"));
+        } catch {
+          /* SSR */
+        }
+      }
+
+      if (kind === "customer") {
+        try {
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "customers" }));
+        } catch {
+          /* SSR */
+        }
+      }
+
+      if (kind === "customer_credit") {
+        try {
+          window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "customerCredits" }));
         } catch {
           /* SSR */
         }
@@ -346,8 +384,9 @@ export const DataProvider = ({ children }) => {
       }
 
       // Pull fresh products/orders so the shared cache updates without a
-      // 60s wait. Service catalog events have no DataContext cache to warm.
-      if (kind !== "service") refresh();
+      // 60s wait. Service, shift, customer, and credit events have their own
+      // consumers and do not belong in this cache.
+      if (!["service", "shift", "customer", "customer_credit"].includes(kind)) refresh();
     });
     return unsub;
   }, [refresh]);

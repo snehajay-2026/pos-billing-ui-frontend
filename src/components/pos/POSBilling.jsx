@@ -21,6 +21,7 @@ import "./POSBillingPro.css";
 import * as XLSX from "xlsx";
 import { getStoreSettings } from "../../services/storeSettingsService";
 import { getUser } from "../../utils/auth";
+import { onRealtimeSyncEvent } from "../../services/realtimeSync";
 import {
   FaCashRegister,
   FaCheckCircle,
@@ -241,17 +242,40 @@ const POSBilling = () => {
     }
   }, []);
   useEffect(() => {
-    refreshActiveShift();
-    const onAuth = () => refreshActiveShift();
-    const onFocus = () => refreshActiveShift();
+    let inFlight = false;
+    let pending = false;
+    const refreshCoalesced = async () => {
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      try {
+        await refreshActiveShift();
+      } finally {
+        inFlight = false;
+        if (pending) {
+          pending = false;
+          refreshCoalesced();
+        }
+      }
+    };
+    refreshCoalesced();
+    const onAuth = () => refreshCoalesced();
+    const onFocus = () => refreshCoalesced();
+    const onRealtime = (detail) => {
+      if (detail?.kind === "shift") refreshCoalesced();
+    };
     window.addEventListener("authChanged", onAuth);
     window.addEventListener("activeStoreChanged", onAuth);
     window.addEventListener("focus", onFocus);
-    const interval = setInterval(refreshActiveShift, 30000);
+    const unsubscribeRealtime = onRealtimeSyncEvent(onRealtime);
+    const interval = setInterval(refreshCoalesced, 30000);
     return () => {
       window.removeEventListener("authChanged", onAuth);
       window.removeEventListener("activeStoreChanged", onAuth);
       window.removeEventListener("focus", onFocus);
+      unsubscribeRealtime();
       clearInterval(interval);
     };
   }, [refreshActiveShift]);

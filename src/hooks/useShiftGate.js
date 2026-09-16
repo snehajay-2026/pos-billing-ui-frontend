@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getActiveShift, currentStoreNeedsShift } from "../services/shiftService";
+import { onRealtimeSyncEvent } from "../services/realtimeSync";
 import { getUser } from "../utils/auth";
 
 /**
@@ -226,23 +227,45 @@ export function useShiftGate(options = {}) {
   // Polling + window event subscriptions so the chip updates when
   // a shift is opened / closed anywhere in the app.
   useEffect(() => {
-    refreshActiveShift();
-    const onAuth = () => refreshActiveShift();
-    const onFocus = () => refreshActiveShift();
+    let inFlight = false;
+    let pending = false;
+    const refreshCoalesced = async () => {
+      if (inFlight) {
+        pending = true;
+        return;
+      }
+      inFlight = true;
+      try {
+        await refreshActiveShift();
+      } finally {
+        inFlight = false;
+        if (pending) {
+          pending = false;
+          refreshCoalesced();
+        }
+      }
+    };
+
+    refreshCoalesced();
+    const onAuth = () => refreshCoalesced();
+    const onFocus = () => refreshCoalesced();
     const onStoreChange = () => {
-      // Switching store invalidates the opt-out — the user expects the
-      // gate to re-evaluate under the new store's shift rules.
       setOptOut(false);
-      refreshActiveShift();
+      refreshCoalesced();
+    };
+    const onRealtime = (detail) => {
+      if (detail?.kind === "shift") refreshCoalesced();
     };
     window.addEventListener("authChanged", onAuth);
     window.addEventListener("activeStoreChanged", onStoreChange);
     window.addEventListener("focus", onFocus);
-    const interval = setInterval(refreshActiveShift, 30000);
+    const unsubscribeRealtime = onRealtimeSyncEvent(onRealtime);
+    const interval = setInterval(refreshCoalesced, 30000);
     return () => {
       window.removeEventListener("authChanged", onAuth);
       window.removeEventListener("activeStoreChanged", onStoreChange);
       window.removeEventListener("focus", onFocus);
+      unsubscribeRealtime();
       clearInterval(interval);
     };
   }, [refreshActiveShift]);

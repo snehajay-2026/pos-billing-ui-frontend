@@ -116,6 +116,8 @@ const connect = (url, scopeKey) => {
   es.addEventListener("shift", relay("shift"));
   es.addEventListener("order", relay("order"));
   es.addEventListener("service", relay("service"));
+  es.addEventListener("customer", relay("customer"));
+  es.addEventListener("customer_credit", relay("customer_credit"));
   es.addEventListener("message", relay("message"));
 
   es.onerror = () => {
