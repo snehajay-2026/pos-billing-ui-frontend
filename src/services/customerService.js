@@ -76,3 +76,18 @@ export const searchCustomers = async ({ name, phone } = {}) => {
   if (phone) params.phone = phone;
   return apiGet("/api/customers", params);
 };
+
+// Approve or reject a pending customer. The backend route lives at
+// POST /api/customers/:id/approve (placed before the generic
+// /api/:resource/:id route so it isn't shadowed). Status must be either
+// "approved" or "rejected"; rejected requires a non-empty reason. On
+// success we dispatch a window event so all CustomerManagement tabs and
+// the POS customer-search dropdown refresh without waiting for SSE.
+export const approveCustomer = async (id, { status, reason } = {}) => {
+  const updated = await apiPost(`/api/customers/${encodeURIComponent(id)}/approve`, {
+    status,
+    reason: reason || "",
+  });
+  window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "customers" }));
+  return updated;
+};

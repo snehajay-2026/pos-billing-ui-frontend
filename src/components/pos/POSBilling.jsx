@@ -335,7 +335,16 @@ const POSBilling = () => {
     customerSearchTimerRef.current = setTimeout(async () => {
       try {
         const results = await searchCustomers({ name: q });
-        setCustomerMatches(Array.isArray(results) ? results.slice(0, 8) : []);
+        // Customer-approval workflow (Option B): only approved rows are
+        // billable. Backend list() returns the full set so admins still see
+        // pending rows in CustomerManagement; the POS dropdown enforces
+        // the billing restriction on top. Cashiers already only see
+        // approved rows in the API response, but the client-side guard
+        // keeps the rule consistent across roles.
+        const billable = (Array.isArray(results) ? results : []).filter(
+          (c) => !c.approvalStatus || c.approvalStatus === "approved"
+        );
+        setCustomerMatches(billable.slice(0, 8));
       } catch (err) {
         // Soft-fail: a transient search error shouldn't break the checkout.
         setCustomerMatches([]);

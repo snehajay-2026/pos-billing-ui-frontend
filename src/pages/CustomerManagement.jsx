@@ -14,8 +14,12 @@ import {
   FaStickyNote,
   FaArrowLeft,
   FaCheckCircle,
+  FaCheck,
+  FaTimes,
+  FaBan,
 } from "react-icons/fa";
 import {
+  approveCustomer,
   createCustomer,
   deleteCustomer,
   getCustomers,
@@ -26,6 +30,7 @@ import { getUserRole } from "../utils/auth";
 import "./UserManagement.css";
 
 const ADMIN_ROLES = new Set(["SUPER_OWNER", "STORE_ADMIN", "ADMIN"]);
+const STATUS_FILTERS = ["all", "pending", "approved", "rejected"];
 
 const emptyForm = () => ({
   name: "",
@@ -45,10 +50,34 @@ const formatDate = (iso) => {
   }
 };
 
+const StatusBadge = ({ status, reason }) => {
+  if (!status) return null;
+  const cls =
+    status === "pending"
+      ? "user-mgmt-status-pending"
+      : status === "approved"
+        ? "user-mgmt-status-approved"
+        : "user-mgmt-status-rejected";
+  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  const title = status === "rejected" && reason ? `Rejected: ${reason}` : `Status: ${label}`;
+  return (
+    <span
+      className={`user-mgmt-status-badge ${cls}`}
+      title={title}
+      data-testid={`customer-status-${status}`}
+    >
+      {label}
+    </span>
+  );
+};
+
 const CustomerManagement = () => {
   const navigate = useNavigate();
   const role = getUserRole();
-  const canManage = ADMIN_ROLES.has(role);
+  const canApprove = ADMIN_ROLES.has(role);
+  // Cashiers see only approved rows by default; admins start on "all" so
+  // they can spot pending work without an extra click.
+  const [statusFilter, setStatusFilter] = useState(canApprove ? "all" : "approved");
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +90,10 @@ const CustomerManagement = () => {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  // Reject modal state.
+  const [rejectTarget, setRejectTarget] = useState(null); // customer object
+  const [rejectReason, setRejectReason] = useState("");
 
   // Debounce search input → server query.
   useEffect(() => {
@@ -173,6 +206,59 @@ const CustomerManagement = () => {
     }
   };
 
+  const handleApprove = async (customer) => {
+    setError("");
+    try {
+      await approveCustomer(customer.id, { status: "approved" });
+      await loadCustomers();
+    } catch (err) {
+      setError(err.message || "Failed to approve customer");
+    }
+  };
+
+  const openReject = (customer) => {
+    setRejectTarget(customer);
+    setRejectReason("");
+  };
+
+  const closeReject = () => {
+    setRejectTarget(null);
+    setRejectReason("");
+  };
+
+  const handleReject = async (e) => {
+    e.preventDefault();
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setError("Rejection reason is required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await approveCustomer(rejectTarget.id, { status: "rejected", reason });
+      closeReject();
+      await loadCustomers();
+    } catch (err) {
+      setError(err.message || "Failed to reject customer");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredCustomers =
+    statusFilter === "all"
+      ? customers
+      : customers.filter((c) => (c.approvalStatus || "approved") === statusFilter);
+
+  const counts = STATUS_FILTERS.reduce((acc, k) => {
+    acc[k] =
+      k === "all"
+        ? customers.length
+        : customers.filter((c) => (c.approvalStatus || "approved") === k).length;
+    return acc;
+  }, {});
+
   const totalCount = customers.length;
   // Placeholder for the follow-on credit/udhaar ledger slice. The count
   // itself is wired today (counts every customer), but the math isn't.
@@ -184,7 +270,7 @@ const CustomerManagement = () => {
         <button
           type="button"
           className="user-mgmt-back"
-          onClick={() => navigate(canManage ? "/dashboard" : "/pos")}
+          onClick={() => navigate(canApprove ? "/dashboard" : "/pos")}
           aria-label="Back"
         >
           <FaArrowLeft /> Back
@@ -195,7 +281,11 @@ const CustomerManagement = () => {
             <FaUserTie />
             <div>
               <h1>Customers</h1>
-              <p>Manage customer records for repeat visits, udhaar ledger, and refunds.</p>
+              <p>
+                Manage customer records for repeat visits, udhaar ledger, and refunds.
+                {!canApprove &&
+                  " New customers you submit are reviewed by an Admin before they can be billed."}
+              </p>
             </div>
           </div>
           <div className="user-mgmt-stats">
@@ -210,11 +300,9 @@ const CustomerManagement = () => {
               <span className="user-mgmt-stat-label">Outstanding</span>
               <span className="user-mgmt-stat-value">{outstandingCount}</span>
             </div>
-            {canManage && (
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
-                <FaPlus /> New Customer
-              </button>
-            )}
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <FaPlus /> {canApprove ? "New Customer" : "Submit Customer"}
+            </button>
           </div>
         </header>
 
@@ -233,6 +321,24 @@ const CustomerManagement = () => {
           </InputGroup>
         </div>
 
+        {canApprove && (
+          <div className="user-mgmt-tabs" role="tablist" aria-label="Filter customers by status">
+            {STATUS_FILTERS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === key}
+                className={`user-mgmt-tab${statusFilter === key ? " is-active" : ""}`}
+                onClick={() => setStatusFilter(key)}
+              >
+                {key.charAt(0).toUpperCase() + key.slice(1)}
+                <span className="user-mgmt-tab-count">{counts[key]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {error && <div className="user-mgmt-error">{error}</div>}
 
         <div className="user-mgmt-card">
@@ -243,90 +349,149 @@ const CustomerManagement = () => {
                 <th>Phone</th>
                 <th>Email</th>
                 <th>GSTIN</th>
+                <th>Status</th>
+                <th>Created by</th>
+                {canApprove && <th>Approved by</th>}
                 <th>Added</th>
-                {canManage && <th aria-label="Actions"></th>}
+                <th aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="user-mgmt-empty">
+                  <td colSpan={canApprove ? 9 : 8} className="user-mgmt-empty">
                     Loading…
                   </td>
                 </tr>
-              ) : customers.length === 0 ? (
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="user-mgmt-empty">
+                  <td colSpan={canApprove ? 9 : 8} className="user-mgmt-empty">
                     {search
                       ? `No customers match “${search}”.`
-                      : "No customers yet. Click New Customer to add one."}
+                      : statusFilter === "pending"
+                        ? "No pending customers to review."
+                        : "No customers yet. Click Submit Customer to add one."}
                   </td>
                 </tr>
               ) : (
-                customers.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <strong>{c.name}</strong>
-                    </td>
-                    <td>
-                      {c.phone ? (
-                        <span>
-                          <FaPhoneAlt /> {c.phone}
-                        </span>
-                      ) : (
-                        <span className="user-mgmt-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {c.email ? (
-                        <span>
-                          <FaEnvelope /> {c.email}
-                        </span>
-                      ) : (
-                        <span className="user-mgmt-muted">—</span>
-                      )}
-                    </td>
-                    <td>{c.gstin || <span className="user-mgmt-muted">—</span>}</td>
-                    <td>{formatDate(c.createdAt)}</td>
-                    {canManage && (
-                      <td className="user-mgmt-actions">
-                        <button
-                          type="button"
-                          className="user-mgmt-action-btn"
-                          onClick={() => openEdit(c)}
-                          aria-label={`Edit ${c.name}`}
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          type="button"
-                          className={`user-mgmt-action-btn user-mgmt-danger${
-                            confirmDeleteId === c.id ? " is-confirming" : ""
-                          }`}
-                          onClick={() => {
-                            if (confirmDeleteId === c.id) {
-                              handleDelete(c.id);
-                            } else {
-                              setConfirmDeleteId(c.id);
-                              setTimeout(() => {
-                                setConfirmDeleteId((cur) => (cur === c.id ? null : cur));
-                              }, 4000);
-                            }
-                          }}
-                          aria-label={
-                            confirmDeleteId === c.id
-                              ? `Click again to confirm deleting ${c.name}`
-                              : `Delete ${c.name}`
-                          }
-                          title={confirmDeleteId === c.id ? "Click again to confirm" : "Delete"}
-                        >
-                          {confirmDeleteId === c.id ? <FaCheckCircle /> : <FaTrash />}
-                        </button>
+                filteredCustomers.map((c) => {
+                  const status = c.approvalStatus || "approved";
+                  const isPending = status === "pending";
+                  return (
+                    <tr key={c.id}>
+                      <td>
+                        <strong>{c.name}</strong>
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td>
+                        {c.phone ? (
+                          <span>
+                            <FaPhoneAlt /> {c.phone}
+                          </span>
+                        ) : (
+                          <span className="user-mgmt-muted">—</span>
+                        )}
+                      </td>
+                      <td>
+                        {c.email ? (
+                          <span>
+                            <FaEnvelope /> {c.email}
+                          </span>
+                        ) : (
+                          <span className="user-mgmt-muted">—</span>
+                        )}
+                      </td>
+                      <td>{c.gstin || <span className="user-mgmt-muted">—</span>}</td>
+                      <td>
+                        <StatusBadge status={status} reason={c.rejectionReason} />
+                      </td>
+                      <td>
+                        <span title={c.createdByEmail || ""}>
+                          {c.createdByEmail || <span className="user-mgmt-muted">—</span>}
+                        </span>
+                        <div className="user-mgmt-muted">{formatDate(c.createdAt)}</div>
+                      </td>
+                      {canApprove && (
+                        <td>
+                          {status === "approved" && c.approvedByEmail ? (
+                            <>
+                              <span title={c.approvedByEmail}>{c.approvedByEmail}</span>
+                              <div className="user-mgmt-muted">{formatDate(c.approvedAt)}</div>
+                            </>
+                          ) : status === "rejected" && c.rejectedByEmail ? (
+                            <>
+                              <span title={c.rejectedByEmail}>{c.rejectedByEmail}</span>
+                              <div className="user-mgmt-muted">{formatDate(c.rejectedAt)}</div>
+                            </>
+                          ) : (
+                            <span className="user-mgmt-muted">—</span>
+                          )}
+                        </td>
+                      )}
+                      <td>{formatDate(c.createdAt)}</td>
+                      <td className="user-mgmt-actions">
+                        {canApprove && isPending && (
+                          <>
+                            <button
+                              type="button"
+                              className="user-mgmt-action-btn user-mgmt-approve"
+                              onClick={() => handleApprove(c)}
+                              aria-label={`Approve ${c.name}`}
+                              title="Approve"
+                            >
+                              <FaCheck />
+                            </button>
+                            <button
+                              type="button"
+                              className="user-mgmt-action-btn user-mgmt-reject"
+                              onClick={() => openReject(c)}
+                              aria-label={`Reject ${c.name}`}
+                              title="Reject"
+                            >
+                              <FaTimes />
+                            </button>
+                          </>
+                        )}
+                        {canApprove && (
+                          <>
+                            <button
+                              type="button"
+                              className="user-mgmt-action-btn"
+                              onClick={() => openEdit(c)}
+                              aria-label={`Edit ${c.name}`}
+                              title="Edit"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              type="button"
+                              className={`user-mgmt-action-btn user-mgmt-danger${
+                                confirmDeleteId === c.id ? " is-confirming" : ""
+                              }`}
+                              onClick={() => {
+                                if (confirmDeleteId === c.id) {
+                                  handleDelete(c.id);
+                                } else {
+                                  setConfirmDeleteId(c.id);
+                                  setTimeout(() => {
+                                    setConfirmDeleteId((cur) => (cur === c.id ? null : cur));
+                                  }, 4000);
+                                }
+                              }}
+                              aria-label={
+                                confirmDeleteId === c.id
+                                  ? `Click again to confirm deleting ${c.name}`
+                                  : `Delete ${c.name}`
+                              }
+                              title={confirmDeleteId === c.id ? "Click again to confirm" : "Delete"}
+                            >
+                              {confirmDeleteId === c.id ? <FaCheckCircle /> : <FaTrash />}
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -336,7 +501,8 @@ const CustomerManagement = () => {
       <Modal show={showModal} onHide={closeModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>
-            <FaUserTie /> {editing ? `Edit ${editing.name}` : "New Customer"}
+            <FaUserTie />{" "}
+            {editing ? `Edit ${editing.name}` : canApprove ? "New Customer" : "Submit Customer"}
           </Modal.Title>
         </Modal.Header>
         <form onSubmit={handleSubmit}>
@@ -424,7 +590,54 @@ const CustomerManagement = () => {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Create customer"}
+              {saving
+                ? "Saving…"
+                : editing
+                  ? "Save changes"
+                  : canApprove
+                    ? "Create customer"
+                    : "Submit for approval"}
+            </button>
+          </Modal.Footer>
+        </form>
+      </Modal>
+
+      <Modal show={Boolean(rejectTarget)} onHide={closeReject} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaBan /> Reject {rejectTarget ? rejectTarget.name : ""}
+          </Modal.Title>
+        </Modal.Header>
+        <form onSubmit={handleReject}>
+          <Modal.Body>
+            <p className="user-mgmt-muted">
+              Tell the submitter why this customer can&apos;t be approved. The reason is visible to
+              admins and persisted in the audit log.
+            </p>
+            <div className="user-mgmt-form-row">
+              <label className="user-mgmt-form-label">
+                Rejection reason <span className="text-danger">*</span>
+              </label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                maxLength={500}
+                required
+              />
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <button type="button" className="btn btn-outline-secondary" onClick={closeReject}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-danger"
+              disabled={saving || !rejectReason.trim()}
+            >
+              {saving ? "Rejecting…" : "Reject customer"}
             </button>
           </Modal.Footer>
         </form>
