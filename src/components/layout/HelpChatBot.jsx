@@ -32,6 +32,8 @@ import {
   FaStore,
   FaShippingFast,
   FaPercent,
+  FaRegClipboard,
+  FaCheck,
 } from "react-icons/fa";
 import { useUi } from "../../context/UiContext";
 import { locales } from "../../locales";
@@ -131,6 +133,66 @@ const formatTimestamp = (value) => {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
+// Tiny markdown-lite helper: turns **bold** into <strong> segments.
+// Intentionally narrow — no headers, links, or code blocks. If the AI
+// service starts emitting more complex markdown, we revisit separately.
+const renderRichText = (text) => {
+  if (!text) return null;
+  const str = String(text);
+  const parts = str.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    const match = part.match(/^\*\*([^*]+)\*\*$/);
+    if (match) return <strong key={`md-${idx}`}>{match[1]}</strong>;
+    return <React.Fragment key={`md-${idx}`}>{part}</React.Fragment>;
+  });
+};
+
+// Persist the conversation across tab refreshes, but not across tab close.
+// Stored as plain JSON; capped at PERSISTED_MAX_ENTRIES to stay well under
+// the ~5 MB sessionStorage quota.
+const PERSIST_KEY = "pos-chat-helper:messages";
+const PERSIST_MAX_ENTRIES = 200;
+
+const loadPersistedMessages = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    if (parsed.length > PERSIST_MAX_ENTRIES) return null;
+    // Light shape check — every entry must have an id and an author.
+    const ok = parsed.every(
+      (m) => m && typeof m === "object" && typeof m.id === "string" && typeof m.author === "string"
+    );
+    return ok ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistMessages = (messages) => {
+  if (typeof window === "undefined") return;
+  try {
+    const trimmed =
+      messages.length > PERSIST_MAX_ENTRIES
+        ? messages.slice(messages.length - PERSIST_MAX_ENTRIES)
+        : messages;
+    window.sessionStorage.setItem(PERSIST_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Storage may be full or disabled — silently skip; the chat still works.
+  }
+};
+
+const clearPersistedMessages = () => {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(PERSIST_KEY);
+  } catch {
+    /* noop */
+  }
+};
+
 const storeGreeting = (locale, storeName, storeType) => {
   const name = storeName || "your store";
   const typeLabel = STORE_LABEL[storeType] || "";
@@ -176,7 +238,10 @@ const HelpChatBot = () => {
     };
   }, [chatLocale]);
 
-  const [messages, setMessages] = useState(() => [buildWelcomeMessage()]);
+  const [messages, setMessages] = useState(() => {
+    const persisted = loadPersistedMessages();
+    return persisted && persisted.length > 0 ? persisted : [buildWelcomeMessage()];
+  });
 
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -186,6 +251,11 @@ const HelpChatBot = () => {
     if (typeof window === "undefined") return null;
     return getActiveStoreContext();
   });
+
+  // Per-message "copied" indicator — set briefly after a successful copy,
+  // then auto-cleared. Stored as a string id (or null) so we don't track
+  // a parallel boolean per message.
+  const [copiedId, setCopiedId] = useState(null);
 
   const messageEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -273,6 +343,24 @@ const HelpChatBot = () => {
     if (open) refreshContext();
   }, [open, refreshContext]);
 
+  // ----- Persist conversation across refreshes -----
+  // Writes the messages array to sessionStorage after every state change.
+  // Capped at PERSIST_MAX_ENTRIES (FIFO eviction inside persistMessages).
+  useEffect(() => {
+    persistMessages(messages);
+  }, [messages]);
+
+  // ----- Auto-grow textarea -----
+  // Resets height to auto so it shrinks on delete, then grows to scrollHeight
+  // capped at 110 px to keep the panel from getting unwieldy.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, 110);
+    el.style.height = `${next}px`;
+  }, [inputValue]);
+
   // ----- Helpers -----
   const appendMessage = (message) => {
     setMessages((current) => [
@@ -354,6 +442,35 @@ const HelpChatBot = () => {
     setMessages([buildWelcomeMessage()]);
     setShowHistory(false);
     setUnread(0);
+    setCopiedId(null);
+    clearPersistedMessages();
+  };
+
+  const handleCopyMessage = async (message) => {
+    const text = message?.text;
+    if (!text) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for non-secure contexts — best-effort, swallow errors.
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopiedId(message.id);
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === message.id ? null : current));
+      }, 1500);
+    } catch {
+      // Silent — most users are on HTTPS; no need to surface the failure.
+    }
   };
 
   const handleTextareaKey = (e) => {
@@ -371,7 +488,7 @@ const HelpChatBot = () => {
       <div className="help-chatbot-msg-body">
         {text && (
           <p className={`help-chatbot-msg-text ${type === "summary" ? "is-summary-text" : ""}`}>
-            {text}
+            {renderRichText(text)}
           </p>
         )}
 
@@ -437,6 +554,7 @@ const HelpChatBot = () => {
 
   const renderMessage = (message) => {
     const isUser = message.author === "user";
+    const isCopied = copiedId === message.id;
     return (
       <div key={message.id} className={`help-chatbot-msg ${isUser ? "is-user" : "is-bot"}`}>
         {!isUser && (
@@ -444,9 +562,22 @@ const HelpChatBot = () => {
             <FaRobot />
           </span>
         )}
-        <div className="help-chatbot-bubble">
-          {renderReplyBody(message)}
-          <span className="help-chatbot-bubble-time">{formatTimestamp(message.timestamp)}</span>
+        <div className="help-chatbot-msg-wrap">
+          <div className="help-chatbot-bubble">
+            {renderReplyBody(message)}
+            <span className="help-chatbot-bubble-time">{formatTimestamp(message.timestamp)}</span>
+          </div>
+          {!isUser && (
+            <button
+              type="button"
+              className={`help-chatbot-copy${isCopied ? " is-copied" : ""}`}
+              onClick={() => handleCopyMessage(message)}
+              aria-label={isCopied ? "Copied" : "Copy message"}
+              title={isCopied ? "Copied!" : "Copy"}
+            >
+              {isCopied ? <FaCheck /> : <FaRegClipboard />}
+            </button>
+          )}
         </div>
         {isUser && (
           <span className="help-chatbot-avatar help-chatbot-avatar-user" aria-hidden="true">
