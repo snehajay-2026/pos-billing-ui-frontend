@@ -249,10 +249,34 @@
   gap: 14px;
 }
 
+/* F9: optional row for industry / template / HSN-SAC. Three columns on
+   desktop so the row stays one line; collapses to one column under
+   720px via the responsive block near the bottom of this file. */
+.sv-field-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .sv-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* F9: tiny helper line under a select/input. Kept small + muted so the
+   form doesn't feel crowded, but ensures the cashier knows why the
+   field exists and what format HSN/SAC expects. */
+.sv-field-hint {
+  font-size: 0.74rem;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.sv-input[disabled],
+.sv-select[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .sv-field label {
@@ -531,6 +555,47 @@
   overflow: hidden;
 }
 
+/* F9: extra metadata row under the description. Shows the industry
+   template mapping (+ HSN/SAC) when set. Hidden when the row has no
+   template-mapping data so legacy rows look identical to before. */
+.sv-card-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.sv-extra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-extra-chip-sep {
+  opacity: 0.6;
+}
+
+.sv-extra-chip-tpl {
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.sv-extra-chip-muted {
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
 .sv-card-meta {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -700,6 +765,11 @@ body.theme-dark .sv-btn-ghost {
   .sv-field-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* F9: the optional industry/template/HSN row drops from 3 columns
+     to 2 on tablets so each field still has a meaningful width. */
+  .sv-field-row-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -723,6 +793,11 @@ body.theme-dark .sv-btn-ghost {
     grid-template-columns: 1fr 1fr;
   }
   .sv-field-row {
+    grid-template-columns: 1fr;
+  }
+  /* F9: industry/template/HSN row also collapses to a single column on
+     phones so the dropdowns don't squeeze into illegible widths. */
+  .sv-field-row-3 {
     grid-template-columns: 1fr;
   }
 }

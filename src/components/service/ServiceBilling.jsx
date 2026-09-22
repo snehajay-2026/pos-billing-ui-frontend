@@ -50,6 +50,7 @@ import {
   DEFAULT_TEMPLATE_ID,
   emptyFieldsFor,
   fieldConfigFor,
+  industryById,
   templateById,
 } from "./templates";
 import "../pos/POSBilling.css";
@@ -149,6 +150,22 @@ const ServiceBilling = () => {
   const filledFieldCount = Object.values(activeBill.fields || {}).filter(Boolean).length;
 
   const selectIndustry = (industryId) => {
+    // F9: Store-template-lock enforcement. When the admin has turned
+    // on `serviceLockTemplateId` in Store Settings, every bill sticks
+    // to the store's default industry + the matching renderer family.
+    // This is the runtime enforcement leg — without it, the lock is a
+    // UI label only and a cashier can bypass it via the industry
+    // picker. We still let `updateIndustryField` run so a locked store
+    // can still type into the per-industry fields.
+    if (settings.serviceLockTemplateId) {
+      const lockedIndustry = settings.serviceDefaultIndustry || activeBill.industry;
+      if (lockedIndustry && lockedIndustry !== DEFAULT_INDUSTRY_ID) {
+        showToast("info", "Template lock is on — only the fields can be edited.");
+      } else {
+        showToast("info", "Template lock is on in Store Settings.");
+      }
+      return;
+    }
     const tplId = `${industryId}-modern`;
     const tpl = templateById(tplId) ? tplId : DEFAULT_TEMPLATE_ID;
     updateActiveBill({
@@ -156,6 +173,31 @@ const ServiceBilling = () => {
       templateId: tpl,
       fields: emptyFieldsFor(industryId),
     });
+  };
+
+  // F9: a bill is "fresh" when the cashier hasn't typed anything yet —
+  // no items, no customer, no service dates, no remarks, no
+  // industry-specific fields. When fresh, the first product tapped
+  // auto-seeds the bill's industry + default template + GST%. Once
+  // any user input is present, the spec says explicitly "do not
+  // silently overwrite user-entered invoice data when another product
+  // is selected", so subsequent taps leave the bill alone and the
+  // cashier uses the industry picker to change template.
+  const isFreshBill = (bill) => {
+    if (!bill) return true;
+    if (Array.isArray(bill.items) && bill.items.length > 0) return false;
+    if (bill.customer || bill.phone || bill.email || bill.address || bill.gst || bill.state)
+      return false;
+    if (bill.technician || bill.jobRef || bill.serviceFrom || bill.serviceTo || bill.remarks)
+      return false;
+    if (bill.gstRate !== "" && bill.gstRate !== undefined && bill.gstRate !== null) return false;
+    if (bill.discountPct !== "" && bill.discountPct !== undefined && bill.discountPct !== null)
+      return false;
+    const fields = bill.fields && typeof bill.fields === "object" ? bill.fields : {};
+    for (const v of Object.values(fields)) {
+      if (v) return false;
+    }
+    return true;
   };
 
   const updateIndustryField = (key, value) => {
@@ -209,7 +251,51 @@ const ServiceBilling = () => {
               // catalog's default GST must never seed the bill.
             },
           ];
-      return { ...prev, [activeBillId]: { ...cur, items } };
+      // F9: auto-seed the bill from the product's industry template
+      // mapping ONLY on the first tap of a truly fresh bill. The
+      // existing `serviceLockTemplateId` setting is honored — a
+      // locked store always uses its default industry and ignores
+      // the product's own defaultTemplateId. The same "fresh bill"
+      // guard applies to the GST% suggestion so we don't override a
+      // cashier who has already typed a rate.
+      let next = { ...cur, items };
+      const fresh = !exists && isFreshBill(cur);
+      const productIndustry = product.industry;
+      const productTemplate = product.defaultTemplateId
+        ? templateById(product.defaultTemplateId)
+        : null;
+      const productIndustryMeta = productIndustry ? industryById(productIndustry) : null;
+      const lockOn = !!settings.serviceLockTemplateId;
+      if (fresh && !lockOn && productIndustry && productIndustryMeta) {
+        // Resolve the renderer family. Prefer the product's
+        // defaultTemplateId when it still matches an existing template
+        // in the registry; otherwise fall back to the canonical
+        // `<industry>-modern` family so the bill always has a valid
+        // templateId, no stale registry id ever leaks through.
+        const fallbackTplId = `${productIndustry}-modern`;
+        const tplId =
+          productTemplate && productTemplate.industry === productIndustry
+            ? productTemplate.id
+            : templateById(fallbackTplId)
+              ? fallbackTplId
+              : DEFAULT_TEMPLATE_ID;
+        // Merge with any existing fields (new-bill fields are empty,
+        // so this is effectively just the emptyFieldsFor result).
+        const mergedFields = {
+          ...emptyFieldsFor(productIndustry),
+          ...(cur.fields && typeof cur.fields === "object" ? cur.fields : {}),
+        };
+        next = {
+          ...next,
+          industry: productIndustry,
+          templateId: tplId,
+          fields: mergedFields,
+        };
+      }
+      if (fresh && product.gst !== undefined && product.gst !== null && product.gst !== "") {
+        next = { ...next, gstRate: product.gst };
+      }
+      return { ...prev, [activeBillId]: next };
     });
   };
 
@@ -604,6 +690,14 @@ const ServiceBilling = () => {
               {filteredProducts.map((p) => {
                 const tone = CATEGORY_TONES[p.category || "Other"] || CATEGORY_TONES.Other;
                 const inCart = activeBill.items.some((i) => i.id === p.id);
+                // F9: industry + template chip. Both lookups are
+                // pure reads against the shared registry — never
+                // mutate it. When the product has no industry we
+                // simply omit the chip so legacy rows look unchanged.
+                const pIndustryMeta = p.industry ? industryById(p.industry) : null;
+                const pTemplateMeta = p.defaultTemplateId
+                  ? templateById(p.defaultTemplateId)
+                  : null;
                 return (
                   <button
                     type="button"
@@ -630,6 +724,33 @@ const ServiceBilling = () => {
                     </div>
                     <div className="sv-tile-name">{p.name}</div>
                     {p.description && <div className="sv-tile-desc">{p.description}</div>}
+                    {(pIndustryMeta || pTemplateMeta) && (
+                      <div className="sv-tile-extra">
+                        {pIndustryMeta && (
+                          <span
+                            className="sv-tile-extra-chip"
+                            style={{
+                              background: `${pIndustryMeta.accent}1A`,
+                              color: pIndustryMeta.accent,
+                            }}
+                            title={
+                              pTemplateMeta
+                                ? `${pIndustryMeta.label} · ${pTemplateMeta.label}`
+                                : pIndustryMeta.label
+                            }
+                          >
+                            <span aria-hidden="true">{pIndustryMeta.icon}</span>
+                            {pIndustryMeta.label}
+                            {pTemplateMeta && (
+                              <>
+                                <span className="sv-tile-extra-sep">·</span>
+                                <span className="sv-tile-extra-tpl">{pTemplateMeta.family}</span>
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="sv-tile-foot">
                       <span className="sv-tile-rate">
                         <FaRupeeSign /> {Number(p.price || p.rate || 0).toFixed(0)}
@@ -665,16 +786,37 @@ const ServiceBilling = () => {
           {/* INDUSTRY TEMPLATE PICKER */}
           <button
             type="button"
-            className="sv-industry-picker"
-            onClick={() => setIndustryDrawerOpen(true)}
+            className={`sv-industry-picker${
+              settings.serviceLockTemplateId ? " sv-industry-picker-locked" : ""
+            }`}
+            onClick={() => {
+              // F9: enforce serviceLockTemplateId at the click level so
+              // the lock is observable in the real selection logic,
+              // not just a label. selectIndustry() also short-circuits
+              // — this guard is the belt to its braces (UX feedback
+              // happens before the toast).
+              if (settings.serviceLockTemplateId) {
+                showToast("info", "Template lock is on — change it from Store Settings.");
+                return;
+              }
+              setIndustryDrawerOpen(true);
+            }}
+            disabled={!!settings.serviceLockTemplateId}
             style={{ "--picker-accent": activeIndustry.accent }}
-            title="Choose invoice template"
+            title={
+              settings.serviceLockTemplateId
+                ? "Template lock is on — change it in Store Settings"
+                : "Choose invoice template"
+            }
           >
             <span className="sv-industry-picker-icon" aria-hidden="true">
               {activeIndustry.icon}
             </span>
             <span className="sv-industry-picker-meta">
-              <small>INVOICE TEMPLATE</small>
+              <small>
+                INVOICE TEMPLATE
+                {settings.serviceLockTemplateId && " · LOCKED"}
+              </small>
               <strong>{activeIndustry.label}</strong>
               {filledFieldCount > 0 && (
                 <span className="sv-industry-picker-count">
@@ -1034,7 +1176,11 @@ const ServiceBilling = () => {
             <div className="sv-drawer-head">
               <div>
                 <h3>Invoice template</h3>
-                <p>Pick the layout that fits this bill. Fields update instantly.</p>
+                <p>
+                  {settings.serviceLockTemplateId
+                    ? "Template lock is on — choose a new layout from Store Settings to change it."
+                    : "Pick the layout that fits this bill. Fields update instantly."}
+                </p>
               </div>
               <button
                 type="button"

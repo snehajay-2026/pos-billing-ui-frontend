@@ -28,6 +28,7 @@ import {
 } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
 import { CATEGORY_TONES, SERVICE_CATEGORIES, formatCurrency } from "../utils/serviceTones";
+import { INDUSTRIES, TEMPLATES, industryById, templateById } from "../components/service/templates";
 import "./ServiceManagementPage.css";
 
 const emptyForm = {
@@ -38,6 +39,14 @@ const emptyForm = {
   hours: "",
   gst: "",
   category: "Consulting",
+  // F9: industry / default template / HSN-SAC. Persisted on the
+  // `services` row by createService/updateService and consumed by
+  // ServiceBilling.jsx to auto-seed a fresh bill's template picker.
+  // Blank values round-trip as NULL on the backend so legacy rows
+  // keep rendering untouched.
+  industry: "",
+  defaultTemplateId: "",
+  hsnSac: "",
 };
 
 const ServiceManagementPage = () => {
@@ -90,6 +99,12 @@ const ServiceManagementPage = () => {
       hours: Number(form.hours),
       gst: form.gst === "" ? 18 : Number(form.gst),
       category: form.category || "Other",
+      // F9: industry-template mapping. Empty strings normalize to
+      // null on the backend so a cleared dropdown drops the row's
+      // previous industry rather than overwriting it with "".
+      industry: form.industry || null,
+      defaultTemplateId: form.defaultTemplateId || null,
+      hsnSac: form.hsnSac?.trim() || null,
     };
 
     try {
@@ -119,6 +134,9 @@ const ServiceManagementPage = () => {
       hours: svc.hours ?? "",
       gst: svc.gst ?? "",
       category: svc.category || "Other",
+      industry: svc.industry || "",
+      defaultTemplateId: svc.defaultTemplateId || "",
+      hsnSac: svc.hsnSac || "",
     });
     setEditing(true);
     // Scroll to form
@@ -349,6 +367,77 @@ const ServiceManagementPage = () => {
               </div>
             </div>
 
+            {/* F9: industry-template mapping. Optional but recommended —
+                when set, the Service Billing screen auto-seeds the bill's
+                industry picker, default template, and GST% from this row
+                the first time a cashier taps the service. The fields share
+                the same registry the cashier can still override per bill,
+                so there's no parallel "service-template" registry. */}
+            <div className="sv-field-row sv-field-row-3">
+              <div className="sv-field">
+                <label htmlFor="sv-industry">Industry</label>
+                <select
+                  id="sv-industry"
+                  name="industry"
+                  value={form.industry}
+                  onChange={handleChange}
+                  className="sv-input sv-select"
+                >
+                  <option value="">— No specific industry —</option>
+                  {INDUSTRIES.map((industry) => (
+                    <option key={industry.id} value={industry.id}>
+                      {industry.icon} {industry.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="sv-field-hint">
+                  Picks which per-industry fields the billing drawer shows.
+                </small>
+              </div>
+              <div className="sv-field">
+                <label htmlFor="sv-template">Default template</label>
+                <select
+                  id="sv-template"
+                  name="defaultTemplateId"
+                  value={form.defaultTemplateId}
+                  onChange={handleChange}
+                  className="sv-input sv-select"
+                  // Disable until an industry is picked — the registry
+                  // is keyed off industry.industry so an unbound pick
+                  // would silently snap to the modern family.
+                  disabled={!form.industry}
+                >
+                  <option value="">— Use system default —</option>
+                  {TEMPLATES.filter((tpl) => !form.industry || tpl.industry === form.industry).map(
+                    (tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.label}
+                      </option>
+                    )
+                  )}
+                </select>
+                <small className="sv-field-hint">
+                  Modern A4, Traditional A4, or Condensed Receipt.
+                </small>
+              </div>
+              <div className="sv-field">
+                <label htmlFor="sv-hsnsac">HSN / SAC</label>
+                <input
+                  id="sv-hsnsac"
+                  name="hsnSac"
+                  type="text"
+                  maxLength={16}
+                  value={form.hsnSac}
+                  onChange={handleChange}
+                  placeholder="HSN for goods, SAC for services"
+                  className="sv-input"
+                />
+                <small className="sv-field-hint">
+                  Optional — appears on the invoice for GSTIN-registered buyers.
+                </small>
+              </div>
+            </div>
+
             <div className="sv-form-actions">
               <button type="submit" className="sv-btn sv-btn-primary">
                 <FaPlus /> {editing ? "Update service" : "Add service"}
@@ -418,6 +507,13 @@ const ServiceManagementPage = () => {
               {filteredServices.map((svc) => {
                 const tone = CATEGORY_TONES[svc.category || "Other"] || CATEGORY_TONES.Other;
                 const amount = (Number(svc.rate) || 0) * (Number(svc.hours) || 0);
+                // F9: industry + default template (when set) + HSN/SAC.
+                // The lookup is a pure read against the shared registry —
+                // industry/template lookups never mutate registry state.
+                const industryMeta = svc.industry ? industryById(svc.industry) : null;
+                const templateMeta = svc.defaultTemplateId
+                  ? templateById(svc.defaultTemplateId)
+                  : null;
                 return (
                   <div key={svc.id} className="sv-card" style={{ "--card-accent": tone.color }}>
                     <div className="sv-card-head">
@@ -460,6 +556,42 @@ const ServiceManagementPage = () => {
 
                     <h3 className="sv-card-title">{svc.name}</h3>
                     {svc.description && <p className="sv-card-desc">{svc.description}</p>}
+
+                    {(industryMeta || templateMeta || svc.hsnSac) && (
+                      <div className="sv-card-extra">
+                        {industryMeta && (
+                          <span
+                            className="sv-extra-chip"
+                            style={{
+                              background: `${industryMeta.accent}1A`,
+                              color: industryMeta.accent,
+                            }}
+                            title={templateMeta ? templateMeta.label : industryMeta.label}
+                          >
+                            <span aria-hidden="true">{industryMeta.icon}</span>
+                            {industryMeta.label}
+                            {templateMeta && <span className="sv-extra-chip-sep">·</span>}
+                            {templateMeta && (
+                              <span className="sv-extra-chip-tpl">{templateMeta.family}</span>
+                            )}
+                          </span>
+                        )}
+                        {svc.hsnSac && (
+                          <span
+                            className="sv-extra-chip sv-extra-chip-muted"
+                            title={
+                              /^\d{6}$/.test(svc.hsnSac)
+                                ? "SAC code"
+                                : /^\d{4,8}$/.test(svc.hsnSac)
+                                  ? "HSN code"
+                                  : "HSN/SAC code"
+                            }
+                          >
+                            HSN/SAC · {svc.hsnSac}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <div className="sv-card-meta">
                       <div className="sv-meta-item">

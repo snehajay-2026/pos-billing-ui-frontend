@@ -606,6 +606,45 @@
   overflow: hidden;
 }
 
+/* F9: per-tile industry + template chip. Mirrors the
+   .sv-extra-chip on Service Management so the catalog and the
+   billing tile read the same way. Sits between the description
+   and the price footer; never wraps to a second line so the
+   price row stays glued to the bottom of the card. */
+.sv-tile-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.sv-tile-extra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-tile-extra-sep {
+  opacity: 0.6;
+}
+
+.sv-tile-extra-tpl {
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
 .sv-tile-foot {
   display: flex;
   justify-content: space-between;
@@ -1273,6 +1312,24 @@ body.theme-dark .bill-close:hover {
 .sv-industry-picker:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* F9: locked-template state. The picker button stays visible so the
+   cashier can still see which industry their bill is locked to — but
+   it's not clickable. The lock label in the small text + the disabled
+   cursor make the state obvious. */
+.sv-industry-picker-locked {
+  cursor: not-allowed;
+  opacity: 0.86;
+  background: color-mix(in srgb, var(--picker-accent, var(--si-blue, #1f4e89)) 6%, #f1f5f9);
+  border-style: dashed;
+}
+.sv-industry-picker-locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+.sv-industry-picker:disabled {
+  cursor: not-allowed;
 }
 .sv-industry-picker-icon {
   display: grid;
