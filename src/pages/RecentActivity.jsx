@@ -62,54 +62,41 @@ const METHOD_LABEL = {
   DELETE: "Deleted",
 };
 
+// Service Store Resources — only options that correspond to actual
+// `audit_log.entity_type` values emitted by the backend's recordAudit
+// hooks. Keys are the singular nouns the backend stores
+// (`service`, `customer`, `invoice`, `user`, `store_settings`) and that
+// `auditLogQueries.list({ entityType })` matches against. Hotel-only
+// resources (hotel_tables, hotel_rooms, hotel_room_folios, hotel_waiting,
+// hotel_dining_waiting, hotel_lodging_waiting, hotel_dining_bills,
+// hotel_checkout_history) are deliberately omitted because they belong
+// to the Hotel Store module. Resources the backend does not currently
+// audit (laundry_ledger, res_counters, notifications) are also omitted
+// so the dropdown only offers values that actually return rows.
 const RESOURCE_LABEL = {
-  products: "Product",
-  services: "Service",
-  orders: "Order",
-  invoices: "Invoice",
-  customers: "Customer",
-  customer_credits: "Customer Credit",
-  expenses: "Expense",
-  users: "User",
-  hotel_tables: "Table",
-  hotel_rooms: "Room",
-  hotel_room_folios: "Room Charge",
-  hotel_waiting: "Waitlist",
-  hotel_dining_waiting: "Dining Waitlist",
-  hotel_lodging_waiting: "Lodging Waitlist",
-  hotel_dining_bills: "Dining Bill",
-  hotel_checkout_history: "Checkout",
-  laundry_ledger: "Stock Entry",
-  res_counters: "Counter",
-  store_settings: "Settings",
-  notifications: "Notification",
+  service: "Service",
+  customer: "Customer",
+  customer_credit: "Customer Credit",
+  invoice: "Invoice",
+  order: "Order",
+  product: "Product",
+  expense: "Expense",
+  user: "User",
+  store_settings: "Store Settings",
 };
 
 // Entity-category → resource groups. The backend's `resource` column
-// carries the API path segment (e.g. "services"), so we map to a small
-// set of buckets the UI understands. "all" passes through.
+// carries the singular audit entity_type (e.g. "service"), so we map to
+// a small set of buckets the UI understands. "all" passes through.
 const RESOURCE_CATEGORY = {
   all: { label: "All", resources: null },
-  service: { label: "Service", resources: ["services"] },
-  customer: { label: "Customer", resources: ["customers", "customer_credits"] },
-  invoice: { label: "Invoice", resources: ["invoices"] },
-  order: { label: "Order", resources: ["orders"] },
-  hotel: {
-    label: "Hotel",
-    resources: [
-      "hotel_tables",
-      "hotel_rooms",
-      "hotel_room_folios",
-      "hotel_waiting",
-      "hotel_dining_waiting",
-      "hotel_lodging_waiting",
-      "hotel_dining_bills",
-      "hotel_checkout_history",
-    ],
-  },
-  product: { label: "Product", resources: ["products", "laundry_ledger"] },
-  user: { label: "User", resources: ["users"] },
-  settings: { label: "Settings", resources: ["store_settings", "res_counters", "notifications"] },
+  service: { label: "Service", resources: ["service"] },
+  customer: { label: "Customer", resources: ["customer", "customer_credit"] },
+  invoice: { label: "Invoice", resources: ["invoice"] },
+  order: { label: "Order", resources: ["order"] },
+  product: { label: "Product", resources: ["product"] },
+  user: { label: "User", resources: ["user"] },
+  settings: { label: "Settings", resources: ["store_settings"] },
 };
 
 const ENTITY_CATEGORY_KEYS = Object.keys(RESOURCE_CATEGORY);
@@ -324,16 +311,17 @@ const RecentActivity = () => {
     setForbidden(false);
     try {
       // Build the params the backend understands. The entity-category
-      // selector is a UI affordance; we translate it to a resource=...
-      // query before sending.
-      const effectiveResource = filterValues.resource
+      // selector is a UI affordance; we translate it to the singular
+      // entityType the audit-log query actually filters on. The backend
+      // exposes this as `?entityType=` (matches audit_log.entity_type).
+      const effectiveEntityType = filterValues.resource
         ? filterValues.resource
         : resourceFilterForCategory(filterValues.entityCategory);
       const params = {
         limit: PAGE_SIZE,
         offset: off,
         q: filterValues.q,
-        resource: effectiveResource,
+        entityType: effectiveEntityType,
         method: filterValues.method,
         userEmail: filterValues.userEmail,
         from: filterValues.from,

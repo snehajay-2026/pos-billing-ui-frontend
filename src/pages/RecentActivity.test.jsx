@@ -63,7 +63,7 @@ const sampleRow = {
   userRole: "SUPER_OWNER",
   storeType: "service",
   storeId: "A",
-  resource: "services",
+  resource: "service",
   resourceId: "9",
   action: "service.rate_changed",
   method: "PUT",
@@ -91,7 +91,7 @@ const sampleRow2 = {
   userRole: "CASHIER",
   storeType: "service",
   storeId: "A",
-  resource: "invoices",
+  resource: "invoice",
   resourceId: "INV-44",
   action: "invoice.created",
   method: "POST",
@@ -277,7 +277,7 @@ describe("RecentActivity", () => {
     const resourceSelect = container.querySelector("#ra-resource");
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
-      setter.call(resourceSelect, "services");
+      setter.call(resourceSelect, "service");
       resourceSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
     const applyBtn = [...container.querySelectorAll("button")].find((b) =>
@@ -291,7 +291,15 @@ describe("RecentActivity", () => {
 
     expect(mockGetAuditLog).toHaveBeenCalledTimes(2);
     const lastCallParams = mockGetAuditLog.mock.calls[1][0];
-    expect(lastCallParams.resource).toBe("services");
+    // The backend filter parameter is `entityType` and uses the singular
+    // noun stored in audit_log.entity_type (e.g. "service", "customer",
+    // "invoice") — not the legacy plural strings.
+    expect(lastCallParams.entityType).toBe("service");
+    // Hotel resources must NOT appear in the dropdown at all.
+    const optionValues = [...resourceSelect.options].map((o) => o.value);
+    expect(optionValues).not.toContain("hotel_rooms");
+    expect(optionValues).not.toContain("hotel_tables");
+    expect(optionValues).not.toContain("hotel_dining_bills");
 
     unmount(container);
     document.body.removeChild(container);
@@ -323,7 +331,7 @@ describe("RecentActivity", () => {
         event: {
           auditId: "101",
           action: "service.rate_changed",
-          resource: "services",
+          resource: "service",
           resourceId: "9",
           userEmail: "admin@example.com",
           userRole: "SUPER_OWNER",
@@ -364,7 +372,7 @@ describe("RecentActivity", () => {
         event: {
           auditId: "999",
           action: "customer.approved",
-          resource: "customers",
+          resource: "customer",
           resourceId: "55",
           userEmail: "admin@example.com",
           userRole: "SUPER_OWNER",

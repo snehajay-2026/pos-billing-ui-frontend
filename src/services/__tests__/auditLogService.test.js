@@ -113,7 +113,7 @@ describe("auditLogService.getAuditLog", () => {
   test("strips empty / null / undefined values", async () => {
     const data = await auditLogService.getAuditLog({
       q: "",
-      resource: null,
+      entityType: null,
       method: undefined,
       userEmail: "",
       from: "",
@@ -131,7 +131,7 @@ describe("auditLogService.getAuditLog", () => {
   test("forwards meaningful filters + pagination", async () => {
     const data = await auditLogService.getAuditLog({
       q: "plumb",
-      resource: "services",
+      entityType: "service",
       method: "PUT",
       userEmail: "admin@",
       from: "2025-01-01",
@@ -144,9 +144,13 @@ describe("auditLogService.getAuditLog", () => {
     expect(data).toEqual(mockNextValue);
     expect(mockCalls).toHaveLength(1);
     const [, params] = mockCalls[0].args;
+    // The service forwards every param straight through. The page passes
+    // `entityType` (singular noun) because that's the wire parameter
+    // name AND value shape the audit-log route uses to match against
+    // audit_log.entity_type.
     expect(params).toEqual({
       q: "plumb",
-      resource: "services",
+      entityType: "service",
       method: "PUT",
       userEmail: "admin@",
       from: "2025-01-01",
