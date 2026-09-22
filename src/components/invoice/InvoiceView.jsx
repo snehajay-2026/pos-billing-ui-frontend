@@ -12,6 +12,10 @@ import HotelThermalReceipt from "../hotel/HotelThermalReceipt";
 import MSMEInvoice from "./MSMEInvoice";
 import RetailPrintInvoice from "./RetailPrintInvoice";
 import ServiceInvoice from "./ServiceInvoice";
+import { resolveTemplate } from "../service/templates";
+import ModernA4 from "../service/templates/ModernA4";
+import TraditionalA4 from "../service/templates/TraditionalA4";
+import CondensedReceipt from "../service/templates/CondensedReceipt";
 import { isHotelDiningInvoice } from "../../utils/invoiceType";
 import { useUi } from "../../context/UiContext";
 import {
@@ -560,9 +564,30 @@ const InvoiceView = () => {
       case "laundry":
         return <LaundryThermalReceipt invoice={invoice} isDuplicate={isDuplicate} />;
       case "service":
-        return <ServiceInvoice invoice={invoice} isDuplicate={isDuplicate} />;
-      case "msme-service":
-        return <MSMEInvoice invoice={invoice} isDuplicate={isDuplicate} />;
+      case "msme-service": {
+        // Per-invoice industry template picker — ModernA4 / TraditionalA4 /
+        // CondensedReceipt each render the same shape with section ordering
+        // and styling driven by `template.sections` + `template.family`.
+        // Falls back to legacy ServiceInvoice/MSMEInvoice when the bill has
+        // no templateId (rows saved before the picker existed).
+        const template = resolveTemplate(invoice);
+        if (template) {
+          if (template.family === "modern") {
+            return <ModernA4 invoice={invoice} isDuplicate={isDuplicate} />;
+          }
+          if (template.family === "traditional") {
+            return <TraditionalA4 invoice={invoice} isDuplicate={isDuplicate} />;
+          }
+          if (template.family === "condensed") {
+            return <CondensedReceipt invoice={invoice} isDuplicate={isDuplicate} />;
+          }
+        }
+        return invoiceStoreType === "msme-service" ? (
+          <MSMEInvoice invoice={invoice} isDuplicate={isDuplicate} />
+        ) : (
+          <ServiceInvoice invoice={invoice} isDuplicate={isDuplicate} />
+        );
+      }
       case "hotel":
         if (previewMode === "retail") {
           return (

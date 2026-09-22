@@ -23,7 +23,10 @@ import {
   FaTrashAlt,
   FaImage,
   FaCheck,
+  FaIndustry,
+  FaLock,
 } from "react-icons/fa";
+import { INDUSTRIES } from "../service/templates";
 
 /* ---------------- Reusable input wrappers ---------------- */
 const Field = ({ icon, label, error, hint, children }) => (
@@ -628,6 +631,71 @@ export const ServiceBusinessDetailsSection = ({ settings, handleChange }) => (
           value={settings.serviceSignatureName || ""}
           onChange={handleChange}
           placeholder={settings.name || ""}
+        />
+      </Field>
+
+      <div className="ss-divider" />
+
+      <SectionTitle
+        icon={<FaIndustry />}
+        title="Service Industry Defaults"
+        subtitle="Pick a default industry template for new bills. Cashiers can still override per bill."
+      />
+
+      <div className="ss-grid-2">
+        <Field
+          icon={<FaIndustry />}
+          label="Default Industry"
+          hint="Seeds the per-bill template picker so the cashier starts on the right layout."
+        >
+          <select
+            name="serviceDefaultIndustry"
+            value={settings.serviceDefaultIndustry || ""}
+            onChange={handleChange}
+            className="ss-input"
+          >
+            <option value="">— Use system default (Consulting) —</option>
+            {INDUSTRIES.map((industry) => (
+              <option key={industry.id} value={industry.id}>
+                {industry.icon} {industry.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field
+          icon={<FaLock />}
+          label="Lock Template Choice"
+          hint="If on, every bill uses the default industry. Cashiers cannot switch mid-bill."
+        >
+          <label className="ss-switch">
+            <input
+              type="checkbox"
+              name="serviceLockTemplateId"
+              checked={Boolean(settings.serviceLockTemplateId)}
+              onChange={(e) =>
+                handleChange({ target: { name: "serviceLockTemplateId", value: e.target.checked } })
+              }
+            />
+            <span className="ss-switch-slider" />
+            <span className="ss-switch-label">
+              {settings.serviceLockTemplateId ? "Locked" : "Cashier can override"}
+            </span>
+          </label>
+        </Field>
+      </div>
+
+      <Field
+        icon={<FaRegAddressCard />}
+        label="Default Compliance Note"
+        hint="Appears between totals and terms on every invoice unless the cashier overrides it."
+      >
+        <Textarea
+          name="serviceComplianceNote"
+          rows={2}
+          value={settings.serviceComplianceNote || ""}
+          onChange={handleChange}
+          placeholder="Engagement governed by Master Service Agreement."
         />
       </Field>
     </div>

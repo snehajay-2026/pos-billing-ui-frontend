@@ -1,0 +1,587 @@
+/* Traditional A4 — denser goods/trade invoice.
+   Accent overrides the navy baseline when a per-industry template ships one. */
+
+:root {
+  --tA4-navy: #0f2540;
+  --tA4-blue: #1f4e89;
+  --tA4-pale: #e9eef7;
+  --tA4-accent: var(--tA4-blue);
+  --tA4-ink: #14213d;
+  --tA4-muted: #64748b;
+  --tA4-line: #d2d8e3;
+}
+
+.service-invoice-traditional {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: var(--tA4-ink);
+  --accent: var(--tA4-accent);
+}
+
+.service-invoice-traditional * {
+  box-sizing: border-box;
+}
+
+.tA4-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--tA4-line);
+  padding: 18mm 14mm 14mm;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(15, 37, 64, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+}
+
+.tA4-page-dense {
+  gap: 4mm;
+}
+.tA4-page-dense .tA4-items th,
+.tA4-page-dense .tA4-items td {
+  padding: 4px 6px;
+  font-size: 11px;
+}
+.tA4-page-dense .tA4-header h1 {
+  font-size: 22px;
+}
+
+.tA4-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--tA4-accent);
+  padding-bottom: 6mm;
+  gap: 8mm;
+}
+
+.tA4-header-l {
+  display: flex;
+  align-items: center;
+  gap: 6mm;
+}
+
+.tA4-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--tA4-line);
+}
+
+.tA4-logo-fallback {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  background: var(--tA4-pale);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tA4-accent);
+  font-size: 24px;
+}
+
+.tA4-header-meta h1 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--tA4-navy);
+  letter-spacing: 0.5px;
+}
+
+.tA4-header-meta p {
+  margin: 2px 0;
+  color: var(--tA4-muted);
+  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tA4-header-meta p span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tA4-header-ids span {
+  font-weight: 600;
+  color: var(--tA4-ink);
+}
+
+.tA4-header-r {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 110px;
+}
+
+.tA4-doc-title {
+  font-size: 26px;
+  letter-spacing: 1px;
+  color: var(--tA4-navy);
+  font-weight: 800;
+}
+
+.tA4-doc-sub {
+  font-size: 10px;
+  color: var(--tA4-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+}
+
+.tA4-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+}
+.tA4-status-badge.is-pending {
+  color: #b45309;
+}
+.tA4-status-badge.is-paid {
+  color: #047857;
+}
+.tA4-status-badge.is-cleared {
+  color: #1f6feb;
+}
+.tA4-status-badge.is-cancelled {
+  color: #b91c1c;
+}
+.tA4-status-badge.is-draft {
+  color: #64748b;
+}
+
+.tA4-duplicate {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-20deg);
+  font-size: 80px;
+  letter-spacing: 14px;
+  color: rgba(15, 37, 64, 0.06);
+  pointer-events: none;
+  font-weight: 900;
+}
+
+.tA4-meta-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--tA4-pale);
+}
+
+.tA4-meta-strip > div {
+  padding: 6px 10px;
+  border-right: 1px solid var(--tA4-line);
+}
+
+.tA4-meta-strip > div:last-child {
+  border-right: none;
+}
+
+.tA4-meta-strip small {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--tA4-muted);
+}
+
+.tA4-meta-strip b {
+  display: block;
+  font-size: 13px;
+  color: var(--tA4-ink);
+  margin-top: 2px;
+}
+
+.tA4-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4mm;
+}
+
+.tA4-party {
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  background: #fafbfd;
+}
+
+.tA4-party-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--tA4-accent);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  padding: 4px 10px;
+  font-weight: 700;
+}
+
+.tA4-party-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.tA4-party-body strong {
+  font-size: 13px;
+  color: var(--tA4-ink);
+}
+
+.tA4-party-body span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--tA4-ink);
+}
+
+.tA4-party-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+
+.tkv-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.tkv-row small {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--tA4-muted);
+}
+
+.tkv-row b {
+  font-size: 11px;
+  color: var(--tA4-ink);
+}
+
+.tkv-row-wide {
+  grid-column: 1 / -1;
+}
+
+.tA4-items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tA4-items thead th {
+  background: var(--tA4-navy);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.tA4-items tbody td {
+  border-bottom: 1px solid var(--tA4-line);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.tA4-items tbody tr:nth-child(odd) td {
+  background: rgba(233, 238, 247, 0.4);
+}
+
+.tA4-col-no {
+  width: 30px;
+}
+.tA4-col-sac {
+  width: 70px;
+}
+.tA4-col-qty {
+  width: 50px;
+}
+.tA4-col-unit {
+  width: 50px;
+}
+.tA4-col-rate {
+  width: 80px;
+}
+.tA4-col-taxable {
+  width: 90px;
+}
+.tA4-col-cgst {
+  width: 70px;
+}
+.tA4-col-amount {
+  width: 90px;
+}
+
+.tA4-center {
+  text-align: center;
+}
+.tA4-right {
+  text-align: right;
+}
+.tA4-desc {
+  font-weight: 500;
+}
+
+.tA4-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--tA4-muted);
+  font-style: italic;
+}
+
+.tA4-totals {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 6mm;
+}
+
+.tA4-totals-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+}
+
+.tA4-note-card {
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.tA4-light-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--tA4-muted);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.tA4-note-card ul,
+.tA4-terms ol {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--tA4-ink);
+  line-height: 1.5;
+}
+
+.tA4-words-card strong {
+  font-size: 12px;
+  color: var(--tA4-ink);
+  font-style: italic;
+}
+
+.tA4-totals-card {
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  background: #fafbfd;
+  padding: 10px 12px;
+}
+
+.tA4-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--tA4-line);
+}
+
+.tA4-totals-row:last-of-type {
+  border-bottom: none;
+}
+
+.tA4-discount-row {
+  color: #b91c1c;
+}
+
+.tA4-total-highlight {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--tA4-accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 8px 12px;
+  margin: 8px -12px -10px;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  font-size: 14px;
+}
+
+.tA4-balance-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--tA4-muted);
+  padding: 6px 0 0;
+  margin-top: 6px;
+  border-top: 1px dashed var(--tA4-line);
+}
+
+.tA4-compliance {
+  border: 1px solid var(--tA4-line);
+  border-left: 3px solid var(--tA4-accent);
+  background: rgba(31, 78, 137, 0.04);
+  padding: 8px 12px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.tA4-compliance p {
+  margin: 4px 0 0;
+  color: var(--tA4-ink);
+  line-height: 1.5;
+}
+
+.tA4-banking {
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: #fafbfd;
+}
+
+.tA4-banking-head {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--tA4-muted);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.tA4-banking-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px 12px;
+  font-size: 11px;
+}
+
+.tA4-banking-grid span b {
+  display: inline-block;
+  font-size: 9px;
+  color: var(--tA4-muted);
+  text-transform: uppercase;
+  margin-right: 5px;
+}
+
+.tA4-terms {
+  border: 1px solid var(--tA4-line);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.tA4-signature {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6mm;
+}
+
+.tA4-signature-stamp {
+  text-align: center;
+  font-size: 11px;
+  color: var(--tA4-muted);
+}
+
+.tA4-signature-stamp small {
+  display: block;
+  margin-bottom: 24px;
+}
+
+.tA4-signature-line {
+  border-top: 1px solid var(--tA4-ink);
+  padding-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tA4-ink);
+  letter-spacing: 1px;
+}
+
+.tA4-footer {
+  border-top: 1px solid var(--tA4-line);
+  margin-top: auto;
+  padding-top: 4mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--tA4-muted);
+}
+
+.tA4-footer div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.tA4-footer strong {
+  letter-spacing: 2px;
+  color: var(--tA4-accent);
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .tA4-page {
+    width: 100%;
+    padding: 16px;
+  }
+  .tA4-parties,
+  .tA4-totals,
+  .tA4-meta-strip {
+    grid-template-columns: 1fr;
+  }
+  .tA4-meta-strip > div {
+    border-right: none;
+    border-bottom: 1px solid var(--tA4-line);
+  }
+  .tA4-items thead {
+    display: none;
+  }
+  .tA4-items tbody td {
+    display: block;
+    text-align: right;
+    padding: 4px 8px;
+  }
+  .tA4-items tbody td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 600;
+    color: var(--tA4-muted);
+  }
+}
+
+@media print {
+  .service-invoice-traditional {
+    background: #fff;
+  }
+  .tA4-page {
+    width: 100%;
+    box-shadow: none;
+    border: none;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+}

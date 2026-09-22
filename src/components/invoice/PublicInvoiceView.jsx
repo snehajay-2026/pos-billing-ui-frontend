@@ -33,6 +33,10 @@ import HotelThermalReceipt from "../hotel/HotelThermalReceipt";
 import MSMEInvoice from "./MSMEInvoice";
 import RetailPrintInvoice from "./RetailPrintInvoice";
 import ServiceInvoice from "./ServiceInvoice";
+import { resolveTemplate } from "../service/templates";
+import ModernA4 from "../service/templates/ModernA4";
+import TraditionalA4 from "../service/templates/TraditionalA4";
+import CondensedReceipt from "../service/templates/CondensedReceipt";
 import "./PublicInvoiceView.css";
 
 const PublicInvoiceView = () => {
@@ -157,11 +161,35 @@ const PublicInvoiceView = () => {
         </div>
       );
     case "service":
-      body = <ServiceInvoice invoice={invoice} isDuplicate />;
+    case "msme-service": {
+      // Per-invoice industry template picker — same dispatch the cashier
+      // preview uses, so the customer's share link renders the exact same
+      // layout (ModernA4 / TraditionalA4 / CondensedReceipt). Falls back
+      // to legacy ServiceInvoice/MSMEInvoice when the bill was saved
+      // before the picker existed.
+      const template = resolveTemplate(invoice);
+      if (template) {
+        if (template.family === "modern") {
+          body = <ModernA4 invoice={invoice} isDuplicate />;
+          break;
+        }
+        if (template.family === "traditional") {
+          body = <TraditionalA4 invoice={invoice} isDuplicate />;
+          break;
+        }
+        if (template.family === "condensed") {
+          body = <CondensedReceipt invoice={invoice} isDuplicate />;
+          break;
+        }
+      }
+      body =
+        invoiceStoreType === "msme-service" ? (
+          <MSMEInvoice invoice={invoice} isDuplicate />
+        ) : (
+          <ServiceInvoice invoice={invoice} isDuplicate />
+        );
       break;
-    case "msme-service":
-      body = <MSMEInvoice invoice={invoice} isDuplicate />;
-      break;
+    }
     case "hotel":
       // The Hotel Public Invoice always shows the 80mm Thermal receipt
       // — for both Dining and Lodging, regardless of the cashier's

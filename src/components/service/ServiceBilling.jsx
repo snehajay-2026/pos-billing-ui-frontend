@@ -43,6 +43,15 @@ import OpenShiftDialog from "../shift/OpenShiftDialog";
 import ShiftStatusBanner from "../shift/ShiftStatusBanner";
 import CloseShiftDialog from "../shift/CloseShiftDialog";
 import { useShiftGate } from "../../hooks/useShiftGate";
+import {
+  INDUSTRIES,
+  INDUSTRY_GROUPS,
+  DEFAULT_INDUSTRY_ID,
+  DEFAULT_TEMPLATE_ID,
+  emptyFieldsFor,
+  fieldConfigFor,
+  templateById,
+} from "./templates";
 import "../pos/POSBilling.css";
 import "./ServiceBilling.css";
 
@@ -93,9 +102,30 @@ const ServiceBilling = () => {
     // default here — leaving it blank means 0% (cashier may generate
     // exempt / non-tax bills without typing anything).
     gstRate: "",
+    // Industry template picker — picked per-bill so the cashier can switch
+    // industries mid-session (multi-business consultant). The renderer
+    // looks up `templateId` to pick ModernA4 / TraditionalA4 /
+    // CondensedReceipt; `fields` rides on `items[0].meta` along with the
+    // customer block so legacy public-share renderers stay compatible.
+    industry: "",
+    templateId: "",
+    fields: {},
   };
-  const [bills, setBills] = useState({
-    "Bill-101": { ...newBillShape },
+  const [bills, setBills] = useState(() => {
+    const seedIndustry = settings.serviceDefaultIndustry || DEFAULT_INDUSTRY_ID;
+    // Whether the admin has locked the template choice, every new bill
+    // starts on the default industry. The map returns undefined for a
+    // bogus store-level setting, in which case we fall back to the
+    // system default rather than rendering an unknown template.
+    const seedTemplateId = templateById(`${seedIndustry}-modern`)?.id || DEFAULT_TEMPLATE_ID;
+    return {
+      "Bill-101": {
+        ...newBillShape,
+        industry: seedIndustry,
+        templateId: seedTemplateId,
+        fields: emptyFieldsFor(seedIndustry),
+      },
+    };
   });
   const [activeBillId, setActiveBillId] = useState("Bill-101");
   const activeBill = bills[activeBillId] || { items: [], paymentMode: "Cash" };
@@ -106,7 +136,32 @@ const ServiceBilling = () => {
 
   const [undoItem, setUndoItem] = useState(null);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  // Industry template drawer — opens on chip click; locks which fields
+  // show in the right drawer. Industry selection persists per-bill so a
+  // multi-business cashier can flip between templates mid-session.
+  const [industryDrawerOpen, setIndustryDrawerOpen] = useState(false);
   const undoTimerRef = useRef(null);
+
+  const activeIndustryId = activeBill.industry || DEFAULT_INDUSTRY_ID;
+  const activeIndustry = INDUSTRIES.find((i) => i.id === activeIndustryId) || INDUSTRIES[0];
+  const activeFieldConfig = fieldConfigFor(activeIndustryId);
+  const industryFieldCount = activeFieldConfig.length;
+  const filledFieldCount = Object.values(activeBill.fields || {}).filter(Boolean).length;
+
+  const selectIndustry = (industryId) => {
+    const tplId = `${industryId}-modern`;
+    const tpl = templateById(tplId) ? tplId : DEFAULT_TEMPLATE_ID;
+    updateActiveBill({
+      industry: industryId,
+      templateId: tpl,
+      fields: emptyFieldsFor(industryId),
+    });
+  };
+
+  const updateIndustryField = (key, value) => {
+    const next = { ...(activeBill.fields || {}), [key]: value };
+    updateActiveBill({ fields: next });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -223,9 +278,16 @@ const ServiceBilling = () => {
 
   const newBill = () => {
     const newId = `Bill-${billCounter + 1}`;
+    const defaultIndustry = settings.serviceDefaultIndustry || DEFAULT_INDUSTRY_ID;
+    const defaultTemplateId = `${defaultIndustry}-modern`;
     setBills((prev) => ({
       ...prev,
-      [newId]: { ...newBillShape },
+      [newId]: {
+        ...newBillShape,
+        industry: defaultIndustry,
+        templateId: templateById(defaultTemplateId) ? defaultTemplateId : DEFAULT_TEMPLATE_ID,
+        fields: emptyFieldsFor(defaultIndustry),
+      },
     }));
     setBillCounter((c) => c + 1);
     setActiveBillId(newId);
@@ -305,6 +367,14 @@ const ServiceBilling = () => {
       gstRate: billGstRate,
       discountPct,
       discountAmt,
+      // Industry template picker — persisted both on items[0].meta (legacy
+      // path used by PublicInvoiceView) and top-level (renderer path used
+      // by InvoiceView). The two reads in the renderer templates treat
+      // top-level as the source of truth but fall back to meta so old rows
+      // continue to render correctly when they are reopened / reshared.
+      industry: activeBill.industry || DEFAULT_INDUSTRY_ID,
+      templateId: activeBill.templateId || DEFAULT_TEMPLATE_ID,
+      fields: activeBill.fields || {},
     };
     const itemsWithCustomerMeta = activeBill.items.map((item, idx) => {
       const normalized = serviceLines[idx] || getServiceLine(item, idx, billGstRate);
@@ -357,6 +427,12 @@ const ServiceBilling = () => {
       serviceFrom: activeBill.serviceFrom || new Date().toISOString().split("T")[0],
       serviceTo: activeBill.serviceTo,
       remarks: activeBill.remarks,
+      // Industry template — top-level mirror of items[0].meta so the
+      // InvoiceView dispatch can pick ModernA4 / TraditionalA4 /
+      // CondensedReceipt without a meta round-trip on first paint.
+      industry: activeBill.industry || DEFAULT_INDUSTRY_ID,
+      templateId: activeBill.templateId || DEFAULT_TEMPLATE_ID,
+      fields: activeBill.fields || {},
     };
 
     try {
@@ -585,6 +661,29 @@ const ServiceBilling = () => {
               <FaTrash /> Clear
             </button>
           </div>
+
+          {/* INDUSTRY TEMPLATE PICKER */}
+          <button
+            type="button"
+            className="sv-industry-picker"
+            onClick={() => setIndustryDrawerOpen(true)}
+            style={{ "--picker-accent": activeIndustry.accent }}
+            title="Choose invoice template"
+          >
+            <span className="sv-industry-picker-icon" aria-hidden="true">
+              {activeIndustry.icon}
+            </span>
+            <span className="sv-industry-picker-meta">
+              <small>INVOICE TEMPLATE</small>
+              <strong>{activeIndustry.label}</strong>
+              {filledFieldCount > 0 && (
+                <span className="sv-industry-picker-count">
+                  {filledFieldCount} field{filledFieldCount === 1 ? "" : "s"} filled
+                </span>
+              )}
+            </span>
+            <span className="sv-industry-picker-arrow">›</span>
+          </button>
 
           {/* CUSTOMER DETAILS */}
           <div className="sv-customer-card">
@@ -917,6 +1016,110 @@ const ServiceBilling = () => {
           </div>
         </div>
       </div>
+
+      {/* INDUSTRY TEMPLATE DRAWER */}
+      {industryDrawerOpen && (
+        <>
+          <div
+            className="sv-drawer-scrim"
+            onClick={() => setIndustryDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="sv-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose invoice template"
+          >
+            <div className="sv-drawer-head">
+              <div>
+                <h3>Invoice template</h3>
+                <p>Pick the layout that fits this bill. Fields update instantly.</p>
+              </div>
+              <button
+                type="button"
+                className="sv-drawer-close"
+                onClick={() => setIndustryDrawerOpen(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="sv-drawer-body">
+              {INDUSTRY_GROUPS.map((group) => {
+                const items = INDUSTRIES.filter((i) => i.group === group.id);
+                if (items.length === 0) return null;
+                return (
+                  <section className="sv-drawer-group" key={group.id}>
+                    <h4>{group.label}</h4>
+                    <div className="sv-drawer-grid">
+                      {items.map((industry) => {
+                        const isActive = industry.id === activeIndustryId;
+                        return (
+                          <button
+                            type="button"
+                            key={industry.id}
+                            className={`sv-industry-card${isActive ? " is-active" : ""}`}
+                            style={{ "--card-accent": industry.accent }}
+                            onClick={() => selectIndustry(industry.id)}
+                          >
+                            <span className="sv-industry-card-icon" aria-hidden="true">
+                              {industry.icon}
+                            </span>
+                            <span className="sv-industry-card-label">{industry.label}</span>
+                            {isActive && <span className="sv-industry-card-check">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+
+              {activeFieldConfig.length > 0 && (
+                <section className="sv-drawer-fields">
+                  <h4>
+                    {activeIndustry.label} — extra fields
+                    <small>
+                      {filledFieldCount}/{industryFieldCount} filled
+                    </small>
+                  </h4>
+                  <div className="sv-drawer-fields-grid">
+                    {activeFieldConfig.map((field) => (
+                      <label
+                        key={field.key}
+                        className={`sv-drawer-field${
+                          (activeBill.fields || {})[field.key] ? " is-filled" : ""
+                        }`}
+                      >
+                        <span>{field.label}</span>
+                        {field.type === "textarea" ? (
+                          <textarea
+                            className="sv-input"
+                            rows={2}
+                            placeholder={field.placeholder}
+                            value={(activeBill.fields || {})[field.key] || ""}
+                            onChange={(e) => updateIndustryField(field.key, e.target.value)}
+                          />
+                        ) : (
+                          <input
+                            className="sv-input"
+                            type={field.type || "text"}
+                            placeholder={field.placeholder}
+                            value={(activeBill.fields || {})[field.key] || ""}
+                            onChange={(e) => updateIndustryField(field.key, e.target.value)}
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          </aside>
+        </>
+      )}
 
       <OpenShiftDialog
         {...mandatoryShiftDialogProps}

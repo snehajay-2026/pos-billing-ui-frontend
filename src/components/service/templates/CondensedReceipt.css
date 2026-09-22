@@ -1,0 +1,381 @@
+/* Condensed Receipt — single-column thermal/portrait-friendly bill.
+   72mm body width reads cleanly on a small printer as well as on the screen. */
+
+:root {
+  --cr-accent: #2c3e50;
+  --cr-ink: #1f2937;
+  --cr-muted: #6b7280;
+  --cr-line: #e5e7eb;
+}
+
+.service-invoice-condensed {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: var(--cr-ink);
+  background: #f5f5f5;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.service-invoice-condensed * {
+  box-sizing: border-box;
+}
+
+.cr-receipt {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  padding: 18px 16px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.cr-receipt::after {
+  /* Dotted right margin to mimic tear edge */
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 4px;
+  height: 100%;
+  background-image: radial-gradient(circle at 2px 2px, #ddd 1px, transparent 1.5px);
+  background-size: 4px 8px;
+}
+
+.cr-header {
+  text-align: center;
+  border-bottom: 1px dashed var(--cr-line);
+  padding-bottom: 12px;
+}
+
+.cr-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin: 0 auto 8px;
+  display: block;
+}
+
+.cr-header h1 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--cr-accent);
+  letter-spacing: 0.5px;
+}
+
+.cr-header p {
+  margin: 2px 0;
+  font-size: 11px;
+  color: var(--cr-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cr-doc-title {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--cr-accent);
+}
+
+.cr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  margin-top: 6px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.cr-status-badge.is-pending {
+  color: #b45309;
+}
+.cr-status-badge.is-paid {
+  color: #047857;
+}
+.cr-status-badge.is-cleared {
+  color: #1f6feb;
+}
+.cr-status-badge.is-cancelled {
+  color: #b91c1c;
+}
+.cr-status-badge.is-draft {
+  color: #64748b;
+}
+
+.cr-duplicate {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #b91c1c;
+  font-weight: 700;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--cr-line);
+}
+
+.cr-meta {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--cr-line);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crkv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.crkv-label {
+  color: var(--cr-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.crkv-value {
+  font-weight: 600;
+}
+
+.cr-section {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--cr-line);
+}
+
+.cr-section-head {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--cr-accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.cr-bill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cr-bill strong {
+  font-size: 14px;
+}
+
+.cr-bill span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--cr-muted);
+}
+
+.cr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.cr-grid .crkv-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.cr-grid .crkv-value {
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.cr-empty {
+  text-align: center;
+  color: var(--cr-muted);
+  font-style: italic;
+  padding: 10px;
+}
+
+.cr-item {
+  padding: 4px 0;
+}
+
+.cr-item-head {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+}
+
+.cr-item-no {
+  color: var(--cr-muted);
+  font-size: 10px;
+  min-width: 16px;
+}
+
+.cr-item-desc {
+  font-weight: 500;
+  flex: 1;
+  word-break: break-word;
+}
+
+.cr-item-meta {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 20px;
+  font-size: 11px;
+  color: var(--cr-muted);
+}
+
+.cr-item-meta span:last-child {
+  color: var(--cr-ink);
+  font-weight: 600;
+}
+
+.cr-totals {
+  border-bottom: 1px dashed var(--cr-line);
+}
+
+.cr-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.cr-discount-row {
+  color: #b91c1c;
+}
+
+.cr-total-highlight {
+  display: flex;
+  justify-content: space-between;
+  background: var(--cr-accent);
+  color: #fff;
+  padding: 8px 10px;
+  margin: 8px -4px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cr-balance-row {
+  font-size: 11px;
+  color: var(--cr-muted);
+  border-top: 1px dotted var(--cr-line);
+  padding-top: 5px;
+  margin-top: 4px;
+}
+
+.cr-amount-words {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.cr-amount-words small {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--cr-muted);
+  text-transform: uppercase;
+}
+
+.cr-amount-words strong {
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.cr-compliance {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--cr-line);
+}
+
+.cr-compliance small {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--cr-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cr-compliance p {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--cr-ink);
+}
+
+.cr-footer {
+  padding-top: 12px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.cr-remarks {
+  font-size: 11px;
+  color: var(--cr-muted);
+  margin: 0 0 8px;
+  font-style: italic;
+}
+
+.cr-signoff {
+  font-size: 10px;
+  color: var(--cr-muted);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cr-thanks {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cr-accent);
+  margin: 8px 0;
+  letter-spacing: 1.5px;
+}
+
+.cr-contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--cr-muted);
+  border-top: 1px dashed var(--cr-line);
+  padding-top: 8px;
+}
+
+.cr-contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+@media print {
+  .service-invoice-condensed {
+    background: #fff;
+    padding: 0;
+  }
+  .cr-receipt {
+    box-shadow: none;
+    max-width: 80mm;
+    margin: 0 auto;
+  }
+  .cr-receipt::after {
+    display: none;
+  }
+}
