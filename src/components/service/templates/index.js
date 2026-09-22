@@ -62,14 +62,23 @@ export const FAMILIES = {
 // does not block invoice save. `key` is the camelCase key the renderer
 // reads off `invoice.fields` (which itself rides on `items[0].meta`).
 //
-// `required` marks fields that the cashier should fill for a "complete"
-// invoice of that industry. Today the form does not enforce required
-// fields at the API layer — the drawer shows a hint and lets the cashier
-// choose what to type.
+// `required` (F10): marks fields that the Service Catalog form must have
+// a non-empty value before the backend will accept a save. The brief's
+// section 10 requires backend validation, so the same set of keys is
+// mirrored at db/queries/services.js:REQUIRED_FIELDS_BY_INDUSTRY. Today
+// only the most obviously-must-have keys carry the marker; the form
+// shows a red `*` next to the label and the backend returns a 400 with
+// the missing list if any are blank.
 const FIELDS = {
   // ---- Services family ----
   consulting: [
-    { key: "engagementRef", label: "Engagement Ref", placeholder: "MSA-2026-014", type: "text" },
+    {
+      key: "engagementRef",
+      label: "Engagement Ref",
+      placeholder: "MSA-2026-014",
+      type: "text",
+      required: true,
+    },
     { key: "consultantName", label: "Consultant", placeholder: "Jane Doe", type: "text" },
     { key: "engagementPeriod", label: "Engagement Period", placeholder: "May 2026", type: "text" },
   ],
@@ -121,12 +130,19 @@ const FIELDS = {
       label: "Course / Program",
       placeholder: "B.Sc. Computer Science",
       type: "text",
+      required: true,
     },
     { key: "batch", label: "Batch / Term", placeholder: "2026-29", type: "text" },
     { key: "rollNo", label: "Roll No", placeholder: "CS-2026-014", type: "text" },
   ],
   nonprofit: [
-    { key: "donorName", label: "Donor Name", placeholder: "Donor name", type: "text" },
+    {
+      key: "donorName",
+      label: "Donor Name",
+      placeholder: "Donor name",
+      type: "text",
+      required: true,
+    },
     { key: "donorPan", label: "Donor PAN", placeholder: "AAACR1234R", type: "text" },
     { key: "panOfDonee", label: "PAN of Donee", placeholder: "AAACD1234E", type: "text" },
     {
@@ -140,7 +156,13 @@ const FIELDS = {
 
   // ---- Goods & Trade family ----
   manufacturing: [
-    { key: "poNumber", label: "PO Number", placeholder: "PO-2026-041", type: "text" },
+    {
+      key: "poNumber",
+      label: "PO Number",
+      placeholder: "PO-2026-041",
+      type: "text",
+      required: true,
+    },
     {
       key: "packing",
       label: "Packing & Forwarding",
@@ -155,7 +177,13 @@ const FIELDS = {
     },
   ],
   wholesale: [
-    { key: "poNumber", label: "PO Number", placeholder: "PO-2026-041", type: "text" },
+    {
+      key: "poNumber",
+      label: "PO Number",
+      placeholder: "PO-2026-041",
+      type: "text",
+      required: true,
+    },
     { key: "creditNoteRef", label: "Credit Note Ref", placeholder: "CN-2026-007", type: "text" },
     { key: "placeOfSupply", label: "Place of Supply", placeholder: "27-Maharashtra", type: "text" },
   ],
@@ -171,7 +199,13 @@ const FIELDS = {
     },
   ],
   hardware: [
-    { key: "poNumber", label: "PO Number", placeholder: "PO-2026-041", type: "text" },
+    {
+      key: "poNumber",
+      label: "PO Number",
+      placeholder: "PO-2026-041",
+      type: "text",
+      required: true,
+    },
     { key: "modelNo", label: "Model No", placeholder: "MX-204", type: "text" },
     { key: "serialNo", label: "Serial No", placeholder: "SN-12345678", type: "text" },
     { key: "warrantyMonths", label: "Warranty (months)", placeholder: "12", type: "text" },
@@ -183,7 +217,13 @@ const FIELDS = {
     },
   ],
   trading: [
-    { key: "poNumber", label: "PO Number", placeholder: "PO-2026-041", type: "text" },
+    {
+      key: "poNumber",
+      label: "PO Number",
+      placeholder: "PO-2026-041",
+      type: "text",
+      required: true,
+    },
     { key: "placeOfSupply", label: "Place of Supply", placeholder: "27-Maharashtra", type: "text" },
     { key: "tcsSection", label: "TCS Section", placeholder: "206C(1H)", type: "text" },
     {
@@ -209,7 +249,13 @@ const FIELDS = {
 
   // ---- Health & Hospitality family ----
   healthcare: [
-    { key: "patientId", label: "Patient ID", placeholder: "P-2026-014", type: "text" },
+    {
+      key: "patientId",
+      label: "Patient ID",
+      placeholder: "P-2026-014",
+      type: "text",
+      required: true,
+    },
     { key: "doctor", label: "Doctor", placeholder: "Dr. Jane Doe", type: "text" },
     {
       key: "consultationDate",
@@ -236,7 +282,7 @@ const FIELDS = {
     },
   ],
   logistics: [
-    { key: "lrNo", label: "LR / GR No", placeholder: "LR-2026-014", type: "text" },
+    { key: "lrNo", label: "LR / GR No", placeholder: "LR-2026-014", type: "text", required: true },
     { key: "vehicleNo", label: "Vehicle No", placeholder: "MH-12-AB-1234", type: "text" },
     { key: "fromCity", label: "From", placeholder: "Mumbai", type: "text" },
     { key: "toCity", label: "To", placeholder: "Pune", type: "text" },
@@ -247,6 +293,19 @@ const FIELDS = {
 
   // ---- Compliance-heavy family ----
   agricultureCompliance: [], // placeholder; covered above by `agriculture`
+};
+
+// Required-field keys per industry, derived from `required: true` flags
+// in FIELDS. Kept as a single source of truth so the catalog form, the
+// billing seed, and the backend validator all read the same shape. The
+// backend has its own mirror at db/queries/services.js:
+// REQUIRED_FIELDS_BY_INDUSTRY — both lists must stay in lock-step. Any
+// time a registry field gains `required: true` here, the mirror in the
+// backend has to grow too (the runtime-migrations test suite has a
+// regression to pin this).
+export const requiredFieldsFor = (industryId) => {
+  const list = FIELDS[industryId] || [];
+  return list.filter((f) => f && f.required).map((f) => f.key);
 };
 
 // All 16 industries. Order matters — the picker groups them by `group` and

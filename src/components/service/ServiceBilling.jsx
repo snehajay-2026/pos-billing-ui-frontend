@@ -279,10 +279,25 @@ const ServiceBilling = () => {
             : templateById(fallbackTplId)
               ? fallbackTplId
               : DEFAULT_TEMPLATE_ID;
-        // Merge with any existing fields (new-bill fields are empty,
-        // so this is effectively just the emptyFieldsFor result).
+        // F10: pre-fill the per-industry fields drawer with the service's
+        // saved defaults (the cashier typed these once on the catalog
+        // form). Merge order — registry defaults < saved service
+        // defaults < cashier-typed bill values — so the cashier's
+        // in-bill edits still win. The product's `fieldValues` shape
+        // is `{ [key]: string }` so spread is safe; undefined is
+        // treated as empty (legacy services from before F10).
+        const savedFields =
+          product.fieldValues && typeof product.fieldValues === "object" ? product.fieldValues : {};
+        const allowedKeys = new Set(fieldConfigFor(productIndustry).map((f) => f.key));
+        const cleanedSaved = {};
+        for (const [k, v] of Object.entries(savedFields)) {
+          if (allowedKeys.has(k) && v != null && String(v).trim() !== "") {
+            cleanedSaved[k] = v;
+          }
+        }
         const mergedFields = {
           ...emptyFieldsFor(productIndustry),
+          ...cleanedSaved,
           ...(cur.fields && typeof cur.fields === "object" ? cur.fields : {}),
         };
         next = {

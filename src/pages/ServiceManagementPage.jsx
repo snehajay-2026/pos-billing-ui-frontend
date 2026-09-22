@@ -28,7 +28,14 @@ import {
 } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
 import { CATEGORY_TONES, SERVICE_CATEGORIES, formatCurrency } from "../utils/serviceTones";
-import { INDUSTRIES, TEMPLATES, industryById, templateById } from "../components/service/templates";
+import {
+  INDUSTRIES,
+  TEMPLATES,
+  industryById,
+  templateById,
+  fieldConfigFor,
+  requiredFieldsFor,
+} from "../components/service/templates";
 import "./ServiceManagementPage.css";
 
 const emptyForm = {
@@ -47,6 +54,16 @@ const emptyForm = {
   industry: "",
   defaultTemplateId: "",
   hsnSac: "",
+  // F10: the visible values for the currently-selected industry's
+  // fields. Always keyed by `fieldConfigFor(industry).key` and only
+  // carries the keys for the active industry — switching industries
+  // stashes the outgoing values into `fieldValuesByIndustry` and seeds
+  // the new industry's inputs from there (or {} on first visit).
+  fieldValues: {},
+  // F10: per-industry in-memory stash so a quick Consulting →
+  // Manufacturing → Consulting hop restores the Consulting values
+  // without retyping. Cleared on submit / cancel / page leave.
+  fieldValuesByIndustry: {},
 };
 
 const ServiceManagementPage = () => {
@@ -84,11 +101,91 @@ const ServiceManagementPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // F10: industry change is special — it stashes the outgoing industry's
+  // values into `fieldValuesByIndustry`, picks the canonical template for
+  // the new industry unless the cashier had already typed a deliberate
+  // override, and seeds the visible inputs from the stash for the new
+  // industry (or {} on first visit). Keeps a fresh bill's per-industry
+  // fields in sync with the catalog form in one place.
+  const handleIndustryChange = (e) => {
+    const next = e.target.value;
+    setForm((prev) => {
+      const prevIndustry = prev.industry;
+      const prevValues = prev.fieldValues || {};
+      const stash = { ...(prev.fieldValuesByIndustry || {}) };
+      // Park the outgoing industry's typed values so a switch back
+      // can restore them.
+      if (prevIndustry) {
+        stash[prevIndustry] = prevValues;
+      }
+      const nextValues = next && stash[next] ? { ...stash[next] } : {};
+      // Drop keys that don't belong to the new industry so a
+      // Manufacturing → Healthcare switch doesn't keep a stale
+      // poNumber hanging around in the visible inputs.
+      const allowedKeys = new Set(fieldConfigFor(next).map((f) => f.key));
+      const cleaned = {};
+      for (const [k, v] of Object.entries(nextValues)) {
+        if (allowedKeys.has(k)) cleaned[k] = v;
+      }
+      // Auto-pick the new industry's canonical template unless the
+      // cashier had already typed a deliberate override that still
+      // exists in the registry.
+      let nextTemplate = prev.defaultTemplateId;
+      const stillValid = nextTemplate && templateById(nextTemplate);
+      if (!stillValid || (next && stillValid && stillValid.industry !== next)) {
+        const canonical =
+          templateById(`${next}-modern`) ||
+          templateById(`${next}-traditional`) ||
+          templateById(`${next}-condensed`);
+        nextTemplate = canonical ? canonical.id : "";
+      }
+      return {
+        ...prev,
+        industry: next,
+        defaultTemplateId: nextTemplate,
+        fieldValues: cleaned,
+        fieldValuesByIndustry: stash,
+      };
+    });
+  };
+
+  // F10: typed value for one of the industry-specific inputs. Writes
+  // straight into `fieldValues` (the visible map) — the stash in
+  // `fieldValuesByIndustry` is updated at submit time so we don't
+  // touch it on every keystroke.
+  const handleFieldChange = (key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      fieldValues: { ...(prev.fieldValues || {}), [key]: value },
+    }));
+  };
+
+  // F10: client-side mirror of the backend required-field gate. The
+  // backend (db/queries/services.js:validateFieldValues) is the source
+  // of truth — this is only here so the cashier sees the missing
+  // fields without round-tripping. If the backend ever loosens its
+  // list, the red `*` markers must also drop here, and vice versa.
+  const validateFieldValuesClient = () => {
+    if (!form.industry) return null;
+    const required = requiredFieldsFor(form.industry);
+    const missing = required.filter((k) => {
+      const v = (form.fieldValues || {})[k];
+      return v == null || String(v).trim() === "";
+    });
+    if (!missing.length) return null;
+    return `Please fill required field(s) for ${industryById(form.industry)?.label || form.industry}: ${missing.join(", ")}.`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (!form.name || !form.rate || !form.hours) {
       setError("Service name, rate, and hours are required.");
+      return;
+    }
+    const fieldError = validateFieldValuesClient();
+    if (fieldError) {
+      setError(fieldError);
       return;
     }
 
@@ -105,6 +202,18 @@ const ServiceManagementPage = () => {
       industry: form.industry || null,
       defaultTemplateId: form.defaultTemplateId || null,
       hsnSac: form.hsnSac?.trim() || null,
+      // F10: per-service dynamic field values. Only the values for
+      // the saved industry ride to the server — the per-industry
+      // stash is browser-memory only, the JSON column stays tight.
+      // Drop empty strings so the backend's normalizeFieldValues()
+      // doesn't carry blank keys into the saved payload.
+      fieldValues: form.industry
+        ? Object.fromEntries(
+            Object.entries(form.fieldValues || {}).filter(
+              ([, v]) => v != null && String(v).trim() !== ""
+            )
+          )
+        : {},
     };
 
     try {
@@ -126,6 +235,7 @@ const ServiceManagementPage = () => {
   };
 
   const handleEdit = (svc) => {
+    const restored = svc.fieldValues && typeof svc.fieldValues === "object" ? svc.fieldValues : {};
     setForm({
       id: svc.id,
       name: svc.name || "",
@@ -137,6 +247,12 @@ const ServiceManagementPage = () => {
       industry: svc.industry || "",
       defaultTemplateId: svc.defaultTemplateId || "",
       hsnSac: svc.hsnSac || "",
+      // Seed `fieldValuesByIndustry` with the saved industry so a
+      // switch out and back restores what was on disk. Other slots
+      // stay empty — the cashier's session-time stashes are not
+      // persisted across page reloads.
+      fieldValues: { ...restored },
+      fieldValuesByIndustry: svc.industry ? { [svc.industry]: { ...restored } } : {},
     });
     setEditing(true);
     // Scroll to form
@@ -380,7 +496,7 @@ const ServiceManagementPage = () => {
                   id="sv-industry"
                   name="industry"
                   value={form.industry}
-                  onChange={handleChange}
+                  onChange={handleIndustryChange}
                   className="sv-input sv-select"
                 >
                   <option value="">— No specific industry —</option>
@@ -437,6 +553,68 @@ const ServiceManagementPage = () => {
                 </small>
               </div>
             </div>
+
+            {/* F10: dynamic industry-specific fields. Renders one input per
+                entry returned by fieldConfigFor(form.industry). The values
+                ride on items[0].meta.fields when this service is tapped in
+                Service Billing (the toggleItem auto-seed merges them in
+                under the cashier's bill-level values), and persist on the
+                services row as JSON in the `field_values` column. Empty
+                state when no industry is picked — the hint tells the
+                cashier what to do next. */}
+            <fieldset className="sv-fieldset sv-fields-dynamic">
+              <legend className="sv-fieldset-legend">
+                {form.industry
+                  ? `${industryById(form.industry)?.label || "Industry"} fields`
+                  : "Industry-specific fields"}
+              </legend>
+              {!form.industry ? (
+                <p className="sv-field-empty-hint">
+                  Pick an industry above to add industry-specific fields like PO number, distributor
+                  code, LR / GR number, donor name, and so on.
+                </p>
+              ) : (
+                <div className="sv-fields-dynamic-grid">
+                  {fieldConfigFor(form.industry).map((field) => {
+                    const value = (form.fieldValues || {})[field.key] ?? "";
+                    const inputId = `sv-fv-${field.key}`;
+                    const isRequired = !!field.required;
+                    return (
+                      <div key={field.key} className="sv-field">
+                        <label htmlFor={inputId}>
+                          {field.label}
+                          {isRequired && (
+                            <span className="sv-field-required" aria-label="required">
+                              {" "}
+                              *
+                            </span>
+                          )}
+                        </label>
+                        {field.type === "textarea" ? (
+                          <textarea
+                            id={inputId}
+                            value={value}
+                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                            placeholder={field.placeholder || ""}
+                            rows={3}
+                            className="sv-input sv-textarea"
+                          />
+                        ) : (
+                          <input
+                            id={inputId}
+                            type={field.type || "text"}
+                            value={value}
+                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                            placeholder={field.placeholder || ""}
+                            className="sv-input"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </fieldset>
 
             <div className="sv-form-actions">
               <button type="submit" className="sv-btn sv-btn-primary">
