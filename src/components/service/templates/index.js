@@ -309,34 +309,145 @@ export const requiredFieldsFor = (industryId) => {
 };
 
 // All 16 industries. Order matters — the picker groups them by `group` and
-// renders inside that group.
+// renders inside that group. `description` powers the modernized Service
+// Billing industry picker cards (F12); it's intentionally inline here so
+// the picker, the catalog form, and any future surface read from a
+// single source of truth. The emulator-style tone is deliberately
+// short — one clause with the typical use case for the industry, no
+// marketing copy.
 export const INDUSTRIES = [
   // Services
-  { id: "consulting", label: "Consulting", group: "services", icon: "💼", accent: "#4338ca" },
-  { id: "technology", label: "Technology", group: "services", icon: "💻", accent: "#0ea5e9" },
-  { id: "startup", label: "Startups", group: "services", icon: "🚀", accent: "#7c3aed" },
-  { id: "realestate", label: "Real Estate", group: "services", icon: "🏠", accent: "#0f766e" },
-  { id: "education", label: "Education", group: "services", icon: "🎓", accent: "#b45309" },
-  { id: "nonprofit", label: "Non-Profit", group: "services", icon: "🤝", accent: "#15803d" },
+  {
+    id: "consulting",
+    label: "Consulting",
+    group: "services",
+    icon: "💼",
+    accent: "#4338ca",
+    description: "Advisory, strategy, and management engagements.",
+  },
+  {
+    id: "technology",
+    label: "Technology",
+    group: "services",
+    icon: "💻",
+    accent: "#0ea5e9",
+    description: "SaaS, IT services, and software project billing.",
+  },
+  {
+    id: "startup",
+    label: "Startups",
+    group: "services",
+    icon: "🚀",
+    accent: "#7c3aed",
+    description: "Founder-led invoices for early-stage companies.",
+  },
+  {
+    id: "realestate",
+    label: "Real Estate",
+    group: "services",
+    icon: "🏠",
+    accent: "#0f766e",
+    description: "Rent, leases, brokerage, and property agreements.",
+  },
+  {
+    id: "education",
+    label: "Education",
+    group: "services",
+    icon: "🎓",
+    accent: "#b45309",
+    description: "Coaching, training, and tuition receipts.",
+  },
+  {
+    id: "nonprofit",
+    label: "Non-Profit",
+    group: "services",
+    icon: "🤝",
+    accent: "#15803d",
+    description: "Donations, grants, and 80G-eligible receipts.",
+  },
 
   // Goods & Trade
-  { id: "manufacturing", label: "Manufacturing", group: "goods", icon: "🏭", accent: "#1d4ed8" },
-  { id: "wholesale", label: "Wholesale & Retail", group: "goods", icon: "🛒", accent: "#0369a1" },
-  { id: "distributors", label: "Distributors", group: "goods", icon: "🚚", accent: "#0e7490" },
-  { id: "hardware", label: "Hardware", group: "goods", icon: "🖥️", accent: "#4338ca" },
-  { id: "trading", label: "Trading", group: "goods", icon: "📈", accent: "#be123c" },
-  { id: "construction", label: "Construction", group: "goods", icon: "🏗️", accent: "#b45309" },
-  { id: "agriculture", label: "Agriculture", group: "goods", icon: "🌾", accent: "#15803d" },
+  {
+    id: "manufacturing",
+    label: "Manufacturing",
+    group: "goods",
+    icon: "🏭",
+    accent: "#1d4ed8",
+    description: "Production goods with PO and e-Way Bill fields.",
+  },
+  {
+    id: "wholesale",
+    label: "Wholesale & Retail",
+    group: "goods",
+    icon: "🛒",
+    accent: "#0369a1",
+    description: "B2B / B2C trade invoices with credit note refs.",
+  },
+  {
+    id: "distributors",
+    label: "Distributors",
+    group: "goods",
+    icon: "🚚",
+    accent: "#0e7490",
+    description: "Distributor billing with vehicle and route details.",
+  },
+  {
+    id: "hardware",
+    label: "Hardware",
+    group: "goods",
+    icon: "🖥️",
+    accent: "#4338ca",
+    description: "Hardware sales with warranty terms and serials.",
+  },
+  {
+    id: "trading",
+    label: "Trading",
+    group: "goods",
+    icon: "📈",
+    accent: "#be123c",
+    description: "Trading invoices with TCS Section 206C(1H) notes.",
+  },
+  {
+    id: "construction",
+    label: "Construction",
+    group: "goods",
+    icon: "🏗️",
+    accent: "#b45309",
+    description: "Work orders, milestones, and TDS 194C deductions.",
+  },
+  {
+    id: "agriculture",
+    label: "Agriculture",
+    group: "goods",
+    icon: "🌾",
+    accent: "#15803d",
+    description: "Commodity, grade, and mandi / market-fee details.",
+  },
 
   // Health & Hospitality
-  { id: "healthcare", label: "Healthcare", group: "health", icon: "🏥", accent: "#be123c" },
-  { id: "foodbeverage", label: "Food & Beverage", group: "health", icon: "🍽️", accent: "#92400e" },
+  {
+    id: "healthcare",
+    label: "Healthcare",
+    group: "health",
+    icon: "🏥",
+    accent: "#be123c",
+    description: "Patient, doctor, and consultation invoices.",
+  },
+  {
+    id: "foodbeverage",
+    label: "Food & Beverage",
+    group: "health",
+    icon: "🍽️",
+    accent: "#92400e",
+    description: "Restaurant bills with table, covers, and FSSAI.",
+  },
   {
     id: "logistics",
     label: "Logistics & Transport",
     group: "health",
     icon: "📦",
     accent: "#1e3a8a",
+    description: "LR / GR, vehicle, and consignor / consignee details.",
   },
 ];
 

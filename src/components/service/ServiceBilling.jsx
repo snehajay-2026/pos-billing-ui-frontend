@@ -45,7 +45,6 @@ import CloseShiftDialog from "../shift/CloseShiftDialog";
 import { useShiftGate } from "../../hooks/useShiftGate";
 import {
   INDUSTRIES,
-  INDUSTRY_GROUPS,
   DEFAULT_INDUSTRY_ID,
   DEFAULT_TEMPLATE_ID,
   emptyFieldsFor,
@@ -53,6 +52,7 @@ import {
   industryById,
   templateById,
 } from "./templates";
+import IndustryTemplateModal from "./IndustryTemplateModal";
 import "../pos/POSBilling.css";
 import "./ServiceBilling.css";
 
@@ -137,10 +137,16 @@ const ServiceBilling = () => {
 
   const [undoItem, setUndoItem] = useState(null);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
-  // Industry template drawer — opens on chip click; locks which fields
-  // show in the right drawer. Industry selection persists per-bill so a
-  // multi-business cashier can flip between templates mid-session.
+  // Industry picker modal — opens on chip click. Industry selection
+  // persists per-bill so a multi-business cashier can flip between
+  // templates mid-session. `industrySearch` is the local search
+  // input (resets to "" on close). `triggerRef` captures the element
+  // that opened the modal so we can return focus to it on close —
+  // standard accessible dialog pattern.
   const [industryDrawerOpen, setIndustryDrawerOpen] = useState(false);
+  const [industrySearch, setIndustrySearch] = useState("");
+  const triggerRef = useRef(null);
+  const searchInputRef = useRef(null);
   const undoTimerRef = useRef(null);
 
   const activeIndustryId = activeBill.industry || DEFAULT_INDUSTRY_ID;
@@ -801,6 +807,7 @@ const ServiceBilling = () => {
           {/* INDUSTRY TEMPLATE PICKER */}
           <button
             type="button"
+            ref={triggerRef}
             className={`sv-industry-picker${
               settings.serviceLockTemplateId ? " sv-industry-picker-locked" : ""
             }`}
@@ -814,6 +821,7 @@ const ServiceBilling = () => {
                 showToast("info", "Template lock is on — change it from Store Settings.");
                 return;
               }
+              setIndustrySearch("");
               setIndustryDrawerOpen(true);
             }}
             disabled={!!settings.serviceLockTemplateId}
@@ -1174,112 +1182,37 @@ const ServiceBilling = () => {
         </div>
       </div>
 
-      {/* INDUSTRY TEMPLATE DRAWER */}
+      {/* INDUSTRY TEMPLATE MODAL — modern, responsive picker. Reuses the
+          existing industryDrawerOpen state + selectIndustry() handler +
+          INDUSTRY_GROUPS / INDUSTRIES data + activeFieldConfig for the
+          preserved Extra Fields section. Adds a local industrySearch for
+          the live filter, a focusRestoreRef for accessibility (returning
+          focus to the trigger chip on close), and an Escape-to-close
+          effect when the modal is open. */}
       {industryDrawerOpen && (
-        <>
-          <div
-            className="sv-drawer-scrim"
-            onClick={() => setIndustryDrawerOpen(false)}
-            aria-hidden="true"
-          />
-          <aside
-            className="sv-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Choose invoice template"
-          >
-            <div className="sv-drawer-head">
-              <div>
-                <h3>Invoice template</h3>
-                <p>
-                  {settings.serviceLockTemplateId
-                    ? "Template lock is on — choose a new layout from Store Settings to change it."
-                    : "Pick the layout that fits this bill. Fields update instantly."}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="sv-drawer-close"
-                onClick={() => setIndustryDrawerOpen(false)}
-                aria-label="Close"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="sv-drawer-body">
-              {INDUSTRY_GROUPS.map((group) => {
-                const items = INDUSTRIES.filter((i) => i.group === group.id);
-                if (items.length === 0) return null;
-                return (
-                  <section className="sv-drawer-group" key={group.id}>
-                    <h4>{group.label}</h4>
-                    <div className="sv-drawer-grid">
-                      {items.map((industry) => {
-                        const isActive = industry.id === activeIndustryId;
-                        return (
-                          <button
-                            type="button"
-                            key={industry.id}
-                            className={`sv-industry-card${isActive ? " is-active" : ""}`}
-                            style={{ "--card-accent": industry.accent }}
-                            onClick={() => selectIndustry(industry.id)}
-                          >
-                            <span className="sv-industry-card-icon" aria-hidden="true">
-                              {industry.icon}
-                            </span>
-                            <span className="sv-industry-card-label">{industry.label}</span>
-                            {isActive && <span className="sv-industry-card-check">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-
-              {activeFieldConfig.length > 0 && (
-                <section className="sv-drawer-fields">
-                  <h4>
-                    {activeIndustry.label} — extra fields
-                    <small>
-                      {filledFieldCount}/{industryFieldCount} filled
-                    </small>
-                  </h4>
-                  <div className="sv-drawer-fields-grid">
-                    {activeFieldConfig.map((field) => (
-                      <label
-                        key={field.key}
-                        className={`sv-drawer-field${
-                          (activeBill.fields || {})[field.key] ? " is-filled" : ""
-                        }`}
-                      >
-                        <span>{field.label}</span>
-                        {field.type === "textarea" ? (
-                          <textarea
-                            className="sv-input"
-                            rows={2}
-                            placeholder={field.placeholder}
-                            value={(activeBill.fields || {})[field.key] || ""}
-                            onChange={(e) => updateIndustryField(field.key, e.target.value)}
-                          />
-                        ) : (
-                          <input
-                            className="sv-input"
-                            type={field.type || "text"}
-                            placeholder={field.placeholder}
-                            value={(activeBill.fields || {})[field.key] || ""}
-                            onChange={(e) => updateIndustryField(field.key, e.target.value)}
-                          />
-                        )}
-                      </label>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          </aside>
-        </>
+        <IndustryTemplateModal
+          activeIndustry={activeIndustry}
+          activeIndustryId={activeIndustryId}
+          activeFieldConfig={activeFieldConfig}
+          filledFieldCount={filledFieldCount}
+          industryFieldCount={industryFieldCount}
+          activeBill={activeBill}
+          isLocked={!!settings.serviceLockTemplateId}
+          lockedSubtitle="Template lock is on — change the layout from Store Settings to switch."
+          industrySearch={industrySearch}
+          setIndustrySearch={setIndustrySearch}
+          searchInputRef={searchInputRef}
+          onSelect={(industryId) => {
+            selectIndustry(industryId);
+          }}
+          onClose={() => {
+            setIndustryDrawerOpen(false);
+            // Return focus to the chip so keyboard users land somewhere
+            // predictable after dismissing the modal.
+            if (triggerRef.current) triggerRef.current.focus();
+          }}
+          updateIndustryField={updateIndustryField}
+        />
       )}
 
       <OpenShiftDialog
