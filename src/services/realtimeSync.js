@@ -118,6 +118,10 @@ const connect = (url, scopeKey) => {
   es.addEventListener("service", relay("service"));
   es.addEventListener("customer", relay("customer"));
   es.addEventListener("customer_credit", relay("customer_credit"));
+  // Audit log SSE channel — RecentActivity subscribes so a new audit row
+  // recorded in another tab is prepended live. Scoped per (storeType,
+  // storeId) by the server, so a cross-store event never reaches us.
+  es.addEventListener("audit", relay("audit"));
   es.addEventListener("message", relay("message"));
 
   es.onerror = () => {
