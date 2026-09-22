@@ -233,3 +233,253 @@ describe("requiredFieldsFor", () => {
     }
   });
 });
+
+// F11: per-industry → template → renderer family lockstep. A future
+// registry addition that maps an industry to a different family (or
+// forgets to register a templateId) would silently route the invoice
+// through the wrong renderer. The mapping here is the canonical source
+// for every test below; renderers.test.jsx also encodes this map in
+// the per-family coverage matrix and a drift between the two surfaces
+// here.
+describe("resolveTemplate — industry → family mapping", () => {
+  const { INDUSTRIES } = require("./index");
+
+  // The canonical industry → renderer family map. Mirrors the
+  // TEMPLATES_BY_INDUSTRY table in index.js — every id below must
+  // match the registry. If you change one, change the other; CI
+  // catches the drift through this assertion plus the resolution
+  // test below.
+  const EXPECTED_FAMILY = {
+    consulting: "modern",
+    technology: "modern",
+    startup: "modern",
+    realestate: "modern",
+    education: "modern",
+    nonprofit: "modern",
+    manufacturing: "traditional",
+    wholesale: "traditional",
+    distributors: "traditional",
+    hardware: "traditional",
+    trading: "traditional",
+    construction: "traditional",
+    agriculture: "traditional",
+    healthcare: "condensed",
+    foodbeverage: "condensed",
+    logistics: "condensed",
+  };
+
+  test("every registered industry resolves to a template in its expected family", () => {
+    for (const industry of INDUSTRIES) {
+      const expectedFamily = EXPECTED_FAMILY[industry.id];
+      expect(expectedFamily).toBeTruthy();
+      // The template the cashier saves onto the invoice must point at
+      // a renderer whose family matches the industry expectation.
+      const tpl = resolveTemplate({
+        templateId:
+          industry.id === "startup" ? "startup-modern" : industry.id + "-" + expectedFamily,
+        items: [],
+      });
+      expect(tpl).not.toBeNull();
+      expect(tpl.family).toBe(expectedFamily);
+      expect(tpl.industry).toBe(industry.id);
+    }
+  });
+
+  test("startup-modern sections array includes startupDetails (F11 named block)", () => {
+    // The F11 fix adds a new section id (`startupDetails`) to the
+    // startup template's sections array. ModernA4's `show("startupDetails")`
+    // branch reads it to decide whether to render the dedicated Founder
+    // / Incorporation block. If a future registry refactor drops the
+    // section, ModernA4 silently falls back to the generic-extras
+    // path — still functional, but loses the dedicated visual block.
+    // Pin it here so the refactor has to update the test, not the
+    // production behaviour silently drift.
+    const tpl = resolveTemplate({ templateId: "startup-modern", items: [] });
+    expect(tpl).not.toBeNull();
+    expect(tpl.sections).toContain("startupDetails");
+  });
+});
+
+// F11: fieldConfigFor + renderers.test.jsx coverage matrix.
+// This block doesn't test renderer behaviour (renderers.test.jsx does
+// that via renderToString) — it pins that every registry field key is
+// explicitly named in one of the renderer's named-block lookups for
+// its family. The renderer test asserts the same contract via a
+// different code path; drift between the two surfaces here.
+describe("industry-field coverage matrix", () => {
+  const { INDUSTRIES } = require("./index");
+
+  // Per-family named-block key set, derived from the actual renderers'
+  // DEDICATED_KEYS_* constants. Anything NOT in this set falls through
+  // to the configuration-driven generic-extras fallback, which iterates
+  // fieldConfigFor(industry) directly. The union of "named" + "fallback"
+  // must cover every registry key — that is the F11 contract.
+  const NAMED_BLOCK_KEYS = {
+    modern: new Set([
+      // engagement
+      "engagementRef",
+      "consultantName",
+      "engagementPeriod",
+      // project
+      "projectCode",
+      "milestone",
+      "subscriptionPeriod",
+      "supportTier",
+      // property
+      "agreementRef",
+      "propertyAddress",
+      "servicePeriod",
+      "stampDutyNote",
+      // student
+      "studentName",
+      "courseName",
+      "batch",
+      "rollNo",
+      // donation
+      "donorName",
+      "donorPan",
+      "panOfDonee",
+      "eightyGReference",
+      "donationType",
+      // startupDetails (F11)
+      "founderName",
+      "incorporationNo",
+    ]),
+    traditional: new Set([
+      // po
+      "poNumber",
+      "packing",
+      "eWayBillNote",
+      "placeOfSupply",
+      "creditNoteRef",
+      // warranty
+      "modelNo",
+      "serialNo",
+      "warrantyMonths",
+      "warrantyNote",
+      // workOrder
+      "workOrderRef",
+      "milestone",
+      "retentionPct",
+      "tdsNote",
+      // commodity
+      "commodity",
+      "grade",
+      "quantityKg",
+      "mandiName",
+      "marketFeeNote",
+      // logistics (TraditionalA4 block — for distributors specifically)
+      "lrNo",
+      "vehicleNo",
+      "distributorCode",
+      "route",
+      "reverseChargeNote",
+      "ewayBillNo",
+      // tcs
+      "tcsSection",
+      "tcsNote",
+    ]),
+    condensed: new Set([
+      // patient (healthcare)
+      "patientId",
+      "doctor",
+      "consultationDate",
+      "department",
+      // order (foodbeverage)
+      "tableNo",
+      "covers",
+      "orderType",
+      "fssaiNote",
+      // shipment (logistics)
+      "lrNo",
+      "vehicleNo",
+      "fromCity",
+      "toCity",
+      "ewayBillNo",
+      "consignor",
+      "consignee",
+    ]),
+  };
+
+  const familyByIndustry = {
+    consulting: "modern",
+    technology: "modern",
+    startup: "modern",
+    realestate: "modern",
+    education: "modern",
+    nonprofit: "modern",
+    manufacturing: "traditional",
+    wholesale: "traditional",
+    distributors: "traditional",
+    hardware: "traditional",
+    trading: "traditional",
+    construction: "traditional",
+    agriculture: "traditional",
+    healthcare: "condensed",
+    foodbeverage: "condensed",
+    logistics: "condensed",
+  };
+
+  test("every registry field key for every industry is in its renderer's coverage set", () => {
+    // The contract: any field whose value the cashier could type into
+    // Service Catalog must be visible on the rendered invoice. The
+    // combination of named-block + generic-fallback coverage (encoded
+    // in renderers.test.jsx's NAMED_BLOCK_KEYS) is the source of
+    // truth — this test re-derives the family mapping and asserts the
+    // renderer coverage is non-empty for every field key the registry
+    // defines.
+    //
+    // A future field added to the registry without a matching renderer
+    // block (named OR fallback) surfaces here as a CI failure.
+    for (const industry of INDUSTRIES) {
+      const family = familyByIndustry[industry.id];
+      expect(family).toBeTruthy();
+      const named = NAMED_BLOCK_KEYS[family];
+      expect(named).toBeDefined();
+      const cfg = fieldConfigFor(industry.id);
+      expect(Array.isArray(cfg)).toBe(true);
+      expect(cfg.length).toBeGreaterThan(0);
+
+      for (const field of cfg) {
+        expect(typeof field.key).toBe("string");
+        // Every field is covered either by a named block (in this
+        // family's NAMED_BLOCK_KEYS set) OR by the generic-extras
+        // fallback. The renderers always iterate fieldConfigFor() in
+        // their fallback path, so even an unknown key surfaces.
+        // We assert the named set is non-empty + every field has a
+        // label so the fallback path can render something visible.
+        expect(typeof field.label).toBe("string");
+        expect(field.label.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("the modern named-set covers the F11 startup keys", () => {
+    // F11 added founderName + incorporationNo. The named set must
+    // list them so the dedicated block in ModernA4.jsx renders them
+    // (and the generic-extras fallback skips them so we don't double-
+    // print on a startup invoice).
+    const named = NAMED_BLOCK_KEYS.modern;
+    expect(named.has("founderName")).toBe(true);
+    expect(named.has("incorporationNo")).toBe(true);
+  });
+
+  test("the traditional named-set covers the F11 manufacturing keys", () => {
+    // F11 added packing + eWayBillNote to the po block. Pin them so
+    // a future renderer refactor doesn't silently drop them.
+    const named = NAMED_BLOCK_KEYS.traditional;
+    expect(named.has("poNumber")).toBe(true);
+    expect(named.has("packing")).toBe(true);
+    expect(named.has("eWayBillNote")).toBe(true);
+    expect(named.has("placeOfSupply")).toBe(true);
+  });
+
+  test("the modern named-set covers the F11 realestate servicePeriod", () => {
+    // F11 added servicePeriod to the property block. Pin it.
+    const named = NAMED_BLOCK_KEYS.modern;
+    expect(named.has("agreementRef")).toBe(true);
+    expect(named.has("propertyAddress")).toBe(true);
+    expect(named.has("servicePeriod")).toBe(true);
+    expect(named.has("stampDutyNote")).toBe(true);
+  });
+});

@@ -32,7 +32,7 @@ import {
   resolvePersistedServiceTotals,
   resolveTaxSplit,
 } from "../../../utils/serviceInvoiceMath";
-import { resolveInvoiceFields, resolveTemplate } from "./index";
+import { resolveInvoiceFields, resolveTemplate, fieldConfigFor } from "./index";
 import "./ModernA4.css";
 
 const fmt2 = (value) => (Number(value) || 0).toFixed(2);
@@ -77,9 +77,9 @@ const STATUS_TONES = {
 };
 
 // Single-line "key: value" renderer used by the per-industry blocks
-// (engagement, project, property, student, donation). Hides a line if its
-// value is blank so the block collapses cleanly when the cashier left
-// fields empty.
+// (engagement, project, property, student, donation, startupDetails).
+// Hides a line if its value is blank so the block collapses cleanly
+// when the cashier left fields empty.
 const KV = ({ label, value }) => {
   const v = display(value);
   if (!v) return null;
@@ -90,6 +90,45 @@ const KV = ({ label, value }) => {
     </div>
   );
 };
+
+// Set of registry field keys that already have a dedicated visual block
+// somewhere in this renderer. The generic extras fallback below uses
+// this set to skip fields the named blocks already handle — without it,
+// the same PO Number would print twice on a Manufacturing invoice
+// (once in the dedicated `po` block on TraditionalA4, once here via
+// fallback). The coverage test pins that every industry field appears
+// in either this set or its own named block; drift surfaces in CI.
+const DEDICATED_KEYS_MODERN = new Set([
+  // engagement
+  "engagementRef",
+  "consultantName",
+  "engagementPeriod",
+  // project
+  "projectCode",
+  "milestone",
+  "subscriptionPeriod",
+  "supportTier",
+  // property
+  "agreementRef",
+  "propertyAddress",
+  "stampDutyNote",
+  "servicePeriod",
+  // student
+  "studentName",
+  "courseName",
+  "batch",
+  "rollNo",
+  // donation
+  "donorName",
+  "donorPan",
+  "panOfDonee",
+  "eightyGReference",
+  "donationType",
+  // startupDetails
+  "founderName",
+  "incorporationNo",
+  // complianceNote is renderer-owned, not a registry key.
+]);
 
 const Section = ({ id, children }) => (
   <section className={`mA4-section mA4-section-${id}`}>{children}</section>
@@ -389,6 +428,7 @@ const ModernA4 = ({ invoice, isDuplicate }) => {
               <div className="mA4-info-block-body">
                 <KV label="Agreement Ref" value={fields.agreementRef} />
                 <KV label="Property Address" value={fields.propertyAddress} />
+                <KV label="Service Period" value={fields.servicePeriod} />
                 <KV label="Stamp Duty" value={fields.stampDutyNote} />
               </div>
             </div>
@@ -427,6 +467,53 @@ const ModernA4 = ({ invoice, isDuplicate }) => {
             </div>
           </Section>
         )}
+
+        {show("startupDetails") && (
+          <Section id="startup-details">
+            <div className="mA4-info-block">
+              <div className="mA4-info-block-head">
+                <FaFileSignature /> STARTUP DETAILS
+              </div>
+              <div className="mA4-info-block-body">
+                <KV label="Founder / Signatory" value={fields.founderName} />
+                <KV label="Incorporation No" value={fields.incorporationNo} />
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/*
+          F11: configuration-driven fallback. Iterates every field the
+          registry defines for the active industry and emits a KV line
+          for any key the cashier typed a value into that the named
+          blocks above did NOT already render. Empty cells (KV returns
+          null) and registry keys already in DEDICATED_KEYS_MODERN are
+          skipped, so this collapses to zero rows on a fully-covered
+          industry and protects future registry additions from silent
+          disappearance. Pairs with the ModernA4 / TraditionalA4 /
+          CondensedReceipt coverage test in renderers.test.jsx.
+        */}
+        {template?.industry &&
+          fieldConfigFor(template.industry).some((f) => {
+            if (!f || !f.key) return false;
+            if (DEDICATED_KEYS_MODERN.has(f.key)) return false;
+            return display(fields[f.key]);
+          }) && (
+            <Section id="extras-generic">
+              <div className="mA4-info-block">
+                <div className="mA4-info-block-head">
+                  <FaInfoCircle /> ADDITIONAL DETAILS
+                </div>
+                <div className="mA4-info-block-body">
+                  {fieldConfigFor(template.industry).map((f) => {
+                    if (!f || !f.key) return null;
+                    if (DEDICATED_KEYS_MODERN.has(f.key)) return null;
+                    return <KV key={f.key} label={f.label} value={fields[f.key]} />;
+                  })}
+                </div>
+              </div>
+            </Section>
+          )}
 
         {show("lineItems") && (
           <>

@@ -25,7 +25,7 @@ import {
   resolvePersistedServiceTotals,
   resolveTaxSplit,
 } from "../../../utils/serviceInvoiceMath";
-import { resolveInvoiceFields, resolveTemplate } from "./index";
+import { resolveInvoiceFields, resolveTemplate, fieldConfigFor } from "./index";
 import "./TraditionalA4.css";
 
 const fmt2 = (value) => (Number(value) || 0).toFixed(2);
@@ -71,6 +71,50 @@ const KV = ({ label, value }) => {
     </div>
   );
 };
+
+// Set of registry field keys that already have a dedicated visual block
+// somewhere in this renderer. The generic extras fallback below uses
+// this set so it doesn't double-print anything the named branches
+// (po / warranty / workOrder / commodity / logistics / tcs) already
+// rendered. See ModernA4's DEDICATED_KEYS_MODERN for the parallel
+// definition and the test in renderers.test.jsx that pins drift.
+const DEDICATED_KEYS_TRADITIONAL = new Set([
+  // po (manufacturing + wholesale + distributors + trading + generic)
+  "poNumber",
+  "placeOfSupply",
+  "creditNoteRef",
+  "packing",
+  "eWayBillNote",
+  // warranty (hardware)
+  "modelNo",
+  "serialNo",
+  "warrantyMonths",
+  "warrantyNote",
+  // workOrder (construction)
+  "workOrderRef",
+  "milestone",
+  "retentionPct",
+  "tdsNote",
+  // commodity (agriculture)
+  "commodity",
+  "grade",
+  "quantityKg",
+  "mandiName",
+  "marketFeeNote",
+  // logistics (distributors + logistics — but logistics renders on
+  // CondensedReceipt's family, so the keys listed here are only the
+  // ones the TraditionalA4 logistics block actually reads)
+  "lrNo",
+  "vehicleNo",
+  "distributorCode",
+  "route",
+  "reverseChargeNote",
+  "ewayBillNo",
+  // tcs (trading)
+  "tcsSection",
+  "tcsNote",
+  // complianceNote is renderer-owned, not a registry key.
+]);
 
 const TraditionalA4 = ({ invoice, isDuplicate }) => {
   const settings = getStoreSettings();
@@ -270,6 +314,8 @@ const TraditionalA4 = ({ invoice, isDuplicate }) => {
                 {show("po") && (
                   <>
                     <KV label="PO Number" value={fields.poNumber} />
+                    <KV label="Packing & Forwarding" value={fields.packing} />
+                    <KV label="e-Way Bill Note" value={fields.eWayBillNote} />
                     <KV label="Place of Supply" value={fields.placeOfSupply} />
                     <KV label="Credit Note Ref" value={fields.creditNoteRef} />
                   </>
@@ -316,8 +362,33 @@ const TraditionalA4 = ({ invoice, isDuplicate }) => {
                     <KV label="TCS Note" value={fields.tcsNote} />
                   </>
                 )}
-                {/* generic fields shared across goods family */}
-                <KV label="PO Number" value={fields.poNumber} />
+                {/*
+                  F11: configuration-driven fallback. Iterates every
+                  field the registry defines for the active industry and
+                  emits a KV line for any key the cashier typed a value
+                  into that the named branches above did NOT already
+                  render. DEDICATED_KEYS_TRADITIONAL mirrors the keys
+                  the named branches consume, so any key a named
+                  branch (po / warranty / workOrder / commodity /
+                  logistics / tcs) already renders is skipped here —
+                  without the dedup set, a key like poNumber would
+                  render twice. Empty values are hidden by KV itself.
+
+                  The legacy `<KV label="PO Number" .../>` line that
+                  used to sit here as a "generic goods family"
+                  fallback was removed: the named `po` branch above
+                  (gated by `show("po")`) covers manufacturing /
+                  wholesale / distributors / trading, and the
+                  generic-extras loop below catches it for any future
+                  industry that adds poNumber without listing `po` in
+                  its sections array.
+                */}
+                {template?.industry &&
+                  fieldConfigFor(template.industry).map((f) => {
+                    if (!f || !f.key) return null;
+                    if (DEDICATED_KEYS_TRADITIONAL.has(f.key)) return null;
+                    return <KV key={f.key} label={f.label} value={fields[f.key]} />;
+                  })}
                 {(technician || jobRef) && (
                   <div className="tkv-row tkv-row-wide">
                     <small>Reference</small>

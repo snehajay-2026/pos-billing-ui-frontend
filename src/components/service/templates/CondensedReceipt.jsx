@@ -21,7 +21,7 @@ import {
   resolvePersistedServiceTotals,
   resolveTaxSplit,
 } from "../../../utils/serviceInvoiceMath";
-import { resolveInvoiceFields, resolveTemplate } from "./index";
+import { resolveInvoiceFields, resolveTemplate, fieldConfigFor } from "./index";
 import "./CondensedReceipt.css";
 
 const fmt2 = (value) => (Number(value) || 0).toFixed(2);
@@ -56,6 +56,34 @@ const KV = ({ label, value }) => {
     </div>
   );
 };
+
+// Set of registry field keys that already have a dedicated visual
+// block somewhere in this renderer. The generic extras fallback below
+// uses this set so it doesn't double-print anything the named branches
+// (patient / order / shipment) already rendered. See ModernA4's
+// DEDICATED_KEYS_MODERN for the parallel definition and the test in
+// renderers.test.jsx that pins drift.
+const DEDICATED_KEYS_CONDENSED = new Set([
+  // patient (healthcare)
+  "patientId",
+  "doctor",
+  "consultationDate",
+  "department",
+  // order (foodbeverage)
+  "tableNo",
+  "covers",
+  "orderType",
+  "fssaiNote",
+  // shipment (logistics)
+  "lrNo",
+  "vehicleNo",
+  "fromCity",
+  "toCity",
+  "ewayBillNo",
+  "consignor",
+  "consignee",
+  // complianceNote is renderer-owned, not a registry key.
+]);
 
 const CondensedReceipt = ({ invoice, isDuplicate }) => {
   const settings = getStoreSettings();
@@ -197,6 +225,30 @@ const CondensedReceipt = ({ invoice, isDuplicate }) => {
               <KV label="e-Way Bill" value={fields.ewayBillNo} />
               <KV label="Consignor" value={fields.consignor} />
               <KV label="Consignee" value={fields.consignee} />
+            </div>
+          </div>
+        )}
+
+        {/*
+          F11: configuration-driven fallback. Iterates every field the
+          registry defines for the active industry and emits a KV line
+          for any key the cashier typed a value into that the named
+          blocks above did NOT already render. DEDICATED_KEYS_CONDENSED
+          mirrors the keys the named branches consume so a duplicate
+          render is impossible. Empty values are hidden by KV itself.
+          Renders below the named block and above the line-items table
+          so the visual order is consistent with the other two
+          families.
+        */}
+        {template?.industry && (
+          <div className="cr-section">
+            <div className="cr-section-head">EXTRA</div>
+            <div className="cr-grid">
+              {fieldConfigFor(template.industry).map((f) => {
+                if (!f || !f.key) return null;
+                if (DEDICATED_KEYS_CONDENSED.has(f.key)) return null;
+                return <KV key={f.key} label={f.label} value={fields[f.key]} />;
+              })}
             </div>
           </div>
         )}

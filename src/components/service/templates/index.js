@@ -380,6 +380,12 @@ const TEMPLATES_BY_INDUSTRY = {
       "meta",
       "billTo",
       "servicePeriod",
+      // F11: Startup has its own two-key field set (founderName,
+      // incorporationNo). The dedicated `startupDetails` block sits in
+      // ModernA4 alongside the engagement / project / property /
+      // student / donation blocks. Listed BEFORE lineItems so it
+      // shows up in the meta band, not after the totals.
+      "startupDetails",
       "lineItems",
       "totals",
       "terms",
