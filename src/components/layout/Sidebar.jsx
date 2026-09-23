@@ -24,6 +24,7 @@ import {
   FaHistory,
   FaChartPie,
   FaKey,
+  FaUndo,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { getUser, getUserStoreType } from "../../utils/auth";
@@ -214,6 +215,17 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
   });
   if (storeType === "laundry") {
     operations.push({ to: "/laundry-inventory", icon: <FaBoxes />, label: "Laundry Inventory" });
+  }
+  // Retail returns / refunds / exchanges — only meaningful for the
+  // retail (and inventory-as-fallback) store types. The route layer
+  // also rejects non-retail scopes with 403, so a stray Hotel sidebar
+  // entry here would just be a dead link.
+  if (storeType === "retail" || storeType === "inventory") {
+    operations.push({
+      to: "/retail-returns",
+      icon: <FaUndo />,
+      label: locale.returns || "Returns & Refunds",
+    });
   }
 
   // Insights section — admin only

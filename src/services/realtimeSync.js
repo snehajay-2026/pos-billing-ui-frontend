@@ -122,6 +122,12 @@ const connect = (url, scopeKey) => {
   // recorded in another tab is prepended live. Scoped per (storeType,
   // storeId) by the server, so a cross-store event never reaches us.
   es.addEventListener("audit", relay("audit"));
+  // Retail returns SSE channel — the Retail Returns page subscribes so a
+  // return submitted in tab A appears in tab B without polling. Hotel /
+  // Laundry / Service workflows do not publish on this channel and the
+  // SSE handler routes only to retail-scoped subscribers, so a hotel
+  // settlement event can't accidentally fan out here.
+  es.addEventListener("return", relay("return"));
   es.addEventListener("message", relay("message"));
 
   es.onerror = () => {

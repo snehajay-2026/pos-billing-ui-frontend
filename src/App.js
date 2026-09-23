@@ -59,6 +59,7 @@ const RecentActivity = lazy(() => import("./pages/RecentActivity"));
 const Reports = lazy(() => import("./pages/Reports"));
 const InventoryModule = lazy(() => import("./pages/InventoryModule"));
 const ShiftsPage = lazy(() => import("./pages/ShiftsPage"));
+const RetailReturnsPage = lazy(() => import("./pages/RetailReturnsPage"));
 const HotelModuleAccessPage = lazy(() => import("./pages/HotelModuleAccessPage"));
 const HotelModuleLockScreen = lazy(() => import("./components/hotel/HotelModuleLockScreen"));
 import { useHotelModuleLock } from "./hooks/useHotelModuleLock";
@@ -689,6 +690,28 @@ function App() {
                   <ProtectedRoute roles={["SUPER_OWNER", "STORE_ADMIN", "ADMIN", "CASHIER"]}>
                     <Layout>
                       <ShiftsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+
+            {/* RETAIL RETURNS / REFUNDS / EXCHANGES — Retail store only.
+                Cashier + admin both submit (the cashier is the common case
+                on the till); the backend enforces scope and audit
+                logging. Hotel / Laundry / Service workflows are
+                intentionally NOT routed here — they keep their existing
+                settlement paths. */}
+            <Route
+              path="/retail-returns"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute
+                    roles={["SUPER_OWNER", "STORE_ADMIN", "ADMIN", "CASHIER"]}
+                    storeType={["retail", "inventory"]}
+                  >
+                    <Layout>
+                      <RetailReturnsPage />
                     </Layout>
                   </ProtectedRoute>
                 </RequireAuth>
