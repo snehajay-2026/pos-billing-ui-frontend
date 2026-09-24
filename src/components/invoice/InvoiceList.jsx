@@ -36,19 +36,38 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
   const [toDate, setToDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
   const isServiceStore = ["service", "msme-service"].includes(getUserStoreType());
   const { showToast } = useUi();
 
+  // Server-side pagination applies to the Retail list only. The Hotel
+  // dining/lodging pages split invoices by the `items[]` JSON shape, which the
+  // database cannot filter, so those two variants keep fetching the full set
+  // and paginate client-side exactly as they did before.
+  const serverPaged = invoiceFilter === "all";
+
   const loadInvoices = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const data = await getInvoices();
-      setInvoices(Array.isArray(data) ? data : []);
+      const data = serverPaged
+        ? await getInvoices({
+            limit: itemsPerPage,
+            offset: (currentPage - 1) * itemsPerPage,
+            search,
+            fromDate,
+            toDate,
+            paymentMode: paymentFilter,
+          })
+        : await getInvoices();
+      const rows = Array.isArray(data) ? data : [];
+      setInvoices(rows);
+      if (serverPaged) setTotalCount(Number(rows.total || 0));
     } catch (err) {
       console.error("Failed to load invoices:", err);
       setInvoices([]);
+      if (serverPaged) setTotalCount(0);
       showToast("error", "Could not load invoices. Please try again.");
     } finally {
       if (!silent) setLoading(false);
@@ -69,6 +88,13 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
     setCurrentPage(1);
   }, [search, fromDate, toDate, invoiceFilter, paymentFilter]);
 
+  // Retail: the filter set lives in the query, so a filter change has to
+  // re-request rather than re-slice. Hotel keeps the original single fetch.
+  useEffect(() => {
+    if (!serverPaged) return;
+    loadInvoices();
+  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const matchesInvoiceFilter = (invoice) => {
     switch (invoiceFilter) {
       case "hotel-dining":
@@ -80,8 +106,21 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
     }
   };
 
-  /* ---------------- Derived stats ---------------- */
+  /* ---------------- Derived stats ----------------
+   * Retail gets server-computed aggregates covering the whole filtered result
+   * (not just the visible page), because only 10 rows are on the page. Hotel
+   * still holds the entire list in memory, so it keeps aggregating locally. */
+  const serverStats = invoices.stats || null;
   const stats = useMemo(() => {
+    if (serverPaged && serverStats) {
+      return {
+        count: serverStats.count,
+        totalAmount: serverStats.totalAmount,
+        totalGst: serverStats.totalGst,
+        todayCount: serverStats.todayCount,
+        todayAmount: serverStats.todayAmount,
+      };
+    }
     const filtered = invoices.filter(matchesInvoiceFilter);
     const totalAmount = filtered.reduce((s, inv) => s + Number(inv.grandTotal || 0), 0);
     const totalGst = filtered.reduce((s, inv) => s + Number(inv.gstTotal || 0), 0);
@@ -91,35 +130,53 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
       .filter((inv) => inv.date === today)
       .reduce((s, inv) => s + Number(inv.grandTotal || 0), 0);
     return { count: filtered.length, totalAmount, totalGst, todayCount, todayAmount };
-  }, [invoices, invoiceFilter]);
+  }, [invoices, invoiceFilter, serverPaged, serverStats]);
 
-  /* ---------------- Filter logic ---------------- */
+  /* ---------------- Filter logic ----------------
+   * Retail already received a filtered, correctly ordered page from the server,
+   * so re-filtering it would only ever discard rows. Hotel keeps the original
+   * client-side filter because the dining/lodging split reads `items[]`. */
   const orderedInvoices = isServiceStore ? sortServiceInvoices(invoices) : invoices;
-  const filteredInvoices = orderedInvoices.filter((inv) => {
-    const invoiceNoStr = inv.invoiceNo ? String(inv.invoiceNo) : "";
-    const dateStr = inv.date ? String(inv.date) : "";
+  const filteredInvoices = serverPaged
+    ? orderedInvoices
+    : orderedInvoices.filter((inv) => {
+        const invoiceNoStr = inv.invoiceNo ? String(inv.invoiceNo) : "";
+        const dateStr = inv.date ? String(inv.date) : "";
 
-    const term = search.trim().toLowerCase();
-    const matchesSearch = term
-      ? invoiceNoStr.toLowerCase().includes(term) ||
-        dateStr.toLowerCase().includes(term) ||
-        (inv.customerName || "").toLowerCase().includes(term) ||
-        (inv.paymentMode || "").toLowerCase().includes(term)
-      : true;
+        const term = search.trim().toLowerCase();
+        const matchesSearch = term
+          ? invoiceNoStr.toLowerCase().includes(term) ||
+            dateStr.toLowerCase().includes(term) ||
+            (inv.customerName || "").toLowerCase().includes(term) ||
+            (inv.paymentMode || "").toLowerCase().includes(term)
+          : true;
 
-    const invoiceDate = new Date(inv.date);
-    const matchesFrom = fromDate ? invoiceDate >= new Date(fromDate) : true;
-    const matchesTo = toDate ? invoiceDate <= new Date(`${toDate}T23:59:59`) : true;
-    const matchesPay =
-      paymentFilter === "all" ? true : (inv.paymentMode || "").toLowerCase() === paymentFilter;
+        const invoiceDate = new Date(inv.date);
+        const matchesFrom = fromDate ? invoiceDate >= new Date(fromDate) : true;
+        const matchesTo = toDate ? invoiceDate <= new Date(`${toDate}T23:59:59`) : true;
+        const matchesPay =
+          paymentFilter === "all" ? true : (inv.paymentMode || "").toLowerCase() === paymentFilter;
 
-    return matchesInvoiceFilter(inv) && matchesSearch && matchesFrom && matchesTo && matchesPay;
-  });
+        return matchesInvoiceFilter(inv) && matchesSearch && matchesFrom && matchesTo && matchesPay;
+      });
 
-  /* ---------------- Pagination ---------------- */
-  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / itemsPerPage));
+  /* ---------------- Pagination ----------------
+   * Retail counts the server total and renders the rows exactly as received —
+   * they already ARE one page, so slicing again would skip rows. Hotel still
+   * holds every invoice locally, so it keeps slicing its own array. */
+  const totalPages = serverPaged
+    ? Math.max(1, Math.ceil(totalCount / itemsPerPage))
+    : Math.max(1, Math.ceil(filteredInvoices.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedInvoices = serverPaged
+    ? filteredInvoices
+    : filteredInvoices.slice(startIndex, startIndex + itemsPerPage);
+
+  // A filter change (or a delete elsewhere) can shrink the result below the
+  // current page. Nudge back into range instead of rendering an empty page.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   /* ---------------- Helpers ---------------- */
   const heroCopy = useMemo(() => {

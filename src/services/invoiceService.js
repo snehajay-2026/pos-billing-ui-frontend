@@ -39,10 +39,31 @@ export const checkoutInvoice = async (invoice) => {
   return result;
 };
 
-export const getInvoices = async () => {
+// GET /api/invoices — the store-scoped invoice feed, newest generated first.
+//
+// Pagination is opt-in. Called with no arguments (dashboard, cash flow, global
+// search, help chat) this returns the FULL list exactly as it always has, so
+// their aggregates keep working. Pass `limit` (+ optional `offset`, `search`,
+// `fromDate`, `toDate`, `paymentMode`) to get one page back; the backend then
+// answers with a `{ rows, total }` envelope and this helper re-attaches the
+// count to the array so callers can read `result.total` while still treating
+// the value as a normal invoice array.
+export const getInvoices = async (filters = {}) => {
   if (!isAuthed()) return [];
   const { storeType, email } = getUserMeta();
-  return apiGet("/api/invoices", { storeType, email });
+  const params = { storeType, email };
+  for (const key of ["limit", "offset", "search", "fromDate", "toDate", "paymentMode"]) {
+    const value = filters[key];
+    if (value != null && value !== "" && value !== "all") params[key] = value;
+  }
+  const data = await apiGet("/api/invoices", params);
+  if (data && !Array.isArray(data) && Array.isArray(data.rows)) {
+    const rows = data.rows;
+    rows.total = Number(data.total || 0);
+    rows.stats = data.stats || null;
+    return rows;
+  }
+  return data;
 };
 
 export const getInvoiceByNo = async (invoiceNo) => {
