@@ -406,7 +406,7 @@ const InvoiceList = ({ title = "Invoices", invoiceFilter = "all" }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...paginatedInvoices].reverse().map((inv, index) => {
+                  {paginatedInvoices.map((inv, index) => {
                     const hasInvoiceNo =
                       inv.invoiceNo !== undefined && inv.invoiceNo !== null && inv.invoiceNo !== "";
                     return (
