@@ -18,6 +18,7 @@ import {
   FaImage,
 } from "react-icons/fa";
 import StoreTypeSettingsView from "../components/store-settings/StoreTypeSettingsView";
+import InvoiceCleanupPanel from "../components/settings/InvoiceCleanupPanel";
 import "./StoreSettings.css";
 
 const StoreSettings = () => {
@@ -311,6 +312,11 @@ const StoreSettings = () => {
           </div>
         )}
       </section>
+
+      {/* Invoice cleanup — admin-only. The component returns null for CASHIER
+          and the server refuses the endpoints regardless, so this is purely a
+          matter of not showing controls a user cannot use. */}
+      <InvoiceCleanupPanel />
 
       {/* Sticky footer with save */}
       <div className="ss-footer">

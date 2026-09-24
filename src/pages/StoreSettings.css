@@ -849,3 +849,327 @@
   color: #475569;
   font-weight: 600;
 }
+
+/* ==========================================================================
+   Invoice Cleanup panel (InvoiceCleanupPanel.jsx)
+   Reuses the ss-* primitives above; only the cleanup-specific pieces live here.
+   ========================================================================== */
+
+.icp-ico {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(239, 68, 68, 0.05));
+  color: #dc2626;
+}
+
+.icp-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.icp-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.icp-alert > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.icp-alert > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.icp-alert-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+.icp-alert-ok {
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #047857;
+}
+
+.icp-alert-warn {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  color: #b45309;
+}
+
+.icp-result-line {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.icp-preview {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 16px;
+  background: #fbfcfe;
+}
+
+.icp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.icp-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.icp-metric-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.icp-metric-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.icp-metric-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.icp-metric-ok .icp-metric-value {
+  color: #047857;
+}
+
+.icp-metric-blocked .icp-metric-value {
+  color: #b45309;
+}
+
+.icp-reasons {
+  margin-top: 14px;
+}
+
+.icp-reasons h6 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.icp-reasons ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.icp-reasons li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: #f8fafc;
+  font-size: 0.83rem;
+  color: #334155;
+}
+
+.icp-reasons li strong {
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.icp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.icp-note > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.icp-warnings {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.icp-warnings li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #92400e;
+}
+
+.icp-warnings li > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ---------------- Confirmation modal ---------------- */
+
+.icp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.icp-modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 30px 70px -24px rgba(15, 23, 42, 0.5);
+  overflow: hidden;
+}
+
+.icp-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.icp-modal-head h6 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.icp-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.icp-modal-close:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.icp-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.icp-modal-body code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  background: #f1f5f9;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+
+.icp-modal-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #b91c1c;
+  font-size: 0.83rem;
+}
+
+.icp-modal-warn > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.icp-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  background: #fff;
+}
+
+.icp-modal-foot button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .icp-grid {
+    grid-template-columns: 1fr;
+  }
+  .icp-modal-foot {
+    flex-direction: column-reverse;
+  }
+  .icp-modal-foot button {
+    width: 100%;
+    justify-content: center;
+  }
+}
