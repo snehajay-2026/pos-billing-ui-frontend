@@ -91,3 +91,26 @@ export const approveCustomer = async (id, { status, reason } = {}) => {
   window.dispatchEvent(new CustomEvent("dataUpdated", { detail: "customers" }));
   return updated;
 };
+
+// ============================================================================
+// Purchase history (Phase 2A — read-only)
+//
+// Derived server-side from the `invoices` ledger. There is no history table
+// to keep in sync, and no client-side sorting: the backend already returns
+// `generated_at DESC, id DESC` and this layer passes the rows through in the
+// order received. Re-sorting or reversing here is the exact bug fixed in
+// commit 132dfd8 and must not be reintroduced.
+//
+// Both endpoints resolve the customer through the caller's authorized store
+// server-side, so a cross-store customer id returns 404 rather than data.
+// ============================================================================
+
+export const getCustomerPurchaseHistory = async (id, { page = 1, pageSize = 10 } = {}) => {
+  if (!id) return { items: [], pagination: { page: 1, pageSize, total: 0, totalPages: 1 } };
+  return apiGet(`/api/customers/${encodeURIComponent(id)}/purchase-history`, { page, pageSize });
+};
+
+export const getCustomerSummary = async (id) => {
+  if (!id) return null;
+  return apiGet(`/api/customers/${encodeURIComponent(id)}/summary`);
+};

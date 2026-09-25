@@ -23,6 +23,7 @@ import {
   FaUsers,
   FaInbox,
   FaExclamationTriangle,
+  FaEye,
 } from "react-icons/fa";
 import {
   approveCustomer,
@@ -33,6 +34,7 @@ import {
   updateCustomer,
 } from "../services/customerService";
 import { getUserRole } from "../utils/auth";
+import CustomerDetailPanel from "../components/customers/CustomerDetailPanel";
 import "./UserManagement.css";
 
 const ADMIN_ROLES = new Set(["SUPER_OWNER", "STORE_ADMIN", "ADMIN"]);
@@ -110,6 +112,10 @@ const CustomerManagement = () => {
   // Confirm modal — replaces the inline "click delete twice" pattern.
   // Behaves identically (two-step confirm) but works on touch / mobile.
   const [confirmDeleteTarget, setConfirmDeleteTarget] = useState(null);
+
+  // Purchase history drawer (Phase 2A — read-only). Holds the customer whose
+  // profile + history is open; null means the drawer is closed.
+  const [detailTarget, setDetailTarget] = useState(null);
 
   // Debounce search input → server query.
   useEffect(() => {
@@ -527,6 +533,15 @@ const CustomerManagement = () => {
                         <td>{formatDate(c.createdAt)}</td>
                         <td className="user-mgmt-actions-col">
                           <div className="user-mgmt-actions">
+                            <button
+                              type="button"
+                              className="user-mgmt-action-btn"
+                              onClick={() => setDetailTarget(c)}
+                              aria-label={`View details for ${c.name}`}
+                              title="View details"
+                            >
+                              <FaEye />
+                            </button>
                             {canApprove && isPending && (
                               <>
                                 <button
@@ -775,6 +790,13 @@ const CustomerManagement = () => {
           </button>
         </Modal.Footer>
       </Modal>
+
+      {/* Purchase history drawer — read-only, derived from the invoices
+          ledger server-side. Rendered at page level so it sits above the
+          list rather than inside a table cell. */}
+      {detailTarget && (
+        <CustomerDetailPanel customer={detailTarget} onClose={() => setDetailTarget(null)} />
+      )}
     </div>
   );
 };
