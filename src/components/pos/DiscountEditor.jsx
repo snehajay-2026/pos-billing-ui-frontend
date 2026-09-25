@@ -11,9 +11,12 @@
 // the discount amount, and the existing POS calculation picks it up from
 // cart state.
 //
-// The quick chips are intentionally NOT part of this component. They already
-// exist in both call sites, apply instantly on click, and the brief asks that
-// they be kept — so they stay where they are and this sits beside them.
+// Quick presets, when supplied, populate the DRAFT rather than applying.
+// Nothing here ever touches the bill on its own — the committed `current`
+// discount stays live until the cashier presses Apply, so a mis-click on a
+// chip cannot silently discount a sale. The line editor uses this
+// uncontrolled; the bill summary drives it with an explicit draft so the
+// chips and the numeric input share one state and one Apply.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FaCheck, FaTimes } from "react-icons/fa";
