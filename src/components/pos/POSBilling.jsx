@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { checkoutInvoice } from "../../services/invoiceService";
 import { getProducts, addProduct } from "../../services/productService";
-import { searchCustomers } from "../../services/customerService";
+import { searchCustomersForBilling } from "../../services/customerService";
 import PaymentDialog from "../payment/PaymentDialog";
 import OpenShiftDialog from "../shift/OpenShiftDialog";
 import CloseShiftDialog from "../shift/CloseShiftDialog";
@@ -322,9 +322,13 @@ const POSBilling = () => {
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const customerSearchTimerRef = useRef(null);
 
-  // Debounced search against /api/customers. The server's filterByQuery does
-  // exact-equality, so we pass the trimmed query as-is — matches will be
-  // exact substrings the cashier typed (e.g. last name only).
+  // Debounced substring search against /api/customers/search.
+  //
+  // This previously called searchCustomers({ name: q }), which routes through
+  // the generic list endpoint — whose `?name=` filter is EXACT equality. Typing
+  // "Ash" for a customer stored as "Asha Rao" returned nothing, so customers
+  // created in Customer Management never appeared here. The dedicated route
+  // matches on name / phone / GSTIN as substrings instead.
   useEffect(() => {
     if (customerSearchTimerRef.current) clearTimeout(customerSearchTimerRef.current);
     const q = customerSearch.trim();
@@ -334,13 +338,11 @@ const POSBilling = () => {
     }
     customerSearchTimerRef.current = setTimeout(async () => {
       try {
-        const results = await searchCustomers({ name: q });
+        const results = await searchCustomersForBilling(q);
         // Customer-approval workflow (Option B): only approved rows are
-        // billable. Backend list() returns the full set so admins still see
-        // pending rows in CustomerManagement; the POS dropdown enforces
-        // the billing restriction on top. Cashiers already only see
-        // approved rows in the API response, but the client-side guard
-        // keeps the rule consistent across roles.
+        // billable. The search route deliberately does not filter on approval
+        // so one rule applies to every role — the POS applies it here, and
+        // resolveBillableCustomer re-validates at checkout.
         const billable = (Array.isArray(results) ? results : []).filter(
           (c) => !c.approvalStatus || c.approvalStatus === "approved"
         );
@@ -2199,7 +2201,11 @@ const POSBilling = () => {
                           }}
                         >
                           <strong>{c.name}</strong>
-                          {c.phone && <span className="bill-customer-match-meta">{c.phone}</span>}
+                          <span className="bill-customer-match-meta">
+                            {[c.phone, c.gstin ? `GSTIN ${c.gstin}` : null]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
                         </li>
                       ))}
                     </ul>

@@ -57,6 +57,21 @@ export const addCreditPayment = async (customerId, paymentAmount) => {
 // resourceFiles). Scope fields (_storeType/_storeId/_userEmail) are set
 // automatically on POST by getRequestScope.
 //
+// Substring search against name / phone / GSTIN, used by the Retail POS
+// "Search Existing Customer" picker.
+//
+// This deliberately does NOT use `getCustomers` / `searchCustomers` below.
+// Those route through the generic list endpoint, whose `?name=` filter is
+// EXACT equality — so a cashier typing "Ash" against a customer stored as
+// "Asha Rao" got zero results, and Customer Management customers looked
+// missing at the till. The dedicated `/api/customers/search` route does
+// substring matching, still scoped to the caller's store server-side.
+export const searchCustomersForBilling = async (q) => {
+  const term = String(q || "").trim();
+  if (!term) return [];
+  return apiGet("/api/customers/search", { q: term });
+};
+
 // Search uses server-side filterByQuery which is exact-equality — pass full
 // substrings (e.g. last 4 digits of a phone) rather than wildcards.
 // ============================================================================
