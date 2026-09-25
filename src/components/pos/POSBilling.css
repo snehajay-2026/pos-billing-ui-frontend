@@ -1224,6 +1224,16 @@
   gap: 10px;
 }
 
+/* The rail is a flex column that scrolls on tall carts (see the sticky
+   block further down). Flex items default to `flex-shrink: 1`, so when the
+   content exceeds the scroll height the children compress and overlap
+   instead of scrolling cleanly. `flex-shrink: 0` keeps every block at its
+   natural height and lets the rail scroll — this is what stops the totals
+   from covering the payment pills. */
+.bill-summary-side > * {
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .bill-summary-main {
     grid-template-columns: 1fr;
@@ -3467,18 +3477,29 @@
 /* Sticky right rail.
    `.pos-page` is min-height:100vh and the PAGE scrolls — there is no
    fixed-height shell, so making the existing side rail sticky keeps it in
-   view within its own grid column without creating a new scroll container.
-   Product/cart scrolling on the left is untouched. Disabled below the
-   existing stack breakpoint, where the rail sits under the items list and a
-   sticky rail would pin content the user is not looking at. */
+   view within its own grid column. Product/cart scrolling on the left is
+   untouched. Disabled below the existing stack breakpoint, where the rail
+   sits under the items list and a sticky rail would pin content the user is
+   not looking at.
+
+   The rail scrolls as ONE unit (customer card → totals → payment → action).
+   An earlier version also pinned `.bill-totals` to `bottom: 0` inside this
+   scrolling column; because that block is taller than the remaining space
+   it slid OVER the payment pills and the Generate Invoice button, slicing
+   them into an unreadable strip. Pinning a tall child of a scrolling
+   flex column cannot work — so there is exactly one scroll container here
+   and nothing inside it is pinned. The Grand Total is reached by scrolling
+   this rail, which is the same interaction as before the sticky change. */
 @media (min-width: 1025px) {
   .bill-summary-side {
     position: sticky;
     top: 12px;
     align-self: start;
-    /* Never taller than the viewport, or sticky would trap the page. */
+    /* Cap to the viewport so the rail can never be taller than the screen,
+       and scroll internally when the item list is long. */
     max-height: calc(100vh - 24px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: var(--pos-border-strong, #cbd5e1) transparent;
   }
@@ -3490,16 +3511,6 @@
   .bill-summary-side::-webkit-scrollbar-thumb {
     background: var(--pos-border-strong, #cbd5e1);
     border-radius: 999px;
-  }
-
-  /* The Grand Total is the priority. When the rail is taller than the
-     viewport and the cashier scrolls within it, keep the total + payment
-     methods in view by pinning the totals block. */
-  .bill-summary-side .bill-totals {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    box-shadow: 0 -6px 14px -8px rgba(15, 23, 42, 0.18);
   }
 }
 
