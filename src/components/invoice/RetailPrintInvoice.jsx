@@ -211,14 +211,17 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
       <div className="rpi-divider" />
 
       {/* TOTALS
-          Order is: Gross → discounts → Taxable Subtotal → GST → Grand Total.
-          `subTotal` is the post-discount, GST-bearing amount, so it is
-          labelled "Taxable Subtotal". The discount rows ABOVE it are context
-          for how that figure was reached — the amount is never subtracted
-          from the subtotal a second time.
+          Order is: Gross → Line Discount → Bill Discount → Taxable Subtotal →
+          GST → Grand Total. `subTotal` is the post-discount, GST-bearing
+          amount, so it is labelled "Taxable Subtotal". The discount rows
+          ABOVE it are context for how that figure was reached — the amount is
+          never subtracted from the subtotal a second time.
 
-          When no discount exists the gross / discount rows are omitted
-          entirely, so an undiscounted receipt keeps its original height. */}
+          Both discount rows always render, including at ₹0.00, so a reader can
+          confirm no discount was applied rather than inferring it from a
+          missing row. Gross is only shown when a discount exists, which keeps
+          an undiscounted bill compact — this component also feeds the A4 PDF
+          via html2canvas, where every extra row risks a page break. */}
       <div className="rpi-totals">
         {grossAmount != null && (
           <div className="rpi-total-row">
@@ -227,24 +230,28 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
           </div>
         )}
 
-        {lineDiscountAmount > 0 && (
-          <div className="rpi-total-row rpi-total-row-saved">
-            <span>Line Discount</span>
-            <span>−₹{fmt2(lineDiscountAmount)}</span>
-          </div>
-        )}
+        <div
+          className={`rpi-total-row${
+            lineDiscountAmount > 0 ? " rpi-total-row-saved" : " rpi-total-row-zero"
+          }`}
+        >
+          <span>Line Discount</span>
+          <span>−₹{fmt2(lineDiscountAmount)}</span>
+        </div>
 
-        {billDiscountAmount > 0 && (
-          <div className="rpi-total-row rpi-total-row-saved">
-            <span>
-              Bill Discount
-              {invoice.discountBreakdown?.bill?.type === "percent"
-                ? ` (${invoice.discountBreakdown.bill.value}%)`
-                : ""}
-            </span>
-            <span>−₹{fmt2(billDiscountAmount)}</span>
-          </div>
-        )}
+        <div
+          className={`rpi-total-row${
+            billDiscountAmount > 0 ? " rpi-total-row-saved" : " rpi-total-row-zero"
+          }`}
+        >
+          <span>
+            Bill Discount
+            {invoice.discountBreakdown?.bill?.type === "percent"
+              ? ` (${invoice.discountBreakdown.bill.value}%)`
+              : ""}
+          </span>
+          <span>−₹{fmt2(billDiscountAmount)}</span>
+        </div>
 
         <div className="rpi-total-row rpi-total-row-taxable">
           <span>Taxable Subtotal</span>

@@ -122,15 +122,26 @@ describe("RetailPrintInvoice — financial summary terminology", () => {
     expect(html.indexOf("Grand Total")).toBeLessThan(html.indexOf("You Saved"));
   });
 
-  test("omits gross and discount rows entirely when there is no discount", () => {
+  test("always shows BOTH discount rows, at zero when none is applied", () => {
     const html = render(NO_DISCOUNT);
+    // Both discount lines are unconditional — a reader can confirm "no
+    // discount applied" instead of inferring it from a missing row.
+    expect(html).toContain("Line Discount");
+    expect(html).toContain("Bill Discount");
+    expect(amountAfter(html, "Line Discount")).toBe("0.00");
+    expect(amountAfter(html, "Bill Discount")).toBe("0.00");
+    // Gross is still omitted when there is nothing to discount, keeping an
+    // undiscounted bill compact for the thermal/A4 output.
     expect(html).not.toContain("Gross Amount");
-    expect(html).not.toContain("Line Discount");
-    expect(html).not.toContain("Bill Discount");
     expect(html).not.toContain("You Saved");
-    // The compact no-discount receipt keeps its original three rows.
     expect(html).toContain("Taxable Subtotal");
     expect(amountAfter(html, "Taxable Subtotal")).toBe("900.00");
+  });
+
+  test("a zero discount never reads as an error state", () => {
+    const html = render(NO_DISCOUNT);
+    // The zero rows use the muted class, not the green "saved" treatment.
+    expect(html).toContain("rpi-total-row-zero");
   });
 
   test("Grand Total remains the visually dominant row", () => {

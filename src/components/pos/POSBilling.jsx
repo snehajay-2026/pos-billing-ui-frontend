@@ -2278,7 +2278,11 @@ const POSBilling = () => {
                     so it is labelled "Taxable Subtotal" and the two discount
                     rows above it are context, not further deductions to
                     subtract. Every value below is an existing variable; no
-                    formula is re-derived here. */}
+                    formula is re-derived here.
+
+                    Both discount rows are ALWAYS shown, including at ₹0.00, so
+                    the cashier can see at a glance that no discount is applied
+                    rather than having to infer it from a missing row. */}
                 <div className="bill-totals">
                   <div className="bill-total-row bill-total-row-gross">
                     <span className="bill-total-label">Gross Amount</span>
@@ -2288,14 +2292,36 @@ const POSBilling = () => {
                     </span>
                   </div>
 
-                  {lineDiscountTotal > 0 && (
-                    <div className="bill-total-row bill-total-row-discount">
-                      <span className="bill-total-label">Line Discount</span>
-                      <span className="bill-total-value bill-total-value-saved">
-                        −₹{lineDiscountTotal.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+                  <div className="bill-total-row bill-total-row-discount">
+                    <span className="bill-total-label">Line Discount</span>
+                    <span
+                      className={`bill-total-value${
+                        lineDiscountTotal > 0 ? " bill-total-value-saved" : " bill-total-value-zero"
+                      }`}
+                    >
+                      −₹{lineDiscountTotal.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="bill-total-row bill-total-row-discount">
+                    <span className="bill-total-label">
+                      Bill Discount
+                      {activeBill.discount
+                        ? activeBill.discount.type === "percent"
+                          ? ` (${activeBill.discount.value}%)`
+                          : ` (₹${activeBill.discount.value})`
+                        : ""}
+                    </span>
+                    <span
+                      className={`bill-total-value${
+                        billDiscountAmount > 0
+                          ? " bill-total-value-saved"
+                          : " bill-total-value-zero"
+                      }`}
+                    >
+                      −₹{billDiscountAmount.toFixed(2)}
+                    </span>
+                  </div>
 
                   <div className="bill-total-row bill-total-row-taxable">
                     <span className="bill-total-label">Taxable Subtotal</span>
@@ -2305,10 +2331,15 @@ const POSBilling = () => {
                     </span>
                   </div>
 
-                  {/* Bill-level discount */}
+                  {/* Bill-level discount CONTROLS.
+                      This strip is the input for the "Bill Discount" financial
+                      row shown above — it is deliberately labelled "Apply …" so
+                      it is not mistaken for a second, duplicate discount line,
+                      and it sits BELOW the totals where the running figures
+                      belong. */}
                   <div className="bill-total-row bill-discount-row">
                     <span className="bill-total-label">
-                      <FaPercent /> Bill discount
+                      <FaPercent /> Apply discount
                     </span>
                     <span className="bill-total-value bill-discount-controls">
                       <button
@@ -2374,8 +2405,11 @@ const POSBilling = () => {
                         }
                       />
                       {billDiscountAmount > 0 && (
-                        <span className="bill-discount-applied" title="Bill discount applied">
-                          −₹{billDiscountAmount.toFixed(2)}
+                        <span
+                          className="bill-discount-applied"
+                          title="Bill discount applied — see the Bill Discount row in the summary above"
+                        >
+                          applied
                         </span>
                       )}
                     </span>

@@ -3502,3 +3502,16 @@
     box-shadow: 0 -6px 14px -8px rgba(15, 23, 42, 0.18);
   }
 }
+
+/* Zero-value discount row: shown so the cashier can see "no discount applied"
+   rather than inferring it from a missing row. Muted, but still legible — it
+   must not read as an error state. */
+.bill-total-value-zero {
+  color: var(--pos-text-soft, #64748b);
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.bill-total-row .bill-total-value-zero svg {
+  color: var(--pos-text-soft, #64748b);
+}
