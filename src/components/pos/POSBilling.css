@@ -3515,3 +3515,249 @@
 .bill-total-row .bill-total-value-zero svg {
   color: var(--pos-text-soft, #64748b);
 }
+
+/* ==========================================================================
+   Discount editor (DiscountEditor.jsx) — shared manual entry for the line
+   and bill discounts. Sits inside the existing item-discount panel, so it
+   inherits that panel's tokens and the quick chips above it stay in place.
+   ========================================================================== */
+
+.disc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--pos-surface-2, #f9fafb);
+  border: 1px solid var(--pos-border, #e5e7eb);
+  /* Keep the editor fully inside the rail on narrow POS screens. */
+  max-width: 100%;
+}
+
+.disc-editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.disc-editor-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pos-text-soft, #475569);
+}
+
+.disc-editor-current {
+  font-size: 0.7rem;
+  color: #1f8a3b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.disc-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.disc-editor-modes {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--pos-surface, #fff);
+  border: 1px solid var(--pos-border, #e5e7eb);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.disc-mode {
+  /* 40px min keeps this comfortably tappable on a tablet terminal. */
+  min-width: 40px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pos-text-soft, #475569);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.disc-mode.is-active {
+  background: var(--pos-primary, #4f46e5);
+  color: #fff;
+}
+
+.disc-mode:focus-visible {
+  outline: 2px solid var(--pos-primary, #4f46e5);
+  outline-offset: 2px;
+}
+
+/* The numeric field is the primary target, so it takes the free width and
+   renders at the iOS/Android numeric keyboard via inputMode. */
+.disc-input {
+  flex: 1 1 110px;
+  min-width: 90px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--pos-border-strong, #d1d5db);
+  background: var(--pos-surface, #fff);
+  color: var(--pos-text, #0f172a);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+
+.disc-input:focus {
+  outline: none;
+  border-color: var(--pos-primary, #4f46e5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.16);
+}
+
+.disc-input.is-invalid {
+  border-color: var(--pos-danger, #ef4444);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+}
+
+.disc-editor-preview {
+  min-height: 18px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.disc-editor-amount {
+  color: var(--pos-text, #0f172a);
+  font-weight: 600;
+}
+
+.disc-editor-amount strong {
+  color: #1f8a3b;
+  font-variant-numeric: tabular-nums;
+}
+
+.disc-editor-hint {
+  color: var(--pos-text-muted, #94a3b8);
+}
+
+.disc-editor-error {
+  color: var(--pos-danger, #ef4444);
+  font-weight: 600;
+}
+
+.disc-editor-warning {
+  color: var(--pos-warning, #f59e0b);
+  font-weight: 600;
+}
+
+.disc-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.disc-editor-spacer {
+  flex: 1 1 auto;
+}
+
+.disc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.disc-btn:focus-visible {
+  outline: 2px solid var(--pos-primary, #4f46e5);
+  outline-offset: 2px;
+}
+
+.disc-btn-apply {
+  background: var(--pos-primary, #4f46e5);
+  color: #fff;
+}
+
+.disc-btn-apply:hover:not(:disabled) {
+  background: var(--pos-primary-hover, #4338ca);
+}
+
+.disc-btn-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.disc-btn-cancel,
+.disc-btn-remove {
+  background: var(--pos-surface, #fff);
+  border-color: var(--pos-border-strong, #d1d5db);
+  color: var(--pos-text-soft, #475569);
+}
+
+.disc-btn-cancel:hover,
+.disc-btn-remove:hover {
+  background: var(--pos-surface-3, #f3f4f6);
+}
+
+.disc-btn-remove {
+  color: var(--pos-danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* ---- Bill-level custom-% field, next to the existing flat field ---- */
+.bill-discount-apply-btn {
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--pos-border-strong, #d1d5db);
+  background: var(--pos-primary, #4f46e5);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.bill-discount-apply-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bill-discount-error {
+  color: var(--pos-danger, #ef4444);
+  font-size: 0.72rem;
+  font-weight: 600;
+  flex-basis: 100%;
+}
+
+@media (max-width: 720px) {
+  .disc-editor-actions {
+    gap: 6px;
+  }
+  .disc-btn {
+    flex: 1 1 auto;
+  }
+  .disc-editor-spacer {
+    display: none;
+  }
+}

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { checkoutInvoice } from "../../services/invoiceService";
 import { getProducts, addProduct } from "../../services/productService";
 import { searchCustomersForBilling } from "../../services/customerService";
+import DiscountEditor from "./DiscountEditor";
+import { validateDiscount } from "../../utils/discountInput";
 import PaymentDialog from "../payment/PaymentDialog";
 import OpenShiftDialog from "../shift/OpenShiftDialog";
 import CloseShiftDialog from "../shift/CloseShiftDialog";
@@ -596,6 +598,27 @@ const POSBilling = () => {
         [activeBillId]: { ...bill, discount },
       };
     });
+  };
+
+  // Manual custom-% entry for the bill. Validated with the SAME rules the
+  // server applies (utils/discountInput mirrors backend validateDiscount), so
+  // a value the cashier is allowed to type here is one the checkout will not
+  // reject with a 400.
+  const [billPercentDraft, setBillPercentDraft] = useState("");
+  const [billPercentError, setBillPercentError] = useState("");
+
+  const applyBillPercent = () => {
+    const result = validateDiscount(
+      { type: "percent", value: billPercentDraft },
+      { base: subTotalBeforeBillDiscount }
+    );
+    if (!result.ok) {
+      setBillPercentError(result.error || "Enter a valid percentage");
+      return;
+    }
+    setBillPercentError("");
+    setBillDiscount(result.isZero ? null : { type: "percent", value: result.value });
+    setBillPercentDraft("");
   };
 
   const requestDelete = (item) => {
@@ -1986,9 +2009,9 @@ const POSBilling = () => {
                                 >
                                   <td colSpan={4}>
                                     <div className="bill-item-discount-panel">
-                                      <span className="bill-item-discount-label">
-                                        Line discount:
-                                      </span>
+                                      {/* Quick presets — unchanged, and they
+                                          still apply instantly on click. */}
+                                      <span className="bill-item-discount-label">Quick:</span>
                                       {[
                                         { type: "percent", value: 5 },
                                         { type: "percent", value: 10 },
@@ -2014,11 +2037,7 @@ const POSBilling = () => {
                                       ))}
                                       <button
                                         type="button"
-                                        className={`bill-item-discount-chip${
-                                          i.lineDiscount && i.lineDiscount.type === "flat"
-                                            ? " is-active"
-                                            : ""
-                                        }`}
+                                        className="bill-item-discount-chip"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setLineDiscount(i.id, {
@@ -2030,38 +2049,33 @@ const POSBilling = () => {
                                       >
                                         Flat 10%
                                       </button>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        placeholder="Flat ₹"
-                                        className="bill-item-discount-flat-input"
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => {
-                                          const v = Number(e.target.value);
-                                          if (!v || v <= 0) {
+                                      {i.lineDiscount && Number(i.lineDiscount.value) > 0 && (
+                                        <button
+                                          type="button"
+                                          className="bill-item-discount-clear"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             setLineDiscount(i.id, null);
-                                            return;
-                                          }
-                                          setLineDiscount(i.id, { type: "flat", value: v });
+                                          }}
+                                          title="Remove this line discount"
+                                        >
+                                          <FaTimes /> Clear
+                                        </button>
+                                      )}
+
+                                      {/* Manual entry — percent or flat,
+                                          validated against the server's rules
+                                          and previewed before Apply. */}
+                                      <DiscountEditor
+                                        label="line"
+                                        base={i.price * getItemQty(i)}
+                                        current={i.lineDiscount || null}
+                                        onApply={(discount) => {
+                                          setLineDiscount(i.id, discount);
+                                          if (!discount) setExpandedLineId(null);
                                         }}
-                                        value={
-                                          i.lineDiscount && i.lineDiscount.type === "flat"
-                                            ? i.lineDiscount.value
-                                            : ""
-                                        }
+                                        onCancel={() => setExpandedLineId(null)}
                                       />
-                                      <button
-                                        type="button"
-                                        className="bill-item-discount-clear"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setLineDiscount(i.id, null);
-                                          setExpandedLineId(null);
-                                        }}
-                                      >
-                                        <FaTimes /> Clear
-                                      </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -2404,15 +2418,80 @@ const POSBilling = () => {
                             : ""
                         }
                       />
-                      {billDiscountAmount > 0 && (
-                        <span
-                          className="bill-discount-applied"
-                          title="Bill discount applied — see the Bill Discount row in the summary above"
-                        >
-                          applied
+                      {/* Manual percentage entry. The flat field above
+                          already existed; this adds the missing custom-%
+                          path and validates it against the server's rules
+                          before the value ever reaches the cart. */}
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="any"
+                        placeholder="Custom %"
+                        aria-label="Custom bill discount percentage"
+                        className="bill-discount-flat-input"
+                        value={billPercentDraft}
+                        onChange={(e) => {
+                          setBillPercentDraft(e.target.value);
+                          setBillPercentError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyBillPercent();
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            setBillPercentDraft("");
+                            setBillPercentError("");
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="bill-discount-apply-btn"
+                        onClick={applyBillPercent}
+                        disabled={billPercentDraft.trim() === ""}
+                        title="Apply the custom percentage"
+                      >
+                        Apply
+                      </button>
+                      {billPercentError && (
+                        <span className="bill-discount-error" role="alert">
+                          {billPercentError}
                         </span>
                       )}
+                      {billDiscountAmount > 0 && (
+                        <button
+                          type="button"
+                          className="bill-discount-applied"
+                          onClick={() => {
+                            setBillDiscount(null);
+                            setBillPercentDraft("");
+                            setBillPercentError("");
+                          }}
+                          title="Remove the bill discount"
+                        >
+                          <FaTimes /> Remove
+                        </button>
+                      )}
                     </span>
+                    {/* Manual bill editor: percent + flat, with a live amount
+                        preview, Enter=Apply and Escape=Cancel. The flat field
+                        and the quick chips above stay exactly as they were. */}
+                    <DiscountEditor
+                      label="bill"
+                      base={subTotalBeforeBillDiscount}
+                      current={activeBill.discount || null}
+                      onApply={(discount) => {
+                        setBillDiscount(discount);
+                        setBillPercentDraft("");
+                        setBillPercentError("");
+                      }}
+                      onCancel={() => {
+                        setBillPercentDraft("");
+                        setBillPercentError("");
+                      }}
+                    />
                   </div>
 
                   <div className="bill-total-row">
