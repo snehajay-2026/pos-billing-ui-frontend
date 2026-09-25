@@ -3395,3 +3395,110 @@
     max-width: none;
   }
 }
+
+/* ==========================================================================
+   Bill summary clarity (Phase 2A — presentation only)
+
+   Renames the ambiguous "Subtotal" to "Taxable Subtotal" and adds the gross /
+   discount context rows ABOVE it, so the cashier reads:
+       Gross → discounts → Taxable Subtotal → GST → Grand Total
+   `subTotal` is already net of both discounts, so the discount rows are
+   explanatory context and are never subtracted again.
+
+   No calculation changed — these rules only style rows that already existed.
+   ========================================================================== */
+
+/* Gross is context, so it is intentionally quieter than the taxable figure. */
+.bill-total-row.bill-total-row-gross {
+  opacity: 0.92;
+}
+
+.bill-total-row.bill-total-row-gross .bill-total-label {
+  font-weight: 500;
+}
+
+/* Discount rows: green, matching the existing savings treatment. */
+.bill-total-value-saved {
+  color: #1f8a3b;
+}
+
+.bill-total-row .bill-total-value-saved svg {
+  color: #1f8a3b;
+}
+
+/* The applied bill-discount amount, sitting beside the discount chips. */
+.bill-discount-applied {
+  color: #1f8a3b;
+  font-weight: 700;
+  font-size: 12px;
+  margin-left: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Taxable Subtotal is the figure GST is charged on, so it gets a subtle
+   emphasis — clearly secondary to the Grand Total below it. */
+.bill-total-row.bill-total-row-taxable {
+  border-top: 1px solid var(--pos-border);
+  margin-top: 4px;
+  padding-top: 9px;
+}
+
+.bill-total-row.bill-total-row-taxable .bill-total-label {
+  color: var(--pos-text);
+  font-weight: 700;
+}
+
+/* "You Saved" sits BELOW the Grand Total block, deliberately quieter. */
+.bill-total-row.bill-total-row-saved {
+  margin-top: 6px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.bill-total-row.bill-total-row-saved .bill-total-label {
+  color: #1f8a3b;
+  font-weight: 600;
+}
+
+.bill-total-row.bill-total-row-saved:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+/* Sticky right rail.
+   `.pos-page` is min-height:100vh and the PAGE scrolls — there is no
+   fixed-height shell, so making the existing side rail sticky keeps it in
+   view within its own grid column without creating a new scroll container.
+   Product/cart scrolling on the left is untouched. Disabled below the
+   existing stack breakpoint, where the rail sits under the items list and a
+   sticky rail would pin content the user is not looking at. */
+@media (min-width: 1025px) {
+  .bill-summary-side {
+    position: sticky;
+    top: 12px;
+    align-self: start;
+    /* Never taller than the viewport, or sticky would trap the page. */
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pos-border-strong, #cbd5e1) transparent;
+  }
+
+  .bill-summary-side::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .bill-summary-side::-webkit-scrollbar-thumb {
+    background: var(--pos-border-strong, #cbd5e1);
+    border-radius: 999px;
+  }
+
+  /* The Grand Total is the priority. When the rail is taller than the
+     viewport and the cashier scrolls within it, keep the total + payment
+     methods in view by pinning the totals block. */
+  .bill-summary-side .bill-totals {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    box-shadow: 0 -6px 14px -8px rgba(15, 23, 42, 0.18);
+  }
+}

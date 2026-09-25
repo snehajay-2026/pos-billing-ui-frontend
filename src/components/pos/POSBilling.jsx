@@ -2273,9 +2273,32 @@ const POSBilling = () => {
                   </div>
                 </div>
 
+                {/* Bill summary — display only.
+                    `subTotal` is ALREADY net of both line and bill discounts,
+                    so it is labelled "Taxable Subtotal" and the two discount
+                    rows above it are context, not further deductions to
+                    subtract. Every value below is an existing variable; no
+                    formula is re-derived here. */}
                 <div className="bill-totals">
-                  <div className="bill-total-row">
-                    <span className="bill-total-label">Subtotal</span>
+                  <div className="bill-total-row bill-total-row-gross">
+                    <span className="bill-total-label">Gross Amount</span>
+                    <span className="bill-total-value">
+                      <FaRupeeSign />
+                      {subTotalBeforeBillDiscount.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {lineDiscountTotal > 0 && (
+                    <div className="bill-total-row bill-total-row-discount">
+                      <span className="bill-total-label">Line Discount</span>
+                      <span className="bill-total-value bill-total-value-saved">
+                        −₹{lineDiscountTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="bill-total-row bill-total-row-taxable">
+                    <span className="bill-total-label">Taxable Subtotal</span>
                     <span className="bill-total-value">
                       <FaRupeeSign className="text-success" />
                       {subTotal.toFixed(2)}
@@ -2350,9 +2373,9 @@ const POSBilling = () => {
                             : ""
                         }
                       />
-                      {totalSavings > 0 && (
-                        <span className="bill-discount-saved" title="Total saved by discounts">
-                          −₹{totalSavings.toFixed(2)}
+                      {billDiscountAmount > 0 && (
+                        <span className="bill-discount-applied" title="Bill discount applied">
+                          −₹{billDiscountAmount.toFixed(2)}
                         </span>
                       )}
                     </span>
@@ -2372,6 +2395,17 @@ const POSBilling = () => {
                       {grandTotal.toFixed(2)}
                     </span>
                   </div>
+                  {/* Secondary, and deliberately BELOW the Grand Total so it is
+                      never read as part of the amount due. Existing value:
+                      lineDiscountTotal + billDiscountAmount. */}
+                  {totalSavings > 0 && (
+                    <div className="bill-total-row bill-total-row-saved">
+                      <span className="bill-total-label">You Saved</span>
+                      <span className="bill-total-value bill-total-value-saved">
+                        ₹{totalSavings.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pos-payment-pills" role="radiogroup" aria-label="Payment method">

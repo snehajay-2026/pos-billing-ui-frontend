@@ -24,15 +24,9 @@ export const resolveRetailCustomer = (invoice) => {
   const hd = safe.hotelDetails && typeof safe.hotelDetails === "object" ? safe.hotelDetails : {};
   const trimmed = (v) => (typeof v === "string" ? v.trim() : "");
   const nameCandidate =
-    trimmed(hd.guestName) ||
-    trimmed(safe.customerName) ||
-    trimmed(safe.customer) ||
-    "";
+    trimmed(hd.guestName) || trimmed(safe.customerName) || trimmed(safe.customer) || "";
   const mobileCandidate =
-    trimmed(hd.customerMobile) ||
-    trimmed(safe.customerPhone) ||
-    trimmed(safe.customerMobile) ||
-    "";
+    trimmed(hd.customerMobile) || trimmed(safe.customerPhone) || trimmed(safe.customerMobile) || "";
   return {
     name: nameCandidate || "Walking Customer",
     mobile: mobileCandidate,
@@ -66,12 +60,42 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
     return Number(item.qty ?? item.qtyKg) || 0;
   };
 
-  // Calculate totals
+  // Calculate totals — all read straight off the persisted invoice. No value
+  // is recomputed from the line items here; the POS already resolved them at
+  // checkout and the server re-validates them.
   const subTotal = invoice.subTotal || 0;
   const gstTotal = invoice.gstTotal || 0;
   const grandTotal = invoice.grandTotal || 0;
   const totalItems = (invoice.items || []).length;
   const totalQty = (invoice.items || []).reduce((sum, it) => sum + getQtyForItem(it), 0);
+
+  // `subTotal` is already net of both line and bill discounts, so it is the
+  // TAXABLE subtotal (GST is charged on it, never on the gross). The discount
+  // rows above it are explanatory context, not deductions to apply again.
+  const bd = invoice.discountBreakdown || null;
+  const totalSavings = Number(bd?.totalSavings || 0);
+  const lineDiscountAmount = (bd?.line || []).reduce((s, l) => s + Number(l.saved || 0), 0);
+  // Bill discount: prefer the amount captured at checkout. Older rows may
+  // carry a `discount` but no breakdown, in which case it is re-derived from
+  // the percentage exactly as the existing discount row below already does.
+  const billDiscountAmount = (() => {
+    if (lineDiscountAmount > 0 || totalSavings > 0) {
+      return Math.max(0, +(totalSavings - lineDiscountAmount).toFixed(2));
+    }
+    const info = invoice.discount;
+    if (!info || typeof info.value !== "number" || info.value <= 0) return 0;
+    const base = Number(invoice.subTotal || 0);
+    if (!base) return 0;
+    return info.type === "percent"
+      ? +Math.min(base, (base * info.value) / 100).toFixed(2)
+      : +Math.min(base, info.value).toFixed(2);
+  })();
+  const hasDiscount = lineDiscountAmount > 0 || billDiscountAmount > 0;
+  // Gross is the identity `subTotal + totalSavings`, which holds because the
+  // POS computed subTotal as (gross − lineDiscount − billDiscount). Only
+  // shown when a discount actually exists, so a no-discount bill keeps its
+  // original compact layout and gains no receipt height.
+  const grossAmount = hasDiscount ? +(subTotal + totalSavings).toFixed(2) : null;
 
   return (
     <div id="retail-print-invoice" className="rpi-root">
@@ -186,61 +210,46 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
       {/* DARK DIVIDER before totals */}
       <div className="rpi-divider" />
 
-      {/* TOTALS */}
+      {/* TOTALS
+          Order is: Gross → discounts → Taxable Subtotal → GST → Grand Total.
+          `subTotal` is the post-discount, GST-bearing amount, so it is
+          labelled "Taxable Subtotal". The discount rows ABOVE it are context
+          for how that figure was reached — the amount is never subtracted
+          from the subtotal a second time.
+
+          When no discount exists the gross / discount rows are omitted
+          entirely, so an undiscounted receipt keeps its original height. */}
       <div className="rpi-totals">
-        <div className="rpi-total-row">
-          <span>Subtotal</span>
+        {grossAmount != null && (
+          <div className="rpi-total-row">
+            <span>Gross Amount</span>
+            <strong>₹{fmt2(grossAmount)}</strong>
+          </div>
+        )}
+
+        {lineDiscountAmount > 0 && (
+          <div className="rpi-total-row rpi-total-row-saved">
+            <span>Line Discount</span>
+            <span>−₹{fmt2(lineDiscountAmount)}</span>
+          </div>
+        )}
+
+        {billDiscountAmount > 0 && (
+          <div className="rpi-total-row rpi-total-row-saved">
+            <span>
+              Bill Discount
+              {invoice.discountBreakdown?.bill?.type === "percent"
+                ? ` (${invoice.discountBreakdown.bill.value}%)`
+                : ""}
+            </span>
+            <span>−₹{fmt2(billDiscountAmount)}</span>
+          </div>
+        )}
+
+        <div className="rpi-total-row rpi-total-row-taxable">
+          <span>Taxable Subtotal</span>
           <strong>₹{fmt2(subTotal)}</strong>
         </div>
-
-        {invoice.discountBreakdown && invoice.discountBreakdown.totalSavings > 0 && (
-          <>
-            {invoice.discountBreakdown.line && invoice.discountBreakdown.line.length > 0 && (
-              <div className="rpi-total-row rpi-total-row-saved">
-                <span>
-                  Line discount
-                  {invoice.discountBreakdown.line.length > 1
-                    ? ` (${invoice.discountBreakdown.line.length} items)`
-                    : `: ${invoice.discountBreakdown.line[0].productName}`}
-                </span>
-                <span>
-                  −₹
-                  {fmt2(
-                    invoice.discountBreakdown.line.reduce((s, l) => s + Number(l.saved || 0), 0)
-                  )}
-                </span>
-              </div>
-            )}
-            {invoice.discountBreakdown.bill && (
-              <div className="rpi-total-row rpi-total-row-saved">
-                <span>
-                  Bill{" "}
-                  {invoice.discountBreakdown.bill.type === "percent"
-                    ? `${invoice.discountBreakdown.bill.value}%`
-                    : `₹${invoice.discountBreakdown.bill.value}`}{" "}
-                  off
-                </span>
-                <span>
-                  −₹
-                  {fmt2(
-                    Math.min(
-                      Number(invoice.subTotal || 0),
-                      invoice.discountBreakdown.bill.type === "percent"
-                        ? (Number(invoice.subTotal || 0) *
-                            Number(invoice.discountBreakdown.bill.value)) /
-                            100
-                        : Number(invoice.discountBreakdown.bill.value)
-                    )
-                  )}
-                </span>
-              </div>
-            )}
-            <div className="rpi-total-row rpi-total-row-saved">
-              <span>You saved</span>
-              <span>₹{fmt2(invoice.discountBreakdown.totalSavings)}</span>
-            </div>
-          </>
-        )}
 
         <div className="rpi-total-row">
           <span>GST</span>
@@ -251,6 +260,15 @@ const RetailPrintInvoice = ({ invoice, isDuplicate }) => {
           <span>Grand Total</span>
           <strong>₹{fmt2(grandTotal)}</strong>
         </div>
+
+        {/* Secondary, and placed BELOW the Grand Total so it can never be
+            read as part of the amount payable. Existing stored value. */}
+        {totalSavings > 0 && (
+          <div className="rpi-total-row rpi-total-row-saved">
+            <span>You Saved</span>
+            <span>₹{fmt2(totalSavings)}</span>
+          </div>
+        )}
       </div>
 
       {/* SPLIT-PAYMENT BREAKDOWN */}
