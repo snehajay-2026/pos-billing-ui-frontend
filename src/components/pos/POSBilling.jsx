@@ -3,7 +3,6 @@ import { checkoutInvoice } from "../../services/invoiceService";
 import { getProducts, addProduct } from "../../services/productService";
 import { searchCustomersForBilling } from "../../services/customerService";
 import DiscountEditor from "./DiscountEditor";
-import { validateDiscount } from "../../utils/discountInput";
 import PaymentDialog from "../payment/PaymentDialog";
 import OpenShiftDialog from "../shift/OpenShiftDialog";
 import CloseShiftDialog from "../shift/CloseShiftDialog";
@@ -600,26 +599,13 @@ const POSBilling = () => {
     });
   };
 
-  // Manual custom-% entry for the bill. Validated with the SAME rules the
-  // server applies (utils/discountInput mirrors backend validateDiscount), so
-  // a value the cashier is allowed to type here is one the checkout will not
-  // reject with a 400.
-  const [billPercentDraft, setBillPercentDraft] = useState("");
-  const [billPercentError, setBillPercentError] = useState("");
-
-  const applyBillPercent = () => {
-    const result = validateDiscount(
-      { type: "percent", value: billPercentDraft },
-      { base: subTotalBeforeBillDiscount }
-    );
-    if (!result.ok) {
-      setBillPercentError(result.error || "Enter a valid percentage");
-      return;
-    }
-    setBillPercentError("");
-    setBillDiscount(result.isZero ? null : { type: "percent", value: result.value });
-    setBillPercentDraft("");
-  };
+  // Bill discount DRAFT state. One object, one setter — shared by the quick
+  // chips and the numeric input, so both paths go through the same Apply.
+  // The draft is deliberately separate from `activeBill.discount`: typing
+  // (or clicking a chip) only edits the draft, and the bill keeps its
+  // committed discount until Apply is pressed. The two superseded
+  // `billPercentDraft` / `billPercentError` states are gone.
+  const [billDraft, setBillDraft] = useState({ type: "percent", text: "" });
 
   const requestDelete = (item) => {
     if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
@@ -2345,152 +2331,35 @@ const POSBilling = () => {
                     </span>
                   </div>
 
-                  {/* Bill-level discount CONTROLS.
-                      This strip is the input for the "Bill Discount" financial
-                      row shown above — it is deliberately labelled "Apply …" so
-                      it is not mistaken for a second, duplicate discount line,
-                      and it sits BELOW the totals where the running figures
-                      belong. */}
-                  <div className="bill-total-row bill-discount-row">
-                    <span className="bill-total-label">
-                      <FaPercent /> Apply discount
-                    </span>
-                    <span className="bill-total-value bill-discount-controls">
-                      <button
-                        type="button"
-                        className={`bill-discount-chip${
-                          activeBill.discount &&
-                          activeBill.discount.type === "percent" &&
-                          Number(activeBill.discount.value) === 5
-                            ? " is-active"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setBillDiscount(
-                            activeBill.discount &&
-                              activeBill.discount.type === "percent" &&
-                              Number(activeBill.discount.value) === 5
-                              ? null
-                              : { type: "percent", value: 5 }
-                          )
-                        }
-                      >
-                        5%
-                      </button>
-                      <button
-                        type="button"
-                        className={`bill-discount-chip${
-                          activeBill.discount &&
-                          activeBill.discount.type === "percent" &&
-                          Number(activeBill.discount.value) === 10
-                            ? " is-active"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setBillDiscount(
-                            activeBill.discount &&
-                              activeBill.discount.type === "percent" &&
-                              Number(activeBill.discount.value) === 10
-                              ? null
-                              : { type: "percent", value: 10 }
-                          )
-                        }
-                      >
-                        10%
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="Flat ₹"
-                        className="bill-discount-flat-input"
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          if (!v || v <= 0) {
-                            setBillDiscount(null);
-                            return;
-                          }
-                          setBillDiscount({ type: "flat", value: v });
-                        }}
-                        value={
-                          activeBill.discount && activeBill.discount.type === "flat"
-                            ? activeBill.discount.value
-                            : ""
-                        }
-                      />
-                      {/* Manual percentage entry. The flat field above
-                          already existed; this adds the missing custom-%
-                          path and validates it against the server's rules
-                          before the value ever reaches the cart. */}
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="any"
-                        placeholder="Custom %"
-                        aria-label="Custom bill discount percentage"
-                        className="bill-discount-flat-input"
-                        value={billPercentDraft}
-                        onChange={(e) => {
-                          setBillPercentDraft(e.target.value);
-                          setBillPercentError("");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            applyBillPercent();
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            setBillPercentDraft("");
-                            setBillPercentError("");
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="bill-discount-apply-btn"
-                        onClick={applyBillPercent}
-                        disabled={billPercentDraft.trim() === ""}
-                        title="Apply the custom percentage"
-                      >
-                        Apply
-                      </button>
-                      {billPercentError && (
-                        <span className="bill-discount-error" role="alert">
-                          {billPercentError}
-                        </span>
-                      )}
-                      {billDiscountAmount > 0 && (
-                        <button
-                          type="button"
-                          className="bill-discount-applied"
-                          onClick={() => {
-                            setBillDiscount(null);
-                            setBillPercentDraft("");
-                            setBillPercentError("");
-                          }}
-                          title="Remove the bill discount"
-                        >
-                          <FaTimes /> Remove
-                        </button>
-                      )}
-                    </span>
-                    {/* Manual bill editor: percent + flat, with a live amount
-                        preview, Enter=Apply and Escape=Cancel. The flat field
-                        and the quick chips above stay exactly as they were. */}
+                  {/* Bill-level discount — ONE editor.
+                      This replaces a duplicate "Apply discount" strip that
+                      sat below the totals and drove the SAME
+                      `activeBill.discount` as the "Bill Discount" row above,
+                      exposing % / flat / custom / apply / remove twice for
+                      one value. Both now read from one state.
+
+                      A chip fills the DRAFT only; the committed discount stays
+                      live in the bill until Apply is pressed, so a mis-click
+                      can't silently discount a sale. Per-item line discount
+                      is untouched and still lives on each cart row. */}
+                  <div className="bill-discount-editor-wrap">
                     <DiscountEditor
                       label="bill"
                       base={subTotalBeforeBillDiscount}
                       current={activeBill.discount || null}
-                      onApply={(discount) => {
-                        setBillDiscount(discount);
-                        setBillPercentDraft("");
-                        setBillPercentError("");
-                      }}
-                      onCancel={() => {
-                        setBillPercentDraft("");
-                        setBillPercentError("");
-                      }}
+                      quickOptions={[
+                        { type: "percent", value: 5 },
+                        { type: "percent", value: 10 },
+                      ]}
+                      draft={billDraft}
+                      onDraftChange={setBillDraft}
+                      onApply={(discount) => setBillDiscount(discount)}
+                      onCancel={() =>
+                        setBillDraft({
+                          type: activeBill.discount?.type === "flat" ? "flat" : "percent",
+                          text: activeBill.discount ? String(activeBill.discount.value) : "",
+                        })
+                      }
                     />
                   </div>
 

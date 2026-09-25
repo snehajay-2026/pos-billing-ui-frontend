@@ -3772,3 +3772,63 @@
     display: none;
   }
 }
+
+/* ---- Unified Bill Discount editor ----------------------------------------
+   The editor replaces the old "Apply discount" strip, which duplicated the
+   "Bill Discount" row's input surface. It now sits directly under that row
+   inside the totals card. */
+.bill-discount-editor-wrap {
+  padding: 4px 12px 8px;
+  border-bottom: 1px solid var(--pos-border, #e5e7eb);
+}
+
+/* Quick chips fill the draft only — never the bill. Styled distinct from
+   `.bill-discount-chip` so the two quick surfaces can't be confused. */
+.disc-editor-quick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.disc-editor-quick-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--pos-text-muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.disc-quick {
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pos-border-strong, #d1d5db);
+  background: var(--pos-surface, #fff);
+  color: var(--pos-text-soft, #475569);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.disc-quick:hover {
+  background: var(--pos-primary-soft, #eef2ff);
+  border-color: var(--pos-primary, #4f46e5);
+  color: var(--pos-primary, #4f46e5);
+}
+
+.disc-quick.is-active {
+  background: var(--pos-primary-soft, #eef2ff);
+  border-color: var(--pos-primary, #4f46e5);
+  color: var(--pos-primary, #4f46e5);
+}
+
+.disc-quick:focus-visible {
+  outline: 2px solid var(--pos-primary, #4f46e5);
+  outline-offset: 2px;
+}

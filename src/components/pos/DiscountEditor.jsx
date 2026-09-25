@@ -34,16 +34,38 @@ const previewAmount = (base, type, value) => {
 const DiscountEditor = ({
   label,
   base,
-  current, // { type, value } | null
+  current, // { type, value } | null  — the COMMITTED discount
   onApply, // (discount | null) => void   — null means "remove"
   onCancel,
   inputMode = "decimal",
+  // Optional quick presets. A chip does NOT apply — it populates the same
+  // draft the numeric input writes to, so quick and custom share one draft
+  // state and one Apply action. The committed `current` discount stays live
+  // in the bill until Apply is pressed.
+  quickOptions = [],
+  // Optional controlled draft, so a caller can drive the editor from outside
+  // (the bill summary renders its chips inside the row). When omitted the
+  // editor owns its draft internally.
+  draft: controlledDraft,
+  onDraftChange,
 }) => {
   const initialType = current?.type === "flat" ? "flat" : "percent";
-  const [type, setType] = useState(initialType);
-  const [text, setText] = useState(current ? String(current.value) : "");
+  const [localType, setLocalType] = useState(initialType);
+  const [localText, setLocalText] = useState(current ? String(current.value) : "");
   const [touched, setTouched] = useState(false);
   const inputRef = useRef(null);
+
+  // Controlled draft: falls back to local state when the caller doesn't
+  // supply one, so the line editor can stay uncontrolled.
+  const isControlled = controlledDraft !== undefined;
+  const type = isControlled ? controlledDraft.type : localType;
+  const text = isControlled ? controlledDraft.text : localText;
+  const setType = isControlled
+    ? (next) => onDraftChange({ ...controlledDraft, type: next })
+    : setLocalType;
+  const setText = isControlled
+    ? (next) => onDraftChange({ ...controlledDraft, text: next })
+    : setLocalText;
 
   // Focus + select on open so the cashier can retype over the old value.
   useEffect(() => {
@@ -62,6 +84,19 @@ const DiscountEditor = ({
     return previewAmount(base, type, parsed.value);
   }, [parsed, base, type]);
 
+  // A chip fills the draft; it never touches the bill. The cashier still has
+  // to press Apply, so a mis-click on 10% can't silently discount a sale.
+  const applyQuick = (option, e) => {
+    e?.stopPropagation();
+    if (isControlled) {
+      onDraftChange({ type: option.type, text: String(option.value) });
+    } else {
+      setLocalType(option.type);
+      setLocalText(String(option.value));
+    }
+    setTouched(false);
+  };
+
   const submit = (e) => {
     e?.stopPropagation();
     e?.preventDefault(); // Enter must never submit the payment form
@@ -74,8 +109,21 @@ const DiscountEditor = ({
     onApply(parsed.isZero ? null : toDiscountObject(type, parsed.value));
   };
 
+  // Cancel discards the DRAFT and leaves the committed discount alone. The
+  // bill was never touched while typing, so restoring it is just dropping
+  // the draft back to whatever is currently applied.
   const cancel = (e) => {
     e?.stopPropagation();
+    if (isControlled) {
+      onDraftChange({
+        type: current?.type === "flat" ? "flat" : "percent",
+        text: current ? String(current.value) : "",
+      });
+    } else {
+      setLocalType(initialType);
+      setLocalText(current ? String(current.value) : "");
+    }
+    setTouched(false);
     onCancel?.();
   };
 
@@ -104,10 +152,32 @@ const DiscountEditor = ({
         <span className="disc-editor-label">{discountLabel(label)}</span>
         {current && (
           <span className="disc-editor-current">
-            Current: {current.type === "percent" ? `${current.value}%` : `₹${current.value}`}
+            Applied: {current.type === "percent" ? `${current.value}%` : `₹${current.value}`}
           </span>
         )}
       </div>
+
+      {quickOptions.length > 0 && (
+        <div className="disc-editor-quick" role="group" aria-label="Quick discounts">
+          <span className="disc-editor-quick-label">Quick:</span>
+          {quickOptions.map((option) => {
+            const isActive = type === option.type && Number(text) === Number(option.value);
+            return (
+              <button
+                key={`${option.type}-${option.value}`}
+                type="button"
+                className={`disc-quick${isActive ? " is-active" : ""}`}
+                onClick={(e) => applyQuick(option, e)}
+                title={`Fill the editor with ${option.value}${
+                  option.type === "percent" ? "%" : "₹"
+                } — press Apply to apply it`}
+              >
+                {option.type === "percent" ? `${option.value}%` : `₹${option.value}`}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="disc-editor-row">
         <div className="disc-editor-modes" role="radiogroup" aria-label="Discount type">
