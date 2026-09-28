@@ -1,0 +1,688 @@
+/* src/pages/ManagerDashboard.css
+ *
+ * Mobile-first. The base rules below describe a 360px phone and every
+ * enhancement is added by a min-width query — there is no desktop layout being
+ * shrunk down.
+ *
+ * Conventions borrowed from the existing pages: the `mm-` prefix (matching
+ * `db-` in DashboardUI.css, `sd-` in ServiceAdminDashboard.css), and a
+ * `body.theme-*` override block because the three themes are applied as body
+ * classes and this page would otherwise render dark-on-light.
+ *
+ * Constraints this file enforces:
+ *   - no horizontal page scroll (the date pills are the one contained scroller)
+ *   - no <table> anywhere; every list is a stack or a definition list
+ *   - nothing below 11px, and no body text below 13px
+ *   - every interactive target at least 44px tall
+ */
+
+.mm-page {
+  --mm-bg: #f6f7fb;
+  --mm-surface: #ffffff;
+  --mm-border: #e5e7eb;
+  --mm-text: #111827;
+  --mm-text-muted: #6b7280;
+  --mm-accent: #4f46e5;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Fills the content area; the sidebar owns the horizontal padding. */
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 14px 28px;
+  background: var(--mm-bg);
+  color: var(--mm-text);
+  /* Guards the whole page against a stray wide child. */
+  overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.mm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mm-header-text {
+  /* Without this a long store name can push the refresh button off-screen. */
+  min-width: 0;
+}
+
+.mm-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mm-accent);
+  /* Store names can be long; wrap rather than overflow. */
+  overflow-wrap: anywhere;
+}
+
+.mm-title {
+  margin: 2px 0 0;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.mm-meta {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--mm-text-muted);
+}
+
+.mm-meta-updated {
+  white-space: nowrap;
+}
+
+.mm-refresh {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mm-border);
+  border-radius: 12px;
+  background: var(--mm-surface);
+  color: var(--mm-text-muted);
+  cursor: pointer;
+}
+
+.mm-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mm-refresh .is-spinning {
+  animation: mm-spin 0.9s linear infinite;
+}
+
+@keyframes mm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------- date filter */
+
+.mm-range {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mm-range-scroller {
+  display: flex;
+  gap: 8px;
+  /* The one deliberate horizontal scroller on the page: six pills cannot fit
+   * a 360px screen, and wrapping them pushes the KPIs below the fold. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the focus ring so it is not clipped by the scroller. */
+  padding: 2px;
+  margin: -2px;
+}
+
+.mm-range-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.mm-range-pill {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid var(--mm-border);
+  border-radius: 999px;
+  background: var(--mm-surface);
+  color: var(--mm-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mm-range-pill.is-active {
+  background: var(--mm-accent);
+  border-color: var(--mm-accent);
+  color: #fff;
+}
+
+.mm-range-custom {
+  display: flex;
+  gap: 10px;
+}
+
+.mm-range-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mm-range-field span {
+  font-size: 12px;
+  color: var(--mm-text-muted);
+}
+
+.mm-range-field input {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--mm-border);
+  border-radius: 10px;
+  background: var(--mm-surface);
+  color: var(--mm-text);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------- kpi grid */
+
+/* Two-up at 360px — the narrowest width where each tile can still hold a
+ * currency figure without wrapping. */
+.mm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mm-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* Grid children default to min-width:auto, which lets a long number push the
+   * column wider than its track. This is the fix for tile-row overflow. */
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
+  background: var(--mm-surface);
+}
+
+.mm-kpi.is-emphasis {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.mm-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mm-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mm-text-muted);
+  /* The label may truncate; the value must not. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-kpi-icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.mm-kpi-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  /* Tabular figures stop the value jittering when realtime updates land. */
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.mm-kpi-sub {
+  font-size: 12px;
+  color: var(--mm-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-kpi-primary .mm-kpi-value {
+  color: #4338ca;
+}
+.mm-kpi-violet .mm-kpi-value {
+  color: #7c3aed;
+}
+.mm-kpi-amber .mm-kpi-value {
+  color: #b45309;
+}
+.mm-kpi-rose .mm-kpi-value {
+  color: #be123c;
+}
+
+/* ------------------------------------------------------------- sections */
+
+.mm-section {
+  padding: 14px;
+  border: 1px solid var(--mm-border);
+  border-radius: 14px;
+  background: var(--mm-surface);
+}
+
+.mm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mm-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mm-accent);
+  text-decoration: none;
+}
+
+.mm-footnote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mm-text-muted);
+}
+
+/* ------------------------------------------------------ needs attention */
+
+.mm-attention {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-attention-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--mm-border);
+  /* A left rule carries the severity, and the text repeats the same meaning —
+   * colour is never the only signal. */
+  border-left-width: 4px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mm-attention-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mm-attention-text strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mm-attention-text span {
+  font-size: 12px;
+  color: var(--mm-text-muted);
+}
+
+.mm-attention-arrow {
+  flex: 0 0 auto;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.mm-sev-critical {
+  border-left-color: #dc2626;
+}
+.mm-sev-warning {
+  border-left-color: #d97706;
+}
+.mm-sev-info {
+  border-left-color: #2563eb;
+}
+.mm-sev-out {
+  border-left-color: #dc2626;
+}
+.mm-sev-low {
+  border-left-color: #d97706;
+}
+
+/* ----------------------------------------------------------- value rows */
+
+.mm-rows {
+  margin: 0;
+}
+
+.mm-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--mm-border);
+}
+
+.mm-row:last-child {
+  border-bottom: none;
+}
+
+.mm-row-label {
+  font-size: 13px;
+  color: var(--mm-text-muted);
+}
+
+.mm-row-value {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  /* A long amount wraps instead of widening the row. */
+  overflow-wrap: anywhere;
+}
+
+.mm-row.is-strong .mm-row-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mm-row.is-credit .mm-row-value {
+  color: #b91c1c;
+}
+
+.mm-row.is-muted .mm-row-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mm-text-muted);
+}
+
+/* ------------------------------------------------------------- payments */
+
+.mm-payments {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-payment {
+  display: grid;
+  /* Fixed side columns keep the bar and the figures aligned row to row. */
+  grid-template-columns: 68px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-payment-mode {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-payment-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mm-border);
+  overflow: hidden;
+}
+
+.mm-payment-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--mm-accent);
+}
+
+.mm-payment-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mm-payment-share {
+  min-width: 38px;
+  font-size: 12px;
+  color: var(--mm-text-muted);
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- chart */
+
+.mm-chart {
+  width: 100%;
+  /* ResponsiveContainer needs a parent with a definite height. */
+  height: 180px;
+}
+
+/* --------------------------------------------------------- stat clusters */
+
+.mm-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 9px 4px;
+  border-radius: 10px;
+  background: var(--mm-bg);
+}
+
+.mm-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mm-stat-label {
+  font-size: 11px;
+  color: var(--mm-text-muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.mm-stat-critical .mm-stat-value {
+  color: #dc2626;
+}
+.mm-stat-warning .mm-stat-value {
+  color: #b45309;
+}
+.mm-stat-primary .mm-stat-value {
+  color: #4338ca;
+}
+
+/* ------------------------------------------------------------ mini list */
+
+.mm-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-mini-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.mm-mini-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-mini-value {
+  flex: 0 0 auto;
+  padding-left: 8px;
+  border-left: 3px solid;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- footer */
+
+.mm-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.mm-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mm-border);
+  border-radius: 999px;
+  background: var(--mm-surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mm-text-muted);
+  text-decoration: none;
+}
+
+/* -------------------------------------------------------------- themes */
+
+body.theme-dark .mm-page {
+  --mm-bg: #0f172a;
+  --mm-surface: #1e293b;
+  --mm-border: #334155;
+  --mm-text: #f1f5f9;
+  --mm-text-muted: #94a3b8;
+  --mm-accent: #818cf8;
+}
+
+body.theme-dark .mm-kpi.is-emphasis {
+  background: #1e1b4b;
+  border-color: #4338ca;
+}
+
+body.theme-dark .mm-kpi-primary .mm-kpi-value {
+  color: #a5b4fc;
+}
+body.theme-dark .mm-kpi-violet .mm-kpi-value {
+  color: #c4b5fd;
+}
+body.theme-dark .mm-kpi-amber .mm-kpi-value {
+  color: #fcd34d;
+}
+body.theme-dark .mm-kpi-rose .mm-kpi-value {
+  color: #fda4af;
+}
+
+body.theme-dark .mm-row.is-credit .mm-row-value {
+  color: #fca5a5;
+}
+
+body.theme-dark .mm-stat {
+  background: #0f172a;
+}
+
+body.theme-minimal .mm-page {
+  --mm-border: #e5e7eb;
+}
+
+body.theme-minimal .mm-kpi,
+body.theme-minimal .mm-section {
+  border-radius: 8px;
+}
+
+/* ---------------------------------------------------------- breakpoints */
+
+/* 480px — the project's dominant phone breakpoint. Three KPI tiles fit. */
+@media (min-width: 480px) {
+  .mm-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mm-kpi-value {
+    font-size: 22px;
+  }
+}
+
+/* 768px — the layout breakpoint used by Layout.jsx for the sidebar drawer. */
+@media (min-width: 768px) {
+  .mm-page {
+    padding: 20px 20px 32px;
+    gap: 16px;
+  }
+
+  .mm-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mm-title {
+    font-size: 24px;
+  }
+
+  .mm-chart {
+    height: 220px;
+  }
+}
+
+/* 1024px — cap the measure; a dashboard stretched across a desktop reads as
+ * a stretched mobile page. */
+@media (min-width: 1024px) {
+  .mm-page {
+    max-width: 860px;
+  }
+}
+
+/* ------------------------------------------------------------ a11y */
+
+.mm-page :focus-visible {
+  outline: 2px solid var(--mm-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-refresh .is-spinning {
+    animation: none;
+  }
+}

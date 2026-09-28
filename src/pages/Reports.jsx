@@ -17,6 +17,7 @@ import {
   getPnlReport,
   exportReportUrl,
 } from "../services/reportService";
+import { getUserRole } from "../utils/auth";
 import "./Reports.css";
 
 // ---------------------------------------------------------------------------
@@ -474,14 +475,20 @@ const Reports = () => {
   const [range, setRange] = useState(defaultRange());
   const [storeScope, setStoreScope] = useState({ storeType: "", storeId: "" });
 
+  // The server now derives report scope from the session, so these two fields
+  // only do anything for a SUPER_OWNER narrowing a platform-wide view. For
+  // anyone else they are ignored server-side, so we hide them rather than
+  // accept input that appears to work and does not.
+  const isSuperOwner = getUserRole() === "SUPER_OWNER";
+
   const filters = useMemo(
     () => ({
       from: range.from,
       to: range.to,
-      ...(storeScope.storeType ? { storeType: storeScope.storeType } : {}),
-      ...(storeScope.storeId ? { storeId: storeScope.storeId } : {}),
+      ...(isSuperOwner && storeScope.storeType ? { storeType: storeScope.storeType } : {}),
+      ...(isSuperOwner && storeScope.storeId ? { storeId: storeScope.storeId } : {}),
     }),
-    [range, storeScope]
+    [range, storeScope, isSuperOwner]
   );
 
   const exportHref = useMemo(() => exportReportUrl(activeTab, filters), [activeTab, filters]);
@@ -547,24 +554,28 @@ const Reports = () => {
           </div>
         </div>
         <div className="rp-filters-right">
-          <div className="rp-filter-field">
-            <label>Store</label>
-            <input
-              type="text"
-              placeholder="storeType (e.g. hotel)"
-              value={storeScope.storeType}
-              onChange={(e) => setStoreScope({ ...storeScope, storeType: e.target.value })}
-            />
-          </div>
-          <div className="rp-filter-field">
-            <label>Store ID</label>
-            <input
-              type="text"
-              placeholder="storeId (optional)"
-              value={storeScope.storeId}
-              onChange={(e) => setStoreScope({ ...storeScope, storeId: e.target.value })}
-            />
-          </div>
+          {isSuperOwner ? (
+            <>
+              <div className="rp-filter-field">
+                <label>Store</label>
+                <input
+                  type="text"
+                  placeholder="storeType (e.g. hotel)"
+                  value={storeScope.storeType}
+                  onChange={(e) => setStoreScope({ ...storeScope, storeType: e.target.value })}
+                />
+              </div>
+              <div className="rp-filter-field">
+                <label>Store ID</label>
+                <input
+                  type="text"
+                  placeholder="storeId (optional)"
+                  value={storeScope.storeId}
+                  onChange={(e) => setStoreScope({ ...storeScope, storeId: e.target.value })}
+                />
+              </div>
+            </>
+          ) : null}
           <button type="button" className="rp-btn-primary" onClick={refresh}>
             <FaSearch /> Refresh
           </button>

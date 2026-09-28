@@ -38,6 +38,7 @@ import { getStoreSettings, loadStoreSettings } from "./services/storeSettingsSer
 const POSPage = lazy(() => import("./pages/POSPage"));
 const InvoicePage = lazy(() => import("./pages/InvoicePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const ServiceOrderPage = lazy(() => import("./pages/ServiceOrderPage"));
 const ProductPage = lazy(() => import("./pages/ProductPage"));
 const HotelDiningPage = lazy(() => import("./pages/HotelDiningPage"));
@@ -465,6 +466,20 @@ function App() {
                 <RequireAuth>
                   <ProtectedRoute roles={["SUPER_OWNER", "STORE_ADMIN", "ADMIN"]}>
                     <Dashboard />
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+
+            {/* MOBILE MANAGER DASHBOARD — the same three admin roles as
+                /dashboard. The server enforces this independently; this guard
+                is UX only, so hiding the route is never what secures the data. */}
+            <Route
+              path="/manager"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["SUPER_OWNER", "STORE_ADMIN", "ADMIN"]}>
+                    <ManagerDashboard />
                   </ProtectedRoute>
                 </RequireAuth>
               }

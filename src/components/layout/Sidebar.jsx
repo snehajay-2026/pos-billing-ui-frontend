@@ -252,6 +252,10 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
         ...(storeType !== "service" && storeType !== "msme-service"
           ? [{ to: "/dashboard", icon: <FaChartBar />, label: locale.dashboard }]
           : []),
+        // Mobile Manager Dashboard. Shown for EVERY vertical — unlike
+        // /dashboard and /service-dashboard, this one page is store-type aware,
+        // so there is no reason to hide it from service or laundry managers.
+        { to: "/manager", icon: <FaChartLine />, label: "Manager Dashboard" },
         ...(storeType === "service" || storeType === "msme-service"
           ? [
               {

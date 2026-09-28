@@ -24,7 +24,13 @@ import { getServices } from "../services/serviceService";
 import { useUi } from "../context/UiContext";
 import { getUser } from "../utils/auth";
 import { computeStatus } from "../utils/invoiceStatus";
+import { RANGE_PILLS as SHARED_RANGE_PILLS, buildRange } from "../utils/dateRange";
 import "./ServiceAdminDashboard.css";
+
+// The shared pill set also carries YESTERDAY, which this desktop view has
+// never offered. The list is shared so the two dashboards cannot drift on the
+// *logic*, but the pills actually shown here stay exactly as they were.
+const RANGE_PILLS = SHARED_RANGE_PILLS.filter((pill) => pill.key !== "YESTERDAY");
 
 /* ---------- formatters ---------- */
 const inr = (n) =>
@@ -36,14 +42,6 @@ const num = (n) => (Number(n) || 0).toLocaleString(undefined, { maximumFractionD
 
 const today = () => new Date().toISOString().split("T")[0];
 const ymd = (d) => new Date(d).toISOString().split("T")[0];
-
-const RANGE_PILLS = [
-  { key: "TODAY", label: "Today" },
-  { key: "WEEK", label: "This Week" },
-  { key: "MONTH", label: "This Month" },
-  { key: "YEAR", label: "This Year" },
-  { key: "CUSTOM", label: "Custom" },
-];
 
 // F7: payment-mode bucket toggle. "ALL" shows every recorded mode;
 // the rest are canonical labels that match the POS dropdown so what
@@ -68,32 +66,6 @@ const CHART_PALETTE = [
 ];
 
 /* ---------- date-range helpers ---------- */
-const buildRange = (range, customFrom, customTo) => {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-
-  if (range === "TODAY") {
-    start.setHours(0, 0, 0, 0);
-  } else if (range === "WEEK") {
-    start.setDate(now.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-  } else if (range === "MONTH") {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-  } else if (range === "YEAR") {
-    start.setMonth(0, 1);
-    start.setHours(0, 0, 0, 0);
-  } else if (range === "CUSTOM") {
-    if (customFrom) start.setTime(new Date(customFrom).getTime());
-    else start.setHours(0, 0, 0, 0);
-    if (customTo) end.setTime(new Date(customTo).getTime() + 24 * 3600 * 1000 - 1);
-  }
-
-  return { start, end };
-};
-
 const filterInvoices = (invoices, range, customFrom, customTo) => {
   const { start, end } = buildRange(range, customFrom, customTo);
   return (invoices || []).filter((inv) => {
