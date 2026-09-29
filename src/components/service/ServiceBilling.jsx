@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { saveInvoice } from "../../services/invoiceService";
+import { searchCustomersForBilling } from "../../services/customerService";
 import {
   FaRupeeSign,
   FaUser,
@@ -87,6 +88,10 @@ const ServiceBilling = () => {
     items: [],
     paymentMode: "Cash",
     customer: "",
+    // null = walking customer; set by attachCustomer when an existing
+    // Customer Management record is selected. Persisted as
+    // `invoices.customer_id` via the shared resolveBillableCustomer gate.
+    customerId: null,
     phone: "",
     email: "",
     address: "",
@@ -137,6 +142,50 @@ const ServiceBilling = () => {
 
   const [undoItem, setUndoItem] = useState(null);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+
+  // Customer attach — mirrors the Retail POS flow in
+  // components/pos/POSBilling.jsx so both verticals behave identically.
+  //
+  // Service previously had free-text customer fields only, which meant a
+  // customer created in Customer Management was invisible from the Service
+  // POS and every service invoice landed as an unlinked walking customer.
+  // These call the SAME endpoint Retail uses (GET /api/customers/search,
+  // store-scoped server-side), so Service reuses the existing customer book
+  // rather than introducing a second one.
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerMatches, setCustomerMatches] = useState([]);
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const customerSearchTimerRef = useRef(null);
+
+  // 300ms debounce, same as Retail. Two characters minimum so a single
+  // keystroke cannot pull a slice of the customer book.
+  useEffect(() => {
+    if (customerSearchTimerRef.current) clearTimeout(customerSearchTimerRef.current);
+    const q = customerSearch.trim();
+    if (q.length < 2) {
+      setCustomerMatches([]);
+      return;
+    }
+    customerSearchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await searchCustomersForBilling(q);
+        // Only approved customers are billable. The search route
+        // deliberately does not filter on approval so one rule applies to
+        // every role; the POS applies it here, and resolveBillableCustomer
+        // re-validates server-side at invoice time.
+        const billable = (Array.isArray(results) ? results : []).filter(
+          (c) => !c.approvalStatus || c.approvalStatus === "approved"
+        );
+        setCustomerMatches(billable.slice(0, 8));
+      } catch (err) {
+        // Soft-fail: a transient search error must not break billing.
+        setCustomerMatches([]);
+      }
+    }, 300);
+    return () => {
+      if (customerSearchTimerRef.current) clearTimeout(customerSearchTimerRef.current);
+    };
+  }, [customerSearch]);
   // Industry picker modal — opens on chip click. Industry selection
   // persists per-bill so a multi-business cashier can flip between
   // templates mid-session. `industrySearch` is the local search
@@ -358,6 +407,34 @@ const ServiceBilling = () => {
     }));
   };
 
+  // Attach an existing customer record. Mirrors Retail's attachCustomer:
+  // the id is what persists the link, and the name/phone are a snapshot for
+  // the receipt. Attaching also back-fills the tax fields the Service bill
+  // already had as free text, so an approved customer's GSTIN is not retyped.
+  const attachCustomer = (customer) => {
+    if (!customer) return;
+    updateActiveBill({
+      customerId: customer.id,
+      customer: customer.name || "",
+      phone: customer.phone || "",
+      // Only overwrite the optional tax fields when the record actually has
+      // them — attaching must not blank something the cashier already typed.
+      ...(customer.email ? { email: customer.email } : {}),
+      ...(customer.gstin ? { gst: customer.gstin } : {}),
+      ...(customer.address ? { address: customer.address } : {}),
+      ...(customer.state ? { state: customer.state } : {}),
+    });
+    setCustomerSearch("");
+    setCustomerMatches([]);
+    setCustomerSearchOpen(false);
+  };
+
+  // Detach back to a walking customer. Same rule as Retail: clear only the
+  // link, keep the typed identity so nothing the cashier entered is lost.
+  const detachCustomer = () => {
+    updateActiveBill({ customerId: null });
+  };
+
   const clearBill = () => {
     if (!window.confirm("Clear all items from this bill?")) return;
     updateActiveBill({
@@ -523,6 +600,11 @@ const ServiceBilling = () => {
       // Customer + service meta — captured at billing time, not from store settings
       customer: activeBill.customer,
       customerName: activeBill.customer,
+      // The link back to the Customer Management record. POST /api/invoices
+      // runs it through the shared resolveBillableCustomer (same-store,
+      // approved-only) and persists the validated id as invoices.customer_id.
+      // null keeps the pre-existing walking-customer path untouched.
+      customerId: activeBill.customerId || undefined,
       customerPhone: activeBill.phone,
       customerMobile: activeBill.phone,
       customerEmail: activeBill.email,
@@ -873,6 +955,61 @@ const ServiceBilling = () => {
                 </div>
               </div>
             ) : null}
+
+            <div className="sv-customer-search">
+              <div className="sv-field sv-field-inline">
+                <FaUserTie />
+                <input
+                  className="sv-input"
+                  type="text"
+                  placeholder="Search existing customer…"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value);
+                    setCustomerSearchOpen(true);
+                  }}
+                  onFocus={() => setCustomerSearchOpen(true)}
+                  autoComplete="off"
+                />
+                {activeBill.customerId ? (
+                  <button
+                    type="button"
+                    className="sv-cust-detach"
+                    onClick={detachCustomer}
+                    title="Detach customer (keep as walking customer)"
+                  >
+                    <FaTimes aria-hidden="true" /> Unlink
+                  </button>
+                ) : null}
+              </div>
+
+              {customerSearchOpen && customerMatches.length > 0 ? (
+                <ul className="sv-cust-matches" role="listbox">
+                  {customerMatches.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={false}
+                        className="sv-cust-match"
+                        onClick={() => attachCustomer(c)}
+                      >
+                        <span className="sv-cust-match-name">{c.name || "(no name)"}</span>
+                        {c.phone ? <span className="sv-cust-match-phone">{c.phone}</span> : null}
+                        {c.gstin ? <span className="sv-cust-match-gst">{c.gstin}</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {activeBill.customerId ? (
+                <p className="sv-cust-linked">
+                  Linked to customer #{activeBill.customerId} — this invoice will be recorded
+                  against their history.
+                </p>
+              ) : null}
+            </div>
 
             <div className="sv-customer-fields">
               <div className="sv-field sv-field-inline">

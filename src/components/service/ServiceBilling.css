@@ -713,6 +713,99 @@
   gap: 8px;
 }
 
+/* ---------- ATTACH EXISTING CUSTOMER ----------
+   Mirrors the Retail POS search box: type two characters, pick a match,
+   the bill is linked to that Customer Management record. Free-text fields
+   below still work, so a walking customer is never blocked. */
+
+.sv-customer-search {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.sv-cust-detach {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid rgba(120, 130, 160, 0.35);
+  border-radius: 999px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sv-cust-detach:hover {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.4);
+}
+
+.sv-cust-matches {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid rgba(120, 130, 160, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(31, 38, 135, 0.18);
+}
+
+.sv-cust-match {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sv-cust-match:hover,
+.sv-cust-match:focus-visible {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.sv-cust-match-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a3b5d;
+}
+
+.sv-cust-match-phone {
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.sv-cust-match-gst {
+  margin-left: auto;
+  font-size: 11px;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.sv-cust-linked {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #4338ca;
+}
+
 .sv-field-inline {
   position: relative;
 }
@@ -1376,3 +1469,33 @@ body.theme-dark .bill-close:hover {
 /* slice was deleted at the same commit and replaced by the .sv-itm-*  */
 /* rules in IndustryTemplateModal.css.                                 */
 /* ------------------------------------------------------------------ */
+
+/* ---------- dark theme: attached-customer search ---------- */
+body.theme-dark .sv-cust-matches {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+body.theme-dark .sv-cust-match-name {
+  color: #f3f4f6;
+}
+
+body.theme-dark .sv-cust-match-phone,
+body.theme-dark .sv-cust-match-gst {
+  color: #9ca3af;
+}
+
+body.theme-dark .sv-cust-match:hover,
+body.theme-dark .sv-cust-match:focus-visible {
+  background: rgba(129, 140, 248, 0.16);
+}
+
+body.theme-dark .sv-cust-detach {
+  background: #1f2937;
+  border-color: #374151;
+  color: #9ca3af;
+}
+
+body.theme-dark .sv-cust-linked {
+  color: #a5b4fc;
+}
