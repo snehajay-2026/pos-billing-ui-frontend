@@ -401,9 +401,21 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
 
           <div className="sidebar-scroll">
             {String(role || "").toUpperCase() === "SUPER_OWNER" ? (
-              renderSection("Platform", "01", [
-                { to: "/super", icon: <FaShieldAlt />, label: "Open Super Owner console" },
-              ])
+              <>
+                {renderSection("Platform", "01", [
+                  { to: "/super", icon: <FaShieldAlt />, label: "Open Super Owner console" },
+                ])}
+                {/* SUPER_OWNER also sees the shared navigation below. Every
+                item here resolves to a route whose ProtectedRoute already
+                lists SUPER_OWNER (or has no role guard, like /pos): the
+                sidebar exposes nothing the route layer denies. Tenant-
+                scoped pages render under the Header's active-store context
+                ("Choose Store"); the ADMIN-only Subscription entry stays
+                hidden via isTenantAdmin above. */}
+                {renderSection("Operations", "02", operations)}
+                {renderSection("Insights & Reports", "03", insights)}
+                {renderSection("Manage", "04", manage)}
+              </>
             ) : (
               <>
                 {renderSection("Operations", "01", operations)}

@@ -590,8 +590,8 @@ describe("honest empty states", () => {
 });
 
 describe("tenant-admin Sidebar visibility", () => {
-  const mountSidebar = (role) => {
-    mockUser = { role, email: `${role}@example.com`, storeType: "retail" };
+  const mountSidebar = (role, storeType = "retail") => {
+    mockUser = { role, email: `${role}@example.com`, storeType };
     return mount(
       <MemoryRouter>
         <Sidebar collapsed={false} isMobile={false} />
@@ -599,16 +599,40 @@ describe("tenant-admin Sidebar visibility", () => {
     );
   };
 
-  test("SUPER_OWNER sees the Platform entry and no tenant-admin sections", () => {
+  test("SUPER_OWNER sees Platform plus the shared sections (no Subscription entry)", () => {
     const root = mountSidebar("SUPER_OWNER");
-    expect(textOf(root).includes("Open Super Owner console")).toBe(true);
-    expect(textOf(root).includes("Operations")).toBe(false);
-    expect(textOf(root).includes("Insights & Reports")).toBe(false);
-    expect(textOf(root).includes("Manage")).toBe(false);
+    const text = textOf(root);
+    expect(text.includes("Open Super Owner console")).toBe(true);
+    expect(text.includes("Platform")).toBe(true);
+    expect(text.includes("Operations")).toBe(true);
+    expect(text.includes("Insights & Reports")).toBe(true);
+    expect(text.includes("Manage")).toBe(true);
+    // Shared platform-safe items resolve to routes whose guards list SUPER_OWNER.
+    expect(text.includes("Manager Dashboard")).toBe(true);
+    expect(text.includes("Shifts & Cash")).toBe(true);
+    expect(text.includes("Recent Activity")).toBe(true);
+    // ADMIN-only tenant page stays hidden for SUPER_OWNER.
+    expect(text.includes("Subscription")).toBe(false);
+  });
+
+  test("SUPER_OWNER without an active store still sees the shared sections", () => {
+    const root = mountSidebar("SUPER_OWNER", null);
+    const text = textOf(root);
+    expect(text.includes("Open Super Owner console")).toBe(true);
+    expect(text.includes("Operations")).toBe(true);
+    expect(text.includes("Manage")).toBe(true);
   });
 
   test.each(NON_SUPER_ROLES)("%s does NOT see the Platform entry", (role) => {
     const root = mountSidebar(role);
     expect(textOf(root).includes("Open Super Owner console")).toBe(false);
+  });
+
+  test("ADMIN sees the Subscription entry; STORE_ADMIN and CASHIER do not", () => {
+    expect(textOf(mountSidebar("ADMIN")).includes("Subscription")).toBe(true);
+    unmount();
+    expect(textOf(mountSidebar("STORE_ADMIN")).includes("Subscription")).toBe(false);
+    unmount();
+    expect(textOf(mountSidebar("CASHIER")).includes("Subscription")).toBe(false);
   });
 });
