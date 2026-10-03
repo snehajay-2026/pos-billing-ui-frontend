@@ -1,0 +1,91 @@
+/* SuperOwnerLayout.css — chrome wrapper for the Super Owner console.
+
+   The Super Owner console reuses the existing dark-theme tokens
+   (gradients, section dividers, glow) declared in Sidebar.css. The
+   accent here is a violet → cyan wash to set the platform-scope
+   pages apart from the tenant-admin sidebar's blue/orange tones.
+*/
+
+.super-layout-shell {
+  display: flex;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(124, 58, 237, 0.18), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(14, 165, 233, 0.12), transparent 50%),
+    linear-gradient(170deg, #0b1024 0%, #111827 50%, #0b1024 100%);
+  color: #e2e8f0;
+}
+
+.super-layout-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 28px clamp(16px, 4vw, 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.super-layout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.super-layout-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.super-layout-title h1 {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+}
+
+.super-layout-title p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.super-layout-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124, 58, 237, 0.18);
+  color: #c4b5fd;
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Responsive — same breakpoints as Sidebar.css */
+@media (max-width: 1024px) {
+  .super-layout-main {
+    padding: 20px 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .super-layout-shell {
+    flex-direction: column;
+  }
+  .super-layout-main {
+    padding: 16px 14px;
+    gap: 18px;
+  }
+}
