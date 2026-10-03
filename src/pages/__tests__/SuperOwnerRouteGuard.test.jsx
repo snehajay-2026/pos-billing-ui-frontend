@@ -589,6 +589,92 @@ describe("honest empty states", () => {
   });
 });
 
+describe("SuperOwnerLayout Back button", () => {
+  const mountLayout = (initialEntries) =>
+    mount(
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route
+            path="/super"
+            element={
+              <SuperOwnerLayout title="Platform Overview" subtitle="Overview.">
+                <div>dashboard</div>
+              </SuperOwnerLayout>
+            }
+          />
+          <Route
+            path="/super/tenants"
+            element={
+              <SuperOwnerLayout title="Tenants" subtitle="Directory.">
+                <div>tenants</div>
+              </SuperOwnerLayout>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+  test("hidden on the dashboard, visible on a child page", async () => {
+    mockUser = { role: "SUPER_OWNER", email: "owner@example.com", storeType: "retail" };
+    const dash = mountLayout(["/super"]);
+    await flush();
+    expect(dash.querySelector(".super-back-btn")).toBeNull();
+    unmount();
+    const child = mountLayout(["/super", "/super/tenants"]);
+    await flush();
+    const btn = child.querySelector(".super-back-btn");
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toContain("Back");
+  });
+
+  test("navigates back in history when entries exist", async () => {
+    mockUser = { role: "SUPER_OWNER", email: "owner@example.com", storeType: "retail" };
+    const root = mountLayout(["/super", "/super/tenants"]);
+    await flush();
+    const btn = root.querySelector(".super-back-btn");
+    act(() => {
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flush();
+    expect(textOf(root).includes("dashboard")).toBe(true);
+  });
+
+  test("direct landing falls back to the dashboard, never login", async () => {
+    mockUser = { role: "SUPER_OWNER", email: "owner@example.com", storeType: "retail" };
+    const root = mount(
+      <MemoryRouter initialEntries={["/super/tenants"]}>
+        <Routes>
+          <Route
+            path="/super"
+            element={
+              <SuperOwnerLayout title="Platform Overview" subtitle="Overview.">
+                <div>dashboard</div>
+              </SuperOwnerLayout>
+            }
+          />
+          <Route
+            path="/super/tenants"
+            element={
+              <SuperOwnerLayout title="Tenants" subtitle="Directory.">
+                <div>tenants</div>
+              </SuperOwnerLayout>
+            }
+          />
+          <Route path="/login" element={<div>login-page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await flush();
+    const btn = root.querySelector(".super-back-btn");
+    act(() => {
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flush();
+    expect(textOf(root).includes("dashboard")).toBe(true);
+    expect(textOf(root).includes("login-page")).toBe(false);
+  });
+});
+
 describe("tenant-admin Sidebar visibility", () => {
   const mountSidebar = (role, storeType = "retail") => {
     mockUser = { role, email: `${role}@example.com`, storeType };

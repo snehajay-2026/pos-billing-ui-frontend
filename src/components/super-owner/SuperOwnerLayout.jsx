@@ -17,16 +17,33 @@
 //     bound to a single store's open-shift policy).
 
 import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FaArrowLeft } from "react-icons/fa";
 import Header from "../layout/Header";
 import SuperOwnerSidebar from "./SuperOwnerSidebar";
 import HelpChatBot from "../layout/HelpChatBot";
 import "./SuperOwnerLayout.css";
 
-const SuperOwnerLayout = ({ title, subtitle, children }) => {
+const SuperOwnerLayout = ({ title, subtitle, backFallback = "/super", children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Back navigates within the console history; a direct landing (no
+  // previous entry) falls back to the dashboard instead of leaving
+  // the app or landing on login. Same-tab reloads of a /super/* page
+  // have idx 0, so history-back would exit to the login redirect.
+  const handleBack = () => {
+    const idx = window.history?.state?.idx;
+    if (typeof idx === "number" && idx > 0) {
+      navigate(-1);
+    } else if (location.pathname !== backFallback) {
+      navigate(backFallback, { replace: true });
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -57,9 +74,22 @@ const SuperOwnerLayout = ({ title, subtitle, children }) => {
         <main className="super-layout-main" role="main">
           {(title || subtitle) && (
             <div className="super-layout-header">
-              <div className="super-layout-title">
-                {title ? <h1>{title}</h1> : null}
-                {subtitle ? <p>{subtitle}</p> : null}
+              <div className="super-layout-title-row">
+                {location.pathname !== backFallback ? (
+                  <button
+                    type="button"
+                    className="super-back-btn"
+                    onClick={handleBack}
+                    aria-label="Back"
+                  >
+                    <FaArrowLeft aria-hidden="true" />
+                    <span>Back</span>
+                  </button>
+                ) : null}
+                <div className="super-layout-title">
+                  {title ? <h1>{title}</h1> : null}
+                  {subtitle ? <p>{subtitle}</p> : null}
+                </div>
               </div>
               <span className="super-layout-badge">Super Owner</span>
             </div>

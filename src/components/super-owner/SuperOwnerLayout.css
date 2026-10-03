@@ -36,6 +36,42 @@
   gap: 12px;
 }
 
+.super-layout-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.super-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.super-back-btn:hover {
+  background: rgba(148, 163, 184, 0.22);
+  border-color: rgba(148, 163, 184, 0.55);
+}
+
+.super-back-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
 .super-layout-title {
   display: flex;
   flex-direction: column;
