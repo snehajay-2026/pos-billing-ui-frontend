@@ -62,6 +62,14 @@ const InventoryModule = lazy(() => import("./pages/InventoryModule"));
 const ShiftsPage = lazy(() => import("./pages/ShiftsPage"));
 const RetailReturnsPage = lazy(() => import("./pages/RetailReturnsPage"));
 const HotelModuleAccessPage = lazy(() => import("./pages/HotelModuleAccessPage"));
+const SubscriptionPage = lazy(() => import("./pages/SubscriptionPage"));
+const SuperOwnerLayout = lazy(() => import("./components/super-owner/SuperOwnerLayout"));
+const SuperOwnerDashboard = lazy(() => import("./pages/super-owner/SuperOwnerDashboard"));
+const SuperOwnerTenants = lazy(() => import("./pages/super-owner/SuperOwnerTenants"));
+const SuperOwnerSubscriptionPlans = lazy(
+  () => import("./pages/super-owner/SuperOwnerSubscriptionPlans")
+);
+const SuperOwnerPayments = lazy(() => import("./pages/super-owner/SuperOwnerPayments"));
 const HotelModuleLockScreen = lazy(() => import("./components/hotel/HotelModuleLockScreen"));
 import { useHotelModuleLock } from "./hooks/useHotelModuleLock";
 
@@ -640,6 +648,20 @@ function App() {
               }
             />
 
+            {/* SUBSCRIPTION - ADMIN only. STORE_ADMIN/CASHIER inherit the
+            parent tenant subscription but cannot manage it; SUPER_OWNER
+            gets a separate platform UI later and does not use this page. */}
+            <Route
+              path="/subscription"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["ADMIN"]}>
+                    <SubscriptionPage />
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+
             {/* HOTEL MODULE ACCESS - Super Owner only. Lets the Super Owner
             lock/unlock Lodging and Dining per hotel customer. */}
             <Route
@@ -647,9 +669,74 @@ function App() {
               element={
                 <RequireAuth>
                   <ProtectedRoute roles={["SUPER_OWNER"]}>
-                    <Layout>
+                    <SuperOwnerLayout
+                      title="Hotel Module Access"
+                      subtitle="Lock or unlock Lodging and Dining per hotel customer."
+                    >
                       <HotelModuleAccessPage />
-                    </Layout>
+                    </SuperOwnerLayout>
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+
+            {/* SUPER OWNER CONSOLE - platform scope. Four new pages plus the
+            existing Hotel Module Access above, all gated to SUPER_OWNER only.
+            Cross-tenant aggregates render an honest empty state until the
+            /api/super/* endpoints land server-side. */}
+            <Route
+              path="/super"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["SUPER_OWNER"]}>
+                    <SuperOwnerLayout
+                      title="Platform Overview"
+                      subtitle="Cross-tenant status at a glance. Missing endpoints are called out inline."
+                    >
+                      <SuperOwnerDashboard />
+                    </SuperOwnerLayout>
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/super/tenants"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["SUPER_OWNER"]}>
+                    <SuperOwnerLayout title="Tenants" subtitle="Tenant and admin directory.">
+                      <SuperOwnerTenants />
+                    </SuperOwnerLayout>
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/super/subscriptions"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["SUPER_OWNER"]}>
+                    <SuperOwnerLayout
+                      title="Subscriptions"
+                      subtitle="Plan catalogue and subscription status."
+                    >
+                      <SuperOwnerSubscriptionPlans />
+                    </SuperOwnerLayout>
+                  </ProtectedRoute>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/super/payments"
+              element={
+                <RequireAuth>
+                  <ProtectedRoute roles={["SUPER_OWNER"]}>
+                    <SuperOwnerLayout
+                      title="Payments"
+                      subtitle="Transaction and payment-event visibility."
+                    >
+                      <SuperOwnerPayments />
+                    </SuperOwnerLayout>
                   </ProtectedRoute>
                 </RequireAuth>
               }

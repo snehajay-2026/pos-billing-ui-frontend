@@ -25,6 +25,7 @@ import {
   FaChartPie,
   FaKey,
   FaUndo,
+  FaCreditCard,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { getUser, getUserStoreType } from "../../utils/auth";
@@ -269,8 +270,15 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
     : [];
 
   // Manage section — admin only (catalog, stock, money, users, settings)
+  // The Subscription entry is ADMIN-only: STORE_ADMIN/CASHIER inherit the
+  // parent tenant subscription but cannot manage it, and SUPER_OWNER gets
+  // a separate platform UI later.
+  const isTenantAdmin = String(role || "").toUpperCase() === "ADMIN";
   const manage = isAdmin
     ? [
+        ...(isTenantAdmin
+          ? [{ to: "/subscription", icon: <FaCreditCard />, label: "Subscription" }]
+          : []),
         ...(storeType === "service" || storeType === "msme-service"
           ? [
               { to: "/service-orders", icon: <FaBox />, label: locale.serviceOrders },
@@ -392,9 +400,17 @@ const Sidebar = ({ collapsed, onMenuClick, isMobile }) => {
           </div>
 
           <div className="sidebar-scroll">
-            {renderSection("Operations", "01", operations)}
-            {renderSection("Insights & Reports", "02", insights)}
-            {renderSection("Manage", "03", manage)}
+            {String(role || "").toUpperCase() === "SUPER_OWNER" ? (
+              renderSection("Platform", "01", [
+                { to: "/super", icon: <FaShieldAlt />, label: "Open Super Owner console" },
+              ])
+            ) : (
+              <>
+                {renderSection("Operations", "01", operations)}
+                {renderSection("Insights & Reports", "02", insights)}
+                {renderSection("Manage", "03", manage)}
+              </>
+            )}
           </div>
 
           <div className="sidebar-footer">
