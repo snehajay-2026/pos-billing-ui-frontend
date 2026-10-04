@@ -17,6 +17,14 @@ import {
   FaUsers,
   FaGlobe,
   FaCheckCircle,
+  FaStar,
+  FaQuoteLeft,
+  FaFileInvoice,
+  FaStore,
+  FaConciergeBell,
+  FaTshirt,
+  FaWrench,
+  FaBoxes,
 } from "react-icons/fa";
 import "./Login.css";
 
@@ -170,27 +178,55 @@ const Login = () => {
     <div className="lg-page">
       {/* Brand panel — left side */}
       <aside className="lg-brand">
-        <div className="lg-brand-bg" aria-hidden="true" />
+        <div className="lg-brand-bg" aria-hidden="true">
+          <span className="lg-orb lg-orb-1" />
+          <span className="lg-orb lg-orb-2" />
+          <span className="lg-orb lg-orb-3" />
+          <span className="lg-grid" />
+        </div>
         <div className="lg-brand-content">
           <div className="lg-brand-mark">
             <div className="lg-brand-logo">
               <FaReceipt />
             </div>
-            <span className="lg-brand-name">
-              POS <strong>Suite</strong>
+            <div className="lg-brand-id">
+              <span className="lg-brand-name">
+                POS <strong>Suite</strong>
+              </span>
+              <span className="lg-brand-tag">Billing · Stock · Staff · Reports</span>
+            </div>
+            <span className="lg-brand-pill">
+              <FaStar /> Trusted by growing businesses
             </span>
           </div>
 
-          <h1 className="lg-brand-title">
-            Welcome to your
-            <br />
-            <span className="lg-brand-gradient">modern retail command center.</span>
-          </h1>
+          <div className="lg-brand-hero">
+            <h1 className="lg-brand-title">
+              Welcome to your
+              <br />
+              <span className="lg-brand-gradient">modern retail command center.</span>
+            </h1>
 
-          <p className="lg-brand-sub">
-            Sign in to manage products, track sales, run billing, and oversee every store across
-            retail, laundry, hotel, service, and inventory verticals.
-          </p>
+            <p className="lg-brand-sub">
+              Sign in to manage products, track sales, run billing, and oversee every store across
+              retail, laundry, hotel, service, and inventory verticals.
+            </p>
+          </div>
+
+          <div className="lg-stats" aria-label="Platform highlights">
+            <div className="lg-stat">
+              <span className="lg-stat-value">05</span>
+              <span className="lg-stat-label">Business verticals</span>
+            </div>
+            <div className="lg-stat">
+              <span className="lg-stat-value">GST</span>
+              <span className="lg-stat-label">Ready invoicing</span>
+            </div>
+            <div className="lg-stat">
+              <span className="lg-stat-value">UPI</span>
+              <span className="lg-stat-label">QR + thermal print</span>
+            </div>
+          </div>
 
           <ul className="lg-brand-features">
             <li>
@@ -231,6 +267,43 @@ const Login = () => {
             </li>
           </ul>
 
+          <figure className="lg-quote">
+            <FaQuoteLeft className="lg-quote-mark" aria-hidden="true" />
+            <blockquote>
+              Billing at the counter is twice as fast now, and day-end reports take seconds, not
+              hours.
+            </blockquote>
+            <figcaption>
+              <span className="lg-avatars" aria-hidden="true">
+                <i>RS</i>
+                <i>AK</i>
+                <i>PM</i>
+                <i>+</i>
+              </span>
+              <span className="lg-quote-who">
+                Loved by retail, hotel &amp; laundry owners across India
+              </span>
+            </figcaption>
+          </figure>
+
+          <ul className="lg-verticals" aria-label="Supported business types">
+            <li>
+              <FaStore /> Retail
+            </li>
+            <li>
+              <FaTshirt /> Laundry
+            </li>
+            <li>
+              <FaConciergeBell /> Hotel
+            </li>
+            <li>
+              <FaWrench /> Service
+            </li>
+            <li>
+              <FaBoxes /> Inventory
+            </li>
+          </ul>
+
           <footer className="lg-brand-foot">
             <span>© {new Date().getFullYear()} POS Suite</span>
             <span>·</span>
@@ -239,181 +312,207 @@ const Login = () => {
         </div>
       </aside>
 
-      {/* Mobile-only trademark strip — sits below the auth card on
-          phones. Hidden on desktop (the brand-foot inside the brand
-          panel already covers that case). */}
       {/* Auth card — right side */}
       <main className="lg-auth">
         <div className="lg-auth-bg" aria-hidden="true" />
 
-        <div className="lg-auth-card">
-          {/* Language switcher */}
-          <div className="lg-lang">
-            <FaGlobe className="lg-lang-ico" />
-            <select
-              aria-label="Language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="lg-lang-select"
+        <div className="lg-auth-inner">
+          <div className="lg-auth-card">
+            {/* Language switcher */}
+            <div className="lg-lang">
+              <FaGlobe className="lg-lang-ico" />
+              <select
+                aria-label="Language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="lg-lang-select"
+              >
+                {languageOptions.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Header */}
+            <header className="lg-head">
+              <div className="lg-head-eyebrow">
+                <FaShieldAlt /> Secure Login
+              </div>
+              <h2 className="lg-head-title">{locale.signIn}</h2>
+              <p className="lg-head-sub">
+                Welcome back — enter your <strong>Gmail</strong> and password to access your
+                dashboard.
+              </p>
+            </header>
+
+            {/* Form */}
+            <form
+              className="lg-form"
+              onKeyDown={handleKeyDown}
+              onSubmit={(e) => e.preventDefault()}
             >
-              {languageOptions.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+              {sessionExpired && (
+                <div className="lg-error-box" role="alert" data-variant="warning">
+                  <span>⏱</span>
+                  <span>Your session has expired. Please log in again.</span>
+                </div>
+              )}
+              {loginError && (
+                <div className="lg-error-box" role="alert">
+                  <span>⚠</span>
+                  <span>
+                    {typeof loginError === "string"
+                      ? loginError
+                      : toErrorMessage(loginError, locale.loginFailedTryAgain)}
+                    {retryAfter > 0 && (
+                      <span className="lg-error-countdown" aria-live="polite">
+                        {" "}
+                        ({formatRetryAfter(retryAfter)})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Email */}
+              <label className={`lg-field ${emailError ? "is-error" : ""}`}>
+                <span className="lg-field-label">{locale.emailGmailOnly || "Email"}</span>
+                <span className="lg-field-row">
+                  <FaEnvelope className="lg-field-ico" />
+                  <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoFocus
+                    className="lg-input"
+                    placeholder={locale.emailPlaceholder || "example@gmail.com"}
+                    value={email}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setEmail(next);
+                      setEmailError(
+                        next && !isValidGmail(next) ? locale.pleaseEnterValidGmail : ""
+                      );
+                    }}
+                  />
+                </span>
+                {emailError ? (
+                  <small className="lg-field-error">{emailError}</small>
+                ) : (
+                  <small className="lg-field-hint">
+                    <FaCheckCircle /> Must be a valid @gmail.com address
+                  </small>
+                )}
+              </label>
+
+              {/* Password */}
+              <label className={`lg-field ${passwordError ? "is-error" : ""}`}>
+                <span className="lg-field-label">
+                  {locale.password || "Password"}
+                  <button
+                    type="button"
+                    className="lg-forgot-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate("/password-reset");
+                    }}
+                  >
+                    {locale.forgotPassword || "Forgot?"}
+                  </button>
+                </span>
+                <span className="lg-field-row">
+                  <FaLock className="lg-field-ico" />
+                  <input
+                    type={showPass ? "text" : "password"}
+                    autoComplete="current-password"
+                    className="lg-input lg-input-pwd"
+                    placeholder={locale.enterPassword || "Enter your password"}
+                    value={password}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setPassword(next);
+                      setPasswordError(
+                        next && !isValidPassword(next) ? locale.passwordValidationError : ""
+                      );
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="lg-pwd-toggle"
+                    onClick={() => setShowPass((v) => !v)}
+                    aria-label={showPass ? "Hide password" : "Show password"}
+                    title={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </span>
+                {passwordError ? (
+                  <small className="lg-field-error">{passwordError}</small>
+                ) : capsOn ? (
+                  <small className="lg-field-warn">⚠ Caps Lock is on</small>
+                ) : (
+                  <small className="lg-field-hint">
+                    8+ chars · uppercase, lowercase, number, special
+                  </small>
+                )}
+              </label>
+
+              <button
+                type="button"
+                className="lg-submit"
+                onClick={handleLogin}
+                disabled={submitting || retryAfter > 0}
+              >
+                {submitting ? (
+                  <>
+                    <span className="lg-spinner" />
+                    <span>{locale.login}…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{locale.login}</span>
+                    <FaArrowRight className="lg-submit-arrow" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Trust strip */}
+            <div className="lg-divider" aria-hidden="true">
+              <span>Protected by</span>
+            </div>
+            <ul className="lg-trust">
+              <li>
+                <FaLock /> 256-bit SSL
+              </li>
+              <li>
+                <FaBolt /> UPI ready
+              </li>
+              <li>
+                <FaFileInvoice /> GST invoices
+              </li>
+            </ul>
+
+            {/* Footer link */}
+            <footer className="lg-foot">
+              {canRegisterAvailable ? (
+                <span>
+                  {locale.newUserText || "New user?"}{" "}
+                  <button type="button" className="lg-link" onClick={() => navigate("/register")}>
+                    {locale.registerHere}
+                  </button>
+                </span>
+              ) : (
+                <span className="lg-foot-muted">{locale.newUserRegistrationDisabled}</span>
+              )}
+            </footer>
           </div>
 
-          {/* Header */}
-          <header className="lg-head">
-            <div className="lg-head-eyebrow">
-              <FaShieldAlt /> Secure Login
-            </div>
-            <h2 className="lg-head-title">{locale.signIn}</h2>
-            <p className="lg-head-sub">
-              Enter your <strong>Gmail</strong> and password to access your dashboard.
-            </p>
-          </header>
-
-          {/* Form */}
-          <form className="lg-form" onKeyDown={handleKeyDown} onSubmit={(e) => e.preventDefault()}>
-            {sessionExpired && (
-              <div className="lg-error-box" role="alert" data-variant="warning">
-                <span>⏱</span>
-                <span>Your session has expired. Please log in again.</span>
-              </div>
-            )}
-            {loginError && (
-              <div className="lg-error-box" role="alert">
-                <span>⚠</span>
-                <span>
-                  {typeof loginError === "string"
-                    ? loginError
-                    : toErrorMessage(loginError, locale.loginFailedTryAgain)}
-                  {retryAfter > 0 && (
-                    <span className="lg-error-countdown" aria-live="polite">
-                      {" "}
-                      ({formatRetryAfter(retryAfter)})
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
-
-            {/* Email */}
-            <label className={`lg-field ${emailError ? "is-error" : ""}`}>
-              <span className="lg-field-label">{locale.emailGmailOnly || "Email"}</span>
-              <span className="lg-field-row">
-                <FaEnvelope className="lg-field-ico" />
-                <input
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  autoFocus
-                  className="lg-input"
-                  placeholder={locale.emailPlaceholder || "example@gmail.com"}
-                  value={email}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setEmail(next);
-                    setEmailError(next && !isValidGmail(next) ? locale.pleaseEnterValidGmail : "");
-                  }}
-                />
-              </span>
-              {emailError ? (
-                <small className="lg-field-error">{emailError}</small>
-              ) : (
-                <small className="lg-field-hint">
-                  <FaCheckCircle /> Must be a valid @gmail.com address
-                </small>
-              )}
-            </label>
-
-            {/* Password */}
-            <label className={`lg-field ${passwordError ? "is-error" : ""}`}>
-              <span className="lg-field-label">
-                {locale.password || "Password"}
-                <button
-                  type="button"
-                  className="lg-forgot-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate("/password-reset");
-                  }}
-                >
-                  {locale.forgotPassword || "Forgot?"}
-                </button>
-              </span>
-              <span className="lg-field-row">
-                <FaLock className="lg-field-ico" />
-                <input
-                  type={showPass ? "text" : "password"}
-                  autoComplete="current-password"
-                  className="lg-input lg-input-pwd"
-                  placeholder={locale.enterPassword || "Enter your password"}
-                  value={password}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setPassword(next);
-                    setPasswordError(
-                      next && !isValidPassword(next) ? locale.passwordValidationError : ""
-                    );
-                  }}
-                />
-                <button
-                  type="button"
-                  className="lg-pwd-toggle"
-                  onClick={() => setShowPass((v) => !v)}
-                  aria-label={showPass ? "Hide password" : "Show password"}
-                  title={showPass ? "Hide password" : "Show password"}
-                >
-                  {showPass ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </span>
-              {passwordError ? (
-                <small className="lg-field-error">{passwordError}</small>
-              ) : capsOn ? (
-                <small className="lg-field-warn">⚠ Caps Lock is on</small>
-              ) : (
-                <small className="lg-field-hint">
-                  8+ chars · uppercase, lowercase, number, special
-                </small>
-              )}
-            </label>
-
-            <button
-              type="button"
-              className="lg-submit"
-              onClick={handleLogin}
-              disabled={submitting || retryAfter > 0}
-            >
-              {submitting ? (
-                <>
-                  <span className="lg-spinner" />
-                  <span>{locale.login}…</span>
-                </>
-              ) : (
-                <>
-                  <span>{locale.login}</span>
-                  <FaArrowRight />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Footer link */}
-          <footer className="lg-foot">
-            {canRegisterAvailable ? (
-              <span>
-                {locale.newUserText || "New user?"}{" "}
-                <button type="button" className="lg-link" onClick={() => navigate("/register")}>
-                  {locale.registerHere}
-                </button>
-              </span>
-            ) : (
-              <span className="lg-foot-muted">{locale.newUserRegistrationDisabled}</span>
-            )}
-          </footer>
+          <p className="lg-secure-note">
+            <FaShieldAlt /> Your session is encrypted end-to-end. Never share your password.
+          </p>
         </div>
       </main>
 

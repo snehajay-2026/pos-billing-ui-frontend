@@ -1,14 +1,24 @@
 /* =====================================================================
-   Login.css — modernized split-screen login page
+   Login.css — commercial split-screen login page
    Class prefix: lg-
+   Theme: deep-navy brand panel + champagne-gold accents, clean
+   light auth panel. Pairs with Login.jsx structure.
    ===================================================================== */
 
 .lg-page {
+  --lg-navy-900: #070b1e;
+  --lg-navy-800: #0d1330;
+  --lg-navy-700: #1a2150;
+  --lg-gold-300: #fde68a;
+  --lg-gold-400: #fbbf24;
+  --lg-gold-500: #f59e0b;
+  --lg-indigo-500: #6366f1;
+  --lg-indigo-600: #4f46e5;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: 1.08fr 1fr;
   color: #0f172a;
-  background: #f8fafc;
+  background: #f4f6fb;
   position: relative;
   overflow: hidden;
 }
@@ -24,43 +34,84 @@
   position: relative;
   color: #fff;
   background:
-    radial-gradient(circle at top right, rgba(236, 72, 153, 0.55), transparent 55%),
-    radial-gradient(circle at bottom left, rgba(20, 184, 166, 0.45), transparent 60%),
-    linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #6d28d9 100%);
+    linear-gradient(180deg, rgba(7, 11, 30, 0.15) 0%, rgba(7, 11, 30, 0.55) 78%),
+    radial-gradient(circle at 88% 8%, rgba(251, 191, 36, 0.32), transparent 46%),
+    radial-gradient(circle at 8% 96%, rgba(99, 102, 241, 0.5), transparent 58%),
+    linear-gradient(150deg, var(--lg-navy-900) 0%, var(--lg-navy-800) 42%, var(--lg-navy-700) 100%);
   display: flex;
   align-items: stretch;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .lg-brand-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.18), transparent 35%),
-    radial-gradient(circle at 80% 88%, rgba(56, 189, 248, 0.28), transparent 48%);
+  z-index: 0;
 }
 
-.lg-brand-bg::after {
-  content: "";
+.lg-orb {
   position: absolute;
-  inset: auto -120px -120px auto;
-  width: 360px;
-  height: 360px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(244, 114, 182, 0.5), rgba(99, 102, 241, 0.4));
-  filter: blur(40px);
-  pointer-events: none;
+  filter: blur(60px);
+  opacity: 0.7;
+}
+
+.lg-orb-1 {
+  width: 420px;
+  height: 420px;
+  top: -160px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.5), transparent 68%);
+  animation: lg-drift 14s ease-in-out infinite alternate;
+}
+
+.lg-orb-2 {
+  width: 380px;
+  height: 380px;
+  bottom: -140px;
+  left: -110px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.55), transparent 68%);
+  animation: lg-drift 18s ease-in-out infinite alternate-reverse;
+}
+
+.lg-orb-3 {
+  width: 220px;
+  height: 220px;
+  top: 44%;
+  left: 52%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.36), transparent 68%);
+  animation: lg-drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes lg-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(24px, -28px, 0) scale(1.08);
+  }
+}
+
+.lg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 80% at 30% 30%, black 30%, transparent 78%);
 }
 
 .lg-brand-content {
   position: relative;
   z-index: 1;
-  padding: clamp(32px, 4vw, 56px);
+  padding: clamp(32px, 3.6vw, 54px);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 24px;
+  gap: 22px;
   width: 100%;
   animation: lg-fade-up 0.6s ease;
 }
@@ -72,46 +123,87 @@
 }
 
 .lg-brand-logo {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
   display: grid;
   place-items: center;
-  font-size: 1.4rem;
-  color: #fff;
-  background: linear-gradient(135deg, #ec4899, #f59e0b);
+  font-size: 1.45rem;
+  color: #1a1005;
+  background: linear-gradient(135deg, var(--lg-gold-300), var(--lg-gold-500));
   box-shadow:
-    0 14px 30px -10px rgba(236, 72, 153, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 14px 30px -10px rgba(245, 158, 11, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.lg-brand-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .lg-brand-name {
-  font-size: 1.2rem;
+  font-size: 1.22rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .lg-brand-name strong {
   font-weight: 900;
-  background: linear-gradient(90deg, #fde68a, #fbbf24);
+  background: linear-gradient(90deg, var(--lg-gold-300), var(--lg-gold-400));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
+.lg-brand-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(241, 245, 249, 0.55);
+}
+
+.lg-brand-pill {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lg-gold-300);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+.lg-brand-pill svg {
+  font-size: 0.7rem;
+}
+
+.lg-brand-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .lg-brand-title {
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
   font-weight: 900;
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.12;
   margin: 0;
   color: #fff;
-  max-width: 540px;
+  max-width: 560px;
 }
 
 .lg-brand-gradient {
-  background: linear-gradient(90deg, #fde68a, #f9a8d4, #93c5fd);
+  background: linear-gradient(90deg, var(--lg-gold-300), #f9a8d4 55%, #93c5fd);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -120,10 +212,46 @@
 
 .lg-brand-sub {
   margin: 0;
-  max-width: 520px;
+  max-width: 530px;
   font-size: 1rem;
   line-height: 1.65;
-  color: rgba(241, 245, 249, 0.85);
+  color: rgba(241, 245, 249, 0.82);
+}
+
+.lg-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lg-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 130px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.lg-stat-value {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--lg-gold-300), #fff7e0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lg-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(241, 245, 249, 0.6);
 }
 
 .lg-brand-features {
@@ -132,26 +260,28 @@
   padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .lg-brand-features li {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 14px 15px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(8px);
   transition:
     background 0.2s ease,
-    border-color 0.2s ease;
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .lg-brand-features li:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(253, 230, 138, 0.35);
+  transform: translateY(-1px);
 }
 
 .lg-feat-icon {
@@ -162,23 +292,23 @@
   place-items: center;
   flex-shrink: 0;
   font-size: 1rem;
-  box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.4);
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.5);
 }
 
 .tone-emerald {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.28);
   color: #6ee7b7;
 }
 .tone-violet {
-  background: rgba(167, 139, 250, 0.28);
+  background: rgba(167, 139, 250, 0.3);
   color: #c4b5fd;
 }
 .tone-sky {
-  background: rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.3);
   color: #7dd3fc;
 }
 .tone-amber {
-  background: rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.3);
   color: #fcd34d;
 }
 
@@ -190,15 +320,115 @@
 }
 
 .lg-brand-features strong {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 800;
   color: #fff;
 }
 
 .lg-brand-features small {
+  font-size: 0.77rem;
+  color: rgba(241, 245, 249, 0.72);
+  line-height: 1.45;
+}
+
+.lg-quote {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(99, 102, 241, 0.14));
+  border: 1px solid rgba(253, 230, 138, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.lg-quote-mark {
+  color: var(--lg-gold-400);
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.lg-quote blockquote {
+  margin: 0 0 12px;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.lg-quote figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lg-avatars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.lg-avatars i {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 800;
+  color: #fff;
+  border: 2px solid rgba(7, 11, 30, 0.9);
+  margin-left: -9px;
+}
+
+.lg-avatars i:first-child {
+  margin-left: 0;
+}
+
+.lg-avatars i:nth-child(1) {
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+}
+.lg-avatars i:nth-child(2) {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+}
+.lg-avatars i:nth-child(3) {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+.lg-avatars i:nth-child(4) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--lg-gold-300);
+}
+
+.lg-quote-who {
   font-size: 0.78rem;
-  color: rgba(241, 245, 249, 0.75);
-  line-height: 1.4;
+  font-weight: 600;
+  color: rgba(241, 245, 249, 0.72);
+}
+
+.lg-verticals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-verticals li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.lg-verticals li svg {
+  color: var(--lg-gold-400);
+  font-size: 0.78rem;
 }
 
 .lg-brand-foot {
@@ -207,7 +437,7 @@
   gap: 6px;
   align-items: center;
   font-size: 0.78rem;
-  color: rgba(241, 245, 249, 0.6);
+  color: rgba(241, 245, 249, 0.55);
   font-weight: 600;
 }
 
@@ -217,9 +447,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(24px, 4vw, 56px);
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  overflow: hidden;
+  padding: clamp(28px, 4vw, 56px);
+  background:
+    radial-gradient(circle at 85% 8%, rgba(99, 102, 241, 0.1), transparent 50%),
+    radial-gradient(circle at 8% 92%, rgba(245, 158, 11, 0.08), transparent 52%),
+    linear-gradient(180deg, #ffffff 0%, #eef2ff 60%, #f8fafc 100%);
+  overflow: auto;
 }
 
 .lg-auth-bg {
@@ -227,31 +460,56 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.08), transparent 55%),
-    radial-gradient(circle at 12% 88%, rgba(236, 72, 153, 0.08), transparent 55%);
+    radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.09), transparent 55%),
+    radial-gradient(circle at 12% 88%, rgba(245, 158, 11, 0.09), transparent 55%);
 }
 
-.lg-auth-card {
+.lg-auth-inner {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 440px;
-  padding: clamp(28px, 4vw, 40px);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow:
-    0 30px 60px -22px rgba(15, 23, 42, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   animation: lg-fade-up 0.6s ease 0.05s both;
+}
+
+.lg-auth-card {
+  width: 100%;
+  padding: clamp(30px, 4vw, 42px);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow:
+    0 34px 70px -24px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gold hairline across the top of the card — the commercial "brand seal". */
+.lg-auth-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--lg-gold-500),
+    var(--lg-gold-300) 45%,
+    var(--lg-indigo-500)
+  );
 }
 
 /* Language switcher */
 .lg-lang {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 20px;
+  right: 20px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -266,7 +524,7 @@
 
 .lg-lang-ico {
   font-size: 0.85rem;
-  color: #6366f1;
+  color: var(--lg-gold-500);
 }
 
 .lg-lang-select {
@@ -301,20 +559,21 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
+  padding: 6px 13px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.1);
-  color: #4338ca;
-  font-size: 0.72rem;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #92400e;
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 14px;
 }
 
 .lg-head-title {
   margin: 0 0 8px;
-  font-size: clamp(1.6rem, 2.4vw, 1.95rem);
+  font-size: clamp(1.65rem, 2.4vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #0f172a;
@@ -322,7 +581,7 @@
 
 .lg-head-sub {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   color: #64748b;
   line-height: 1.6;
 }
@@ -366,7 +625,7 @@
 .lg-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 15px;
 }
 
 .lg-field {
@@ -393,8 +652,8 @@
   gap: 10px;
   padding: 0 14px;
   border-radius: 14px;
-  background: #fff;
-  border: 1.5px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  border: 1.5px solid rgba(15, 23, 42, 0.09);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease,
@@ -402,8 +661,10 @@
 }
 
 .lg-field-row:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.16);
+  border-color: var(--lg-gold-500);
+  box-shadow:
+    0 0 0 4px rgba(245, 158, 11, 0.18),
+    0 6px 18px -8px rgba(245, 158, 11, 0.4);
   background: #fff;
 }
 
@@ -419,7 +680,7 @@
 }
 
 .lg-field-row:focus-within .lg-field-ico {
-  color: #6366f1;
+  color: var(--lg-gold-500);
 }
 
 .lg-field.is-error .lg-field-ico {
@@ -432,7 +693,7 @@
   border: none;
   outline: none;
   background: transparent;
-  padding: 12px 0;
+  padding: 13px 0;
   font-size: 0.95rem;
   font-weight: 600;
   color: #0f172a;
@@ -451,7 +712,7 @@
 
 .lg-pwd-toggle {
   border: none;
-  background: rgba(15, 23, 42, 0.04);
+  background: rgba(15, 23, 42, 0.05);
   width: 32px;
   height: 32px;
   border-radius: 10px;
@@ -467,8 +728,8 @@
 }
 
 .lg-pwd-toggle:hover {
-  background: rgba(99, 102, 241, 0.14);
-  color: #4338ca;
+  background: rgba(245, 158, 11, 0.18);
+  color: #92400e;
 }
 
 .lg-field-hint,
@@ -504,58 +765,97 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #6366f1;
+  color: #b45309;
   cursor: pointer;
   letter-spacing: 0.02em;
   transition: color 0.15s ease;
 }
 
 .lg-forgot-link:hover {
-  color: #4338ca;
+  color: #92400e;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-/* Submit button */
+/* Submit button — gold CTA with a sliding sheen */
 .lg-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
-  padding: 14px 22px;
-  margin-top: 6px;
+  padding: 15px 22px;
+  margin-top: 8px;
   border-radius: 14px;
   border: none;
-  font-weight: 700;
-  font-size: 1rem;
-  color: #fff;
+  font-weight: 800;
+  font-size: 1.02rem;
+  color: #1a1005;
   cursor: pointer;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  box-shadow: 0 14px 28px -12px rgba(79, 70, 229, 0.55);
+  background: linear-gradient(135deg, var(--lg-gold-400), var(--lg-gold-500) 55%, #ea8a0a);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  box-shadow:
+    0 16px 32px -12px rgba(245, 158, 11, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition:
+    background-position 0.4s ease,
     transform 0.18s ease,
     box-shadow 0.18s ease,
     opacity 0.18s ease;
   letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+
+.lg-submit::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  left: -80px;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
 }
 
 .lg-submit:not(:disabled):hover {
+  background-position: 100% 50%;
   transform: translateY(-1px);
-  box-shadow: 0 20px 36px -12px rgba(79, 70, 229, 0.7);
+  box-shadow:
+    0 22px 40px -12px rgba(245, 158, 11, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.lg-submit:not(:disabled):hover::after {
+  left: calc(100% + 40px);
+}
+
+.lg-submit:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .lg-submit:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
+.lg-submit-arrow {
+  transition: transform 0.2s ease;
+}
+
+.lg-submit:not(:disabled):hover .lg-submit-arrow {
+  transform: translateX(4px);
+}
+
 .lg-spinner {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 2px solid rgba(26, 16, 5, 0.3);
+  border-top-color: #1a1005;
   animation: lg-spin 0.7s linear infinite;
 }
 
@@ -565,11 +865,60 @@
   }
 }
 
+/* Divider + trust strip */
+.lg-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 12px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lg-divider::before,
+.lg-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.14), transparent);
+}
+
+.lg-trust {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-trust li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.lg-trust li svg {
+  color: var(--lg-gold-500);
+  font-size: 0.75rem;
+}
+
 /* Footer link */
 .lg-foot {
-  margin-top: 22px;
+  margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px dashed rgba(15, 23, 42, 0.08);
+  border-top: 1px dashed rgba(15, 23, 42, 0.1);
   text-align: center;
   font-size: 0.9rem;
   color: #475569;
@@ -579,20 +928,36 @@
   border: none;
   background: transparent;
   padding: 0;
-  font-weight: 700;
-  color: #6366f1;
+  font-weight: 800;
+  color: #b45309;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
 .lg-link:hover {
-  color: #4338ca;
+  color: #92400e;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .lg-foot-muted {
   color: #94a3b8;
+}
+
+.lg-secure-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.lg-secure-note svg {
+  color: #10b981;
 }
 
 /* ---------------- Animation ---------------- */
@@ -607,6 +972,16 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .lg-orb,
+  .lg-brand-content,
+  .lg-auth-inner,
+  .lg-submit::after {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* ---------------- Responsive ---------------- */
 /* Trademark strip is mobile-only — desktop has the brand-foot inside
    the brand panel. */
@@ -616,12 +991,22 @@
 
 @media (max-width: 980px) {
   .lg-brand {
-    min-height: 280px;
+    min-height: 300px;
   }
 
   .lg-brand-content {
     padding: 32px 28px;
     justify-content: center;
+  }
+
+  .lg-brand-pill {
+    display: none;
+  }
+
+  .lg-stats,
+  .lg-quote,
+  .lg-verticals {
+    display: none;
   }
 
   .lg-brand-title {
@@ -648,7 +1033,7 @@
     /* Drop desktop overflow:hidden so the trademark strip + auth card
        don't get clipped on phones where content can exceed 100vh. */
     overflow: visible;
-    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    background: linear-gradient(180deg, #f4f6fb 0%, #eef2ff 100%);
   }
 
   /* Trademark strip — legal/copyright text shown on mobile only.
@@ -659,8 +1044,8 @@
     padding: 16px 22px 22px;
     text-align: center;
     color: #64748b;
-    border-top: 1px solid rgba(99, 102, 241, 0.12);
-    background: rgba(255, 255, 255, 0.4);
+    border-top: 1px solid rgba(245, 158, 11, 0.2);
+    background: rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -681,19 +1066,13 @@
 
   /* Brand: shrunk into a hero strip with a smooth gradient. Keeps
      the logo + tagline + a row of trust pills, drops the long list
-     of feature cards. The bottom-corner glow from desktop survives
-     so the gradient feels alive. */
+     of feature cards. The drifting orbs survive so the gradient
+     feels alive. */
   .lg-brand {
     display: flex;
-    min-height: 220px;
+    min-height: 230px;
     border-radius: 0 0 28px 28px;
-    box-shadow: 0 18px 40px rgba(99, 102, 241, 0.22);
-  }
-
-  .lg-brand-bg {
-    background:
-      radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.22), transparent 40%),
-      radial-gradient(circle at 80% 88%, rgba(56, 189, 248, 0.32), transparent 50%);
+    box-shadow: 0 18px 40px rgba(7, 11, 30, 0.35);
   }
 
   .lg-brand-content {
@@ -703,11 +1082,30 @@
   }
 
   /* Hide the long headline + paragraph + footer on mobile — the
-     tagline inside the brand-mark is enough. */
+     brand id + stats strip is enough. */
   .lg-brand-title,
   .lg-brand-sub,
-  .lg-brand-foot {
+  .lg-brand-foot,
+  .lg-quote,
+  .lg-verticals {
     display: none;
+  }
+
+  .lg-stats {
+    display: flex;
+    gap: 8px;
+  }
+  .lg-stat {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 13px;
+  }
+  .lg-stat-value {
+    font-size: 1.02rem;
+  }
+  .lg-stat-label {
+    font-size: 0.62rem;
   }
 
   /* Compact feature pills row — replaces the 4-card feature grid. */
@@ -757,11 +1155,15 @@
     background: transparent;
   }
 
+  .lg-auth-inner {
+    margin: 0 auto;
+  }
+
   .lg-auth-card {
-    padding: 26px 22px 22px;
+    padding: 28px 22px 24px;
     border-radius: 22px;
     /* Frosted glass card over the page background. */
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(14px) saturate(1.4);
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -786,8 +1188,8 @@
     margin-bottom: 18px;
   }
   .lg-head-eyebrow {
-    font-size: 0.66rem;
-    padding: 4px 10px;
+    font-size: 0.64rem;
+    padding: 5px 11px;
   }
   .lg-head-title {
     font-size: 1.6rem;
@@ -796,7 +1198,13 @@
     font-size: 0.88rem;
   }
 
-  /* Form fields: bigger tap targets (48px) and a colored focus glow. */
+  .lg-quote,
+  .lg-verticals,
+  .lg-brand-tag {
+    display: none;
+  }
+
+  /* Form fields: bigger tap targets (48px) and a warm focus glow. */
   .lg-field-row {
     height: 50px;
     padding: 0 14px;
@@ -809,11 +1217,11 @@
       background 0.16s ease;
   }
   .lg-field-row:focus-within {
-    border-color: #6366f1;
+    border-color: var(--lg-gold-500);
     background: #ffffff;
     box-shadow:
-      0 0 0 4px rgba(99, 102, 241, 0.18),
-      0 4px 16px rgba(99, 102, 241, 0.12);
+      0 0 0 4px rgba(245, 158, 11, 0.18),
+      0 4px 16px rgba(245, 158, 11, 0.14);
   }
   .lg-field.is-error .lg-field-row {
     border-color: #ef4444;
@@ -826,19 +1234,16 @@
     font-size: 1rem;
   }
 
-  /* Submit button: gradient + lift on press. The desktop already has
-     a similar style, but on mobile we make the press scale a touch
-     larger for haptic-feeling feedback. */
+  /* Submit button: keep the gold CTA, add press feedback. */
   .lg-submit {
     height: 50px;
     border-radius: 14px;
     font-size: 1rem;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
     background-size: 200% 200%;
     background-position: 0% 50%;
     box-shadow:
-      0 12px 28px rgba(99, 102, 241, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      0 12px 28px rgba(245, 158, 11, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
     transition:
       background-position 0.4s ease,
       transform 0.16s ease,
@@ -857,6 +1262,14 @@
   .lg-field-warn {
     font-size: 0.74rem;
     padding-left: 4px;
+  }
+
+  .lg-trust {
+    gap: 6px;
+  }
+  .lg-trust li {
+    font-size: 0.72rem;
+    padding: 6px 11px;
   }
 }
 
