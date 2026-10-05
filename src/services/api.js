@@ -66,18 +66,21 @@ const setFreshAuthUntil = (ts) => {
 };
 const getFreshAuthUntil = () => freshAuthUntil;
 
+const isSessionProtectedUrl = (url) =>
+  !NON_SESSION_401_PATHS.some(
+    (p) => url === p || url.startsWith(p + "/") || url.startsWith(p + "?")
+  );
+
 const isSessionExpiry401 = (url, status) => {
   if (status !== 401) return false;
   // Suppress all 401s during the fresh-auth grace window. See the
   // FRESH_AUTH_GRACE_MS comment above for why a single 401 right after
   // login isn't a real session-expiry.
   if (Date.now() < freshAuthUntil) return false;
-  return !NON_SESSION_401_PATHS.some(
-    (p) => url === p || url.startsWith(p + "/") || url.startsWith(p + "?")
-  );
+  return isSessionProtectedUrl(url);
 };
 
-export { FRESH_AUTH_GRACE_MS, setFreshAuthUntil, getFreshAuthUntil };
+export { FRESH_AUTH_GRACE_MS, setFreshAuthUntil, getFreshAuthUntil, isSessionExpiry401 };
 
 // CSRF: read the XSRF-TOKEN cookie (set by the backend on login, NOT
 // HttpOnly so JS can read it) and echo it as the X-CSRF-Token header on
@@ -246,6 +249,19 @@ const request = async (method, url, data, params, options = {}) => {
     }
 
     throw err;
+  }
+
+  // Dispatch a session-alive signal for protected endpoints so the
+  // SessionExpiredListener in App.js can reset its transient-401 counter.
+  // A successful response proves the session is valid; without this, a
+  // transient 401 followed by a successful request followed by another
+  // transient 401 within 6s would incorrectly log the user out.
+  if (isSessionProtectedUrl(finalUrl)) {
+    try {
+      window.dispatchEvent(new CustomEvent("sessionAlive", { detail: { url: finalUrl } }));
+    } catch {
+      /* SSR safety — no-op */
+    }
   }
 
   try {

@@ -79,9 +79,13 @@ export const getInvoiceByNo = async (invoiceNo) => {
 // `invoice` is sanitized (no internal scoping, no cashier email, no
 // items[].meta) and `store` is the store-settings payload the thermal
 // renderers need.
-export const getPublicInvoiceByNo = async (invoiceNo) => {
-  if (!invoiceNo) return undefined;
-  return apiGet(`/api/public/invoices/${encodeURIComponent(invoiceNo)}`);
+//
+// The URL param is the public share-link token (64-char hex) when
+// available, falling back to the legacy invoice number for backward
+// compatibility with old shared links.
+export const getPublicInvoiceByNo = async (tokenOrInvoiceNo) => {
+  if (!tokenOrInvoiceNo) return undefined;
+  return apiGet(`/api/public/invoices/${encodeURIComponent(tokenOrInvoiceNo)}`);
 };
 
 export const updateInvoice = async (invoiceNo, patch) => {

@@ -139,9 +139,16 @@ const InvoiceView = () => {
   // case so the public URL stays clean for the common path.
   const hotelLayoutParam =
     invoiceStoreType === "hotel" && hotelLayout === "thermal" ? "?layout=80mm" : "";
+  // Public share links MUST use the cryptographically random publicToken.
+  // The invoice number is predictable (SI{year}-{timestamp}) and must never
+  // be used as a public access identifier. If the invoice has no token
+  // (legacy row created before migration 019), the share buttons are
+  // disabled — see the `canShare` guard below.
+  const canShare = Boolean(invoice.publicToken);
+  const shareId = invoice.publicToken || "";
   const invoiceLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/invoice/${invoiceNo}${hotelLayoutParam}`
+    canShare && typeof window !== "undefined"
+      ? `${window.location.origin}/invoice/${shareId}${hotelLayoutParam}`
       : "";
   const hotelGuestName = invoice?.hotelDetails?.guestName?.trim() || "";
   const customerNameForMessage =
@@ -722,10 +729,28 @@ const InvoiceView = () => {
           >
             {downloadStatus === "Downloading..." ? "Downloading..." : "Download Receipt"}
           </button>
-          <button className="invoice-action-btn" onClick={shareViaWhatsApp}>
+          <button
+            className="invoice-action-btn"
+            onClick={shareViaWhatsApp}
+            disabled={!canShare}
+            title={
+              canShare
+                ? "Share via WhatsApp"
+                : "Public sharing is unavailable for this invoice — no public token"
+            }
+          >
             Share WhatsApp
           </button>
-          <button className="invoice-action-btn" onClick={shareViaEmail}>
+          <button
+            className="invoice-action-btn"
+            onClick={shareViaEmail}
+            disabled={!canShare}
+            title={
+              canShare
+                ? "Share via Email"
+                : "Public sharing is unavailable for this invoice — no public token"
+            }
+          >
             Send Email
           </button>
           <button className="print-btn" onClick={handlePrint}>

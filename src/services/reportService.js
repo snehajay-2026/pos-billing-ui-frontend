@@ -8,8 +8,12 @@ import { apiGet } from "./api";
  * Sales response shape:
  *   { from, to, scope, totals, buckets, byType, byPayment }
  *
- * GST response shape:
- *   { from, to, scope, totals, b2cs[], hsn[], notes }
+ * GST response shape (matches db/queries/reports.js gstReport()):
+ *   { from, to, scope,
+ *     totals: { invoiceCount, taxable, tax },
+ *     b2cs:   [{ day, taxable, tax }],
+ *     hsns:   [{ hsn, taxable, tax, itemCount }],
+ *     notes }
  *
  * P&L response shape:
  *   { from, to, scope, totals, monthly[], expensesByCategory[], cogsByCategory[]|null, cogsAvailable, note }

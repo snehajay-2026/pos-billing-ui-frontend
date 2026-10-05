@@ -229,6 +229,14 @@ const GstTab = ({ filters, reloadKey }) => {
   if (!data) return null;
 
   const t = data.totals || {};
+  // The backend gstReport() contract is the source of truth:
+  //   totals { invoiceCount, taxable, tax }
+  //   b2cs[] { day, taxable, tax }
+  //   hsns[] { hsn, taxable, tax, itemCount }
+  // Read those names exactly; a missing array falls back to [] so the tab
+  // renders an empty state instead of throwing on `.length` of undefined.
+  const b2cs = data.b2cs || [];
+  const hsns = data.hsns || [];
 
   return (
     <div className="rp-tab-body">
@@ -239,37 +247,33 @@ const GstTab = ({ filters, reloadKey }) => {
         </div>
         <div className="rp-kpi rp-kpi-primary">
           <span className="rp-kpi-label">Taxable value</span>
-          <span className="rp-kpi-value">{currency(t.taxableValue)}</span>
+          <span className="rp-kpi-value">{currency(t.taxable)}</span>
         </div>
         <div className="rp-kpi rp-kpi-accent">
           <span className="rp-kpi-label">Total GST</span>
-          <span className="rp-kpi-value">{currency(t.totalGst)}</span>
+          <span className="rp-kpi-value">{currency(t.tax)}</span>
         </div>
       </div>
 
       <section className="rp-section">
         <h3>B2CS — B2C (small) consumer summary</h3>
-        {data.b2cs.length === 0 ? (
+        {b2cs.length === 0 ? (
           <div className="rp-empty">No B2CS rows for this window.</div>
         ) : (
           <table className="rp-table">
             <thead>
               <tr>
-                <th>State</th>
-                <th className="rp-num">GST rate</th>
-                <th className="rp-num">Invoices</th>
+                <th>Day</th>
                 <th className="rp-num">Taxable value</th>
                 <th className="rp-num">GST amount</th>
               </tr>
             </thead>
             <tbody>
-              {data.b2cs.map((r, i) => (
-                <tr key={`${r.state}-${r.rate}-${i}`}>
-                  <td>{r.state}</td>
-                  <td className="rp-num">{Number(r.rate).toFixed(0)}%</td>
-                  <td className="rp-num">{number(r.invoices)}</td>
-                  <td className="rp-num">{currency(r.taxableValue)}</td>
-                  <td className="rp-num">{currency(r.totalGst)}</td>
+              {b2cs.map((r, i) => (
+                <tr key={`${r.day}-${i}`}>
+                  <td>{r.day}</td>
+                  <td className="rp-num">{currency(r.taxable)}</td>
+                  <td className="rp-num">{currency(r.tax)}</td>
                 </tr>
               ))}
             </tbody>
@@ -279,25 +283,25 @@ const GstTab = ({ filters, reloadKey }) => {
 
       <section className="rp-section">
         <h3>HSN-wise summary</h3>
-        {data.hsn.length === 0 ? (
+        {hsns.length === 0 ? (
           <div className="rp-empty">No HSN rows for this window.</div>
         ) : (
           <table className="rp-table">
             <thead>
               <tr>
                 <th>HSN code</th>
-                <th className="rp-num">Quantity</th>
+                <th className="rp-num">Items</th>
                 <th className="rp-num">Taxable value</th>
                 <th className="rp-num">GST amount</th>
               </tr>
             </thead>
             <tbody>
-              {data.hsn.map((h, i) => (
+              {hsns.map((h, i) => (
                 <tr key={`${h.hsn}-${i}`}>
                   <td>{h.hsn}</td>
-                  <td className="rp-num">{number(h.qty)}</td>
-                  <td className="rp-num">{currency(h.taxableValue)}</td>
-                  <td className="rp-num">{currency(h.totalGst)}</td>
+                  <td className="rp-num">{number(h.itemCount)}</td>
+                  <td className="rp-num">{currency(h.taxable)}</td>
+                  <td className="rp-num">{currency(h.tax)}</td>
                 </tr>
               ))}
             </tbody>

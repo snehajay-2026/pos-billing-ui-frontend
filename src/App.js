@@ -7,6 +7,7 @@ import {
   FRESH_AUTH_GRACE_MS,
   setFreshAuthUntil,
   getFreshAuthUntil,
+  isSessionExpiry401,
 } from "./services/api";
 import { connectRealtimeSync, disconnectRealtimeSync } from "./services/realtimeSync";
 import Login from "./pages/Login";
@@ -139,7 +140,6 @@ const SessionExpiredListener = () => {
   const location = useLocation();
   const expiryCountRef = useRef(0);
   const firstExpiryAtRef = useRef(0);
-  const redirectTimerRef = useRef(null);
 
   // Listen for sign-in / sign-out events so the fresh-auth grace window
   // opens the moment a user is successfully authenticated. authService
@@ -158,6 +158,26 @@ const SessionExpiredListener = () => {
     };
     window.addEventListener("authChanged", onAuthChanged);
     return () => window.removeEventListener("authChanged", onAuthChanged);
+  }, []);
+
+  // Listen for successful session-authenticated requests. A success proves
+  // the session is alive, so any pending transient-401 count must be reset.
+  // Without this, a single transient 401 followed by a successful request
+  // followed by another transient 401 within 6s would incorrectly log the
+  // user out — the successful request would have proven the session valid.
+  useEffect(() => {
+    const onSessionAlive = (event) => {
+      const url = event && event.detail && event.detail.url;
+      // Only reset for requests that would have counted as session-expiry
+      // 401s. Public paths (login, register, etc.) are excluded because
+      // their success doesn't prove anything about the session.
+      if (url && isSessionExpiry401(url, 401)) {
+        expiryCountRef.current = 0;
+        firstExpiryAtRef.current = 0;
+      }
+    };
+    window.addEventListener("sessionAlive", onSessionAlive);
+    return () => window.removeEventListener("sessionAlive", onSessionAlive);
   }, []);
 
   useEffect(() => {
@@ -193,39 +213,23 @@ const SessionExpiredListener = () => {
 
       if (expiryCountRef.current >= SESSION_EXPIRY_THRESHOLD) {
         // Two or more 401s within 6s -> session is genuinely dead.
-        if (redirectTimerRef.current) {
-          window.clearTimeout(redirectTimerRef.current);
-          redirectTimerRef.current = null;
-        }
         expiryCountRef.current = 0;
         firstExpiryAtRef.current = 0;
         navigate("/login?reason=expired", { replace: true });
         return;
       }
 
-      // Below the threshold: schedule a redirect after the debounce
-      // window in case no further 401 arrives (e.g. last 401 of a dead
-      // session). If another 401 arrives within the window, the
-      // threshold branch above fires instead.
-      if (redirectTimerRef.current) {
-        window.clearTimeout(redirectTimerRef.current);
-      }
-      redirectTimerRef.current = window.setTimeout(() => {
-        if (expiryCountRef.current > 0) {
-          expiryCountRef.current = 0;
-          firstExpiryAtRef.current = 0;
-          navigate("/login?reason=expired", { replace: true });
-        }
-        redirectTimerRef.current = null;
-      }, SESSION_EXPIRY_DEBOUNCE_MS);
+      // Below the threshold: stay put. A single 401 is treated as
+      // transient (cookie propagation, Vercel proxy warming, a reload)
+      // and must NOT log the user out — that is the entire point of the
+      // two-401 window documented above. If the session really is dead,
+      // the next protected call 401s inside the window and the branch
+      // above fires; a stale single count simply ages out after
+      // SESSION_EXPIRY_DEBOUNCE_MS and the counter resets.
     };
     window.addEventListener("sessionExpired", handler);
     return () => {
       window.removeEventListener("sessionExpired", handler);
-      if (redirectTimerRef.current) {
-        window.clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
     };
   }, [navigate, location.pathname]);
 

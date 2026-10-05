@@ -40,7 +40,11 @@ import CondensedReceipt from "../service/templates/CondensedReceipt";
 import "./PublicInvoiceView.css";
 
 const PublicInvoiceView = () => {
-  const { invoiceNo } = useParams();
+  // The route param is named `:invoiceNo` for backward compatibility,
+  // but the value is now the cryptographically random publicToken
+  // (64-char hex) for new invoices, or the legacy invoice number for
+  // old shared links. The backend route handles both.
+  const { invoiceNo: shareId } = useParams();
   // Hotel Public Invoice always renders the 80mm Thermal receipt (see
   // the `case "hotel"` branch below) — for both Dining and Lodging,
   // regardless of the cashier's chosen A4/80mm preview layout. The
@@ -54,7 +58,7 @@ const PublicInvoiceView = () => {
     let cancelled = false;
     (async () => {
       try {
-        const response = await getPublicInvoiceByNo(invoiceNo);
+        const response = await getPublicInvoiceByNo(shareId);
         if (cancelled) return;
 
         // Seed the store-settings cache BEFORE we paint so the thermal
@@ -95,7 +99,7 @@ const PublicInvoiceView = () => {
     return () => {
       cancelled = true;
     };
-  }, [invoiceNo]);
+  }, [shareId]);
 
   if (state.status === "loading") {
     return (
