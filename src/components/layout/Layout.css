@@ -7,9 +7,10 @@
   display: flex;
   min-height: 100vh;
   min-height: 100dvh; /* mobile browser chrome aware */
-  overflow-x: hidden;
+  /* Clip horizontal spill without turning this auto-height shell into a
+     vertical scroll container. The document remains the main scrollport. */
+  overflow-x: clip;
   max-width: 100vw;
-  overscroll-behavior: none; /* prevent scroll chaining */
 }
 
 .layout-main {
@@ -18,8 +19,10 @@
   background: #f8fafc;
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  /* `hidden` on x computes y to `auto`, which creates a nested vertical
+     scrollport and can swallow wheel input when this content has no fixed
+     height. Clip horizontal overflow while allowing the page to grow. */
+  overflow-x: clip;
 }
 
 /* ---------- Fullscreen / focus mode ----------
