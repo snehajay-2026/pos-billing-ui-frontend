@@ -67,6 +67,40 @@ const Layout = ({ children }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Lock body scroll when the mobile sidebar drawer is open so the page
+  // behind the overlay doesn't scroll. Also prevents horizontal overflow
+  // from the off-canvas sidebar.
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      const prevOverflow = document.body.style.overflow;
+      const prevOverflowX = document.body.style.overflowX;
+      document.body.style.overflow = "hidden";
+      document.body.style.overflowX = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        document.body.style.overflowX = prevOverflowX;
+      };
+    }
+    return undefined;
+  }, [isMobile, sidebarOpen]);
+
+  // Lock body scroll when the mobile sidebar drawer is open so the page
+  // behind the overlay doesn't scroll. Also prevents horizontal overflow
+  // from the off-canvas sidebar.
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      const prevOverflow = document.body.style.overflow;
+      const prevOverflowX = document.body.style.overflowX;
+      document.body.style.overflow = "hidden";
+      document.body.style.overflowX = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        document.body.style.overflowX = prevOverflowX;
+      };
+    }
+    return undefined;
+  }, [isMobile, sidebarOpen]);
+
   return (
     <>
       {/* Header */}

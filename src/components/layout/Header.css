@@ -8,6 +8,8 @@
   top: 0;
   z-index: 1040;
   min-height: 64px;
+  min-height: calc(64px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background:
     radial-gradient(circle at 18% 0%, rgba(99, 102, 241, 0.45), transparent 55%),
     radial-gradient(circle at 82% 100%, rgba(236, 72, 153, 0.35), transparent 50%),
@@ -75,6 +77,8 @@
   align-items: center;
   gap: 16px;
   padding: 10px 22px;
+  padding-left: calc(22px + env(safe-area-inset-left, 0px));
+  padding-right: calc(22px + env(safe-area-inset-right, 0px));
   min-height: 64px;
   z-index: 1;
 }
@@ -106,6 +110,9 @@
 @media (max-width: 768px) {
   .header-burger {
     display: inline-flex;
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
   }
 }
 
@@ -1681,6 +1688,8 @@
   .header-mobile-tray-btn {
     display: inline-flex;
     flex-shrink: 0;
+    width: 44px;
+    height: 44px;
   }
 
   /* Brand subtitle is already hidden at <=700px. Make sure the brand
@@ -1743,6 +1752,15 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-left: 0;
+  }
+
+  /* Ensure all tray buttons have comfortable touch targets */
+  .header-tray .header-iconbtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .header-tray .header-user-trigger {
+    min-height: 48px;
   }
 
   /* Each dropdown wrapper fills its grid cell. The user-trigger and
